@@ -47,6 +47,9 @@ import {
 
 const ITEMS_PER_PAGE = FEED_ITEMS_PER_PAGE
 
+/** Client 2026-07-23 (A-7): the "N deals total · sorted by …" line is hidden for now, may come back. */
+const SHOW_DEAL_COUNT = false
+
 // New Deals floats COF-specified deals to the top, then sorts by soonest closing date. Defined at
 // module scope so its reference is stable (the feed hook memoizes on it). Copies before sorting so it
 // never mutates the hook's `deals` state array.
@@ -99,7 +102,6 @@ export default function NewDealsPage() {
         {/* Page header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-1">{t('title')}</h1>
-          <p className="text-muted-foreground text-sm">{t('subtitle')}</p>
         </div>
 
         {/* Search + filter bar */}
@@ -222,11 +224,15 @@ export default function NewDealsPage() {
 
         {/* Stats bar */}
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm text-muted-foreground">
-            {activeFilterCount > 0 || searchTerm
-              ? t('statsMatching', { count: visibleDeals.length })
-              : t('statsTotal', { count: visibleDeals.length })}
-          </p>
+          {/* Client 2026-07-23 (A-7): "can you please hide this for now? We may reinstate it later" —
+              hidden behind a flag rather than deleted, so bringing it back is a one-word change. */}
+          {SHOW_DEAL_COUNT && (
+            <p className="text-sm text-muted-foreground">
+              {activeFilterCount > 0 || searchTerm
+                ? t('statsMatching', { count: visibleDeals.length })
+                : t('statsTotal', { count: visibleDeals.length })}
+            </p>
+          )}
           {newThisWeekCount > 0 && (
             <Badge className="text-xs bg-primary text-primary-foreground">
               {t('newThisWeek', { count: newThisWeekCount })}
@@ -382,10 +388,6 @@ export default function NewDealsPage() {
           </div>
         )}
 
-        {/* Privacy notice */}
-        <p className="text-xs text-muted-foreground mt-4 text-center">
-          {t('privacyNotice')}
-        </p>
       </main>
 
       {/* ── Decline confirmation ── */}

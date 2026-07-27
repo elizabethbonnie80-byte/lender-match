@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Toaster, toast } from "sonner"
-import { Building2, CreditCard, Mail, Phone, ArrowRight, Clock, KeyRound } from "lucide-react"
+import { Mail, Phone, ArrowRight, Clock, KeyRound } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { AuthHeader } from "@/components/auth-header"
 import { useT } from "@/components/i18n-provider"
@@ -230,9 +230,6 @@ export default function SignUpPage() {
           <>
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-foreground mb-2">{t("title")}</h1>
-              <p className="text-muted-foreground">
-                {t("subtitle")}
-              </p>
             </div>
 
             <div className="w-full max-w-2xl bg-card rounded-lg border border-border p-8">
@@ -256,7 +253,6 @@ export default function SignUpPage() {
                           : "border-border bg-card text-foreground hover:border-primary/50"
                       }`}
                     >
-                      <Building2 className="h-5 w-5" />
                       <span className="font-medium">{t("broker")}</span>
                     </button>
                     <button
@@ -272,7 +268,6 @@ export default function SignUpPage() {
                           : "border-border bg-card text-foreground hover:border-primary/50"
                       }`}
                     >
-                      <CreditCard className="h-5 w-5" />
                       <span className="font-medium">{t("lender")}</span>
                     </button>
                   </div>

@@ -30,7 +30,8 @@ export function FaqView({
   contactHref = '/contact',
 }: {
   title: string
-  subtitle: string
+  /** Omitted on the lender FAQ — client 2026-07-23 (A-27) asked for that grey line to go. */
+  subtitle?: string
   contactHref?: string
 }) {
   const t = useT('faqView')
@@ -78,7 +79,7 @@ export function FaqView({
     <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">{title}</h1>
-        <p className="text-muted-foreground">{subtitle}</p>
+        {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
       </div>
 
       {/* Search + category chips */}

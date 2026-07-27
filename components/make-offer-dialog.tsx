@@ -21,7 +21,7 @@ import { scanContact } from "@/lib/queries/anti-contact"
 import { useT } from "@/components/i18n-provider"
 import { useEnums } from "@/lib/use-enums"
 import { PRODUCT_TERM_YEARS, platformBpsFor } from "@/lib/queries/deals"
-import { BRAND } from "@/lib/brand"
+import { BRAND, LEGAL_ENTITY } from "@/lib/brand"
 import type { Database } from "@/lib/database.types"
 
 type MortgageProduct = Database["public"]["Enums"]["mortgage_product"]
@@ -212,14 +212,14 @@ export function MakeOfferDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) close() }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg" aria-describedby={isEdit ? undefined : ""}>
         <DialogHeader>
           <DialogTitle>
             {isEdit ? t("editTitle") : count > 1 ? t("titleMany", { count }) : t("title")}
           </DialogTitle>
-          <DialogDescription>
-            {isEdit ? t("editDescription") : t("description")}
-          </DialogDescription>
+          {/* Client 2026-07-23 (A-8): the "commission is in bps / your identity stays hidden" line was
+              removed. Only the edit-mode description remains. */}
+          {isEdit && <DialogDescription>{t("editDescription")}</DialogDescription>}
         </DialogHeader>
 
         {/* Round 3 Phase 3: nothing is different for a LENDER bidding on a prequal (client 2026-07-27
@@ -258,7 +258,6 @@ export function MakeOfferDialog({
             <Label htmlFor="offerLenderFeePct">{t("lenderFeePct")}</Label>
             <Input id="offerLenderFeePct" type="number" step="0.1" placeholder={t("lenderFeePctPlaceholder")}
               value={form.lenderFeePct} onChange={(e) => setForm((f) => ({ ...f, lenderFeePct: e.target.value }))} />
-            <p className="text-xs text-muted-foreground">{t("lenderFeePctHint")}</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="offerRateLock">{t("rateLock")}<Req /></Label>
@@ -309,7 +308,7 @@ export function MakeOfferDialog({
                 </div>
               )
             })()}
-            <p className="text-xs text-muted-foreground">{t("commissionFinePrint", { brand: BRAND })}</p>
+            <p className="text-xs text-muted-foreground">{t("commissionFinePrint", { entity: LEGAL_ENTITY })}</p>
           </div>
         )}
 

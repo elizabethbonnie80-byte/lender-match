@@ -111,7 +111,6 @@
   },
   "newDeals": {
     "title": "Nouveaux dossiers",
-    "subtitle": "Dossiers récemment soumis — triés par date de clôture. Les dossiers avec COF apparaissent en premier.",
     "searchPlaceholder": "Rechercher par n° de dossier, ville, province, type de propriété…",
     "filters": "Filtres",
     "clear": "Effacer",
@@ -187,10 +186,9 @@
     "decline": "Refuser",
     "messageBroker": "Message au courtier",
     "showing": "Affichage de {from} à {to} sur {total} dossiers",
-    "privacyNotice": "Les coordonnées du courtier, le nom du client et l'adresse complète de la propriété ne sont pas divulgués à cette étape.",
     "declineTitleOne": "Refuser ce dossier?",
     "declineTitleMany": "Refuser {count} dossiers?",
-    "declineDesc": "Le courtier ne sera pas avisé. Vous pouvez toujours voir les dossiers refusés en actualisant votre filtre. Cette action peut être annulée par l'administrateur de la plateforme au besoin.",
+    "declineDesc": "Le courtier ne sera pas avisé. Le dossier refusé sera retiré de vos dossiers. Vous ne pourrez plus consulter les dossiers que vous avez refusés.",
     "cancel": "Annuler",
     "confirmDecline": "Oui, refuser",
     "messageTitle": "Message au courtier",
@@ -318,7 +316,7 @@
     "privacyNotice": "Les coordonnées du courtier, le nom du client et l'adresse complète de la propriété ne sont pas divulgués à cette étape.",
     "declineTitleOne": "Refuser ce dossier?",
     "declineTitleMany": "Refuser {count} dossiers?",
-    "declineDesc": "Vous passez ce dossier. Le courtier ne sera pas avisé. Cette action est réversible en contactant le soutien de la plateforme.",
+    "declineDesc": "Le courtier ne sera pas avisé. Le dossier refusé sera retiré de vos dossiers. Vous ne pourrez plus consulter les dossiers que vous avez refusés.",
     "cancel": "Annuler",
     "confirmDecline": "Oui, refuser",
     "messageTitle": "Message au courtier",
@@ -377,7 +375,6 @@
   },
   "submittedOffers": {
     "title": "Offres soumises",
-    "subtitle": "Dossiers pour lesquels vous avez envoyé une offre — suivez le statut et les réponses du courtier en temps réel.",
     "total": "Total",
     "searchPlaceholder": "Rechercher par n° de dossier, ville, province, type de propriété…",
     "filterByStatus": "Filtrer par statut",
@@ -449,7 +446,9 @@
     "withdrawErr": "Impossible de retirer l'offre.",
     "messageSent": "Message envoyé au courtier.",
     "editOffer": "Modifier l'offre",
-    "autoBadge": "Auto"
+    "autoBadge": "Auto",
+    "contactBlocked": "Votre message ne peut pas contenir {reason}. Veuillez le retirer et réessayer.",
+    "messageErr": "Impossible d’envoyer le message."
   },
   "dealDetail": {
     "back": "Retour à la salle des dossiers",
@@ -508,7 +507,6 @@
   },
   "invoices": {
     "title": "Factures",
-    "subtitle": "Factures de frais du prêteur pour les dossiers financés",
     "loading": "Chargement des factures…",
     "loadErrorPrefix": "Impossible de charger les factures : {error}",
     "loadError": "Impossible de charger les factures.",
@@ -546,7 +544,7 @@
     "actionPdf": "PDF",
     "downloadPdf": "Télécharger le PDF",
     "pdfError": "Impossible de générer le PDF de la facture.",
-    "infoBanner": "Les factures sont générées automatiquement lorsqu'un dossier financé est confirmé. Pour toute question de facturation, contactez {email}. Les factures annulées sont conservées à des fins d'audit.",
+    "infoBanner": "Les factures sont générées automatiquement lorsqu’une offre est acceptée et sont payables 3 semaines après la date de clôture estimée. Pour toute question de facturation, écrivez à {email}.",
     "changesTitle": "Modifier — {invoice}",
     "changesIntro": "Modifiez le terme, le montant du prêt ou la date de clôture. Les frais du prêteur sont recalculés instantanément selon {bps} bps appliqués.",
     "term": "Terme",
@@ -807,7 +805,6 @@
   },
   "signIn": {
     "welcomeBack": "Bon retour",
-    "subtitle": "Connectez-vous pour accéder à votre portail de prêt sécurisé.",
     "email": "Adresse courriel",
     "password": "Mot de passe",
     "forgotPassword": "Mot de passe oublié?",
@@ -817,7 +814,6 @@
     "noAccount": "Vous n'avez pas de compte? ",
     "createAccount": "Créer un compte",
     "error": "Impossible de se connecter.",
-    "logosHeading": "La confiance des grands prêteurs",
     "logosLabel": "Logos des prêteurs"
   },
   "forgotPassword": {
@@ -902,7 +898,6 @@
     "titleBroker": "FAQ pour courtiers",
     "subtitleBroker": "Réponses aux questions les plus fréquentes des courtiers hypothécaires sur notre plateforme.",
     "titleLender": "FAQ pour prêteurs",
-    "subtitleLender": "Réponses aux questions les plus fréquentes des prêteurs sur notre plateforme.",
     "searchPlaceholder": "Rechercher des questions…",
     "allTopics": "Tous les sujets",
     "noResults": "Aucun résultat. Essayez un autre mot-clé.",
@@ -917,7 +912,7 @@
     "questionsOne": "{count} question",
     "questionsMany": "{count} questions",
     "ctaTitle": "Vous ne trouvez pas ce que vous cherchez ?",
-    "ctaSubtitle": "Notre équipe de soutien est disponible du lundi au vendredi, de 8 h à 18 h (HE).",
+    "ctaSubtitle": "Notre équipe de soutien est disponible du lundi au vendredi, de 9 h à 17 h (HNR).",
     "ctaButton": "Contacter le soutien"
   },
   "footer": {
@@ -930,7 +925,6 @@
   "makeOffer": {
     "title": "Faire une offre",
     "titleMany": "Faire une offre ({count} dossiers)",
-    "description": "La commission est saisie en points de base (pb). Votre identité reste cachée au courtier jusqu’à ce qu’il accepte votre offre.",
     "product": "Produit hypothécaire",
     "productPlaceholder": "Sélectionner un produit",
     "rate": "Taux (%)",
@@ -957,10 +951,9 @@
     "fieldRequired": "Ce champ est obligatoire",
     "lenderFeePct": "% de frais du prêteur, le cas échéant",
     "lenderFeePctPlaceholder": "Facultatif, p. ex. 0,5",
-    "lenderFeePctHint": "Information de tarification affichée au courtier à titre comparatif — n’affecte pas la facture.",
     "platformDeduction": "Frais de service {brand} (terme {term} ans)",
     "finalCommissionAmount": "Montant final de la commission",
-    "commissionFinePrint": "Le montant final de la commission affiché sur votre offre reflète la commission nette que vous recevrez. En acceptant cette soumission, vous autorisez irrévocablement le prêteur à déduire les frais de service applicables de {brand} de la commission brute payable relativement à cette transaction hypothécaire et à remettre ce montant directement à {brand}. Cette autorisation est accordée conformément aux modalités de service et y est assujettie.",
+    "commissionFinePrint": "Le prêteur convient que, au moment du financement de tout prêt hypothécaire jumelé par l’intermédiaire de la plateforme, les frais de plateforme applicables (calculés en points de base) seront retenus par le prêteur et versés directement à {entity}, conformément aux modalités de paiement précisées dans la facture correspondante. Il incombe au prêteur de veiller à ce que des fonds suffisants soient retenus et remis à l’échéance.",
     "editTitle": "Modifier l'offre",
     "editDescription": "Modifiez votre offre en attente. Le courtier sera avisé du changement; votre identité reste cachée jusqu'à l'acceptation.",
     "editSaved": "Offre mise à jour. Le courtier a été avisé.",
@@ -991,7 +984,6 @@
   "contact": {
     "title": "Nous joindre",
     "subtitleBroker": "Notre équipe de soutien aux courtiers est là pour vous aider. Communiquez avec nous par l’un des moyens ci-dessous.",
-    "subtitleLender": "Notre équipe de soutien aux prêteurs est là pour vous aider. Communiquez avec nous par l’un des moyens ci-dessous.",
     "getInTouch": "Communiquer avec nous",
     "businessHours": "Heures d’ouverture",
     "quickLinks": "Liens rapides",
@@ -1067,7 +1059,6 @@
     "pendingBody": "Votre compte de prêteur est en attente d’approbation. Un administrateur examinera votre inscription — vous serez avisé par courriel une fois votre compte approuvé, et vous pourrez alors vous connecter et commencer à parcourir les dossiers.",
     "backToSignIn": "Retour à la connexion",
     "title": "Inscription des partenaires",
-    "subtitle": "Rejoignez notre écosystème de prêt sécurisé et simplifiez vos opérations financières.",
     "registeringAs": "Je m’inscris à titre de :",
     "broker": "Courtier",
     "lender": "Prêteur",

@@ -12,7 +12,6 @@ export default function LenderFaqPage() {
 
       <FaqView
         title={t('titleLender')}
-        subtitle={t('subtitleLender')}
         contactHref="/lender/contact"
       />
     </div>

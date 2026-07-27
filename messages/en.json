@@ -111,7 +111,6 @@
   },
   "newDeals": {
     "title": "New Deals",
-    "subtitle": "Recently submitted deals — sorted by closing date. COF-specified deals appear first.",
     "searchPlaceholder": "Search by deal #, city, province, property type…",
     "filters": "Filters",
     "clear": "Clear",
@@ -187,10 +186,9 @@
     "decline": "Decline",
     "messageBroker": "Message broker",
     "showing": "Showing {from} to {to} of {total} deals",
-    "privacyNotice": "Broker contact details, client name, and full property addresses are not disclosed at this stage.",
     "declineTitleOne": "Decline this deal?",
     "declineTitleMany": "Decline {count} deals?",
-    "declineDesc": "The broker will not be notified. You can still view declined deals by refreshing your filter. This action can be reversed by the platform administrator if needed.",
+    "declineDesc": "The broker will not be notified. The declined deal will be removed from your deals. You will not be able to view any deals you have declined.",
     "cancel": "Cancel",
     "confirmDecline": "Yes, decline",
     "messageTitle": "Message broker",
@@ -318,7 +316,7 @@
     "privacyNotice": "Broker contact details, client name, and full property addresses are not disclosed at this stage.",
     "declineTitleOne": "Decline this deal?",
     "declineTitleMany": "Decline {count} deals?",
-    "declineDesc": "You will pass on this deal. The broker will not be notified. This action is reversible by contacting platform support.",
+    "declineDesc": "The broker will not be notified. The declined deal will be removed from your deals. You will not be able to view any deals you have declined.",
     "cancel": "Cancel",
     "confirmDecline": "Yes, decline",
     "messageTitle": "Message broker",
@@ -377,7 +375,6 @@
   },
   "submittedOffers": {
     "title": "Submitted Offers",
-    "subtitle": "Deals where you have sent an offer — track status and broker responses in real time.",
     "total": "Total",
     "searchPlaceholder": "Search by deal #, city, province, property type…",
     "filterByStatus": "Filter by status",
@@ -449,7 +446,9 @@
     "withdrawErr": "Could not withdraw the offer.",
     "messageSent": "Message sent to broker.",
     "editOffer": "Edit Offer",
-    "autoBadge": "Auto"
+    "autoBadge": "Auto",
+    "contactBlocked": "Your message can't contain {reason}. Please remove it and try again.",
+    "messageErr": "Could not send the message."
   },
   "dealDetail": {
     "back": "Back to Deal Room",
@@ -508,7 +507,6 @@
   },
   "invoices": {
     "title": "Invoices",
-    "subtitle": "Lender fee invoices for funded deals",
     "loading": "Loading invoices…",
     "loadErrorPrefix": "Could not load invoices: {error}",
     "loadError": "Could not load invoices.",
@@ -546,7 +544,7 @@
     "actionPdf": "PDF",
     "downloadPdf": "Download PDF",
     "pdfError": "Could not generate the invoice PDF.",
-    "infoBanner": "Invoices are generated automatically when a funded deal is confirmed. For billing inquiries contact {email}. Cancelled invoices are retained for audit purposes.",
+    "infoBanner": "Invoices are generated automatically when an offer is accepted and is due 3 weeks after the estimated closing date. For billing inquiries, contact {email}.",
     "changesTitle": "Make Changes — {invoice}",
     "changesIntro": "Modify term, loan amount, or closing date. The lender fee recalculates instantly based on {bps} bps applied.",
     "term": "Term",
@@ -807,7 +805,6 @@
   },
   "signIn": {
     "welcomeBack": "Welcome Back",
-    "subtitle": "Sign in to access your secure lending portal.",
     "email": "Email Address",
     "password": "Password",
     "forgotPassword": "Forgot password?",
@@ -817,7 +814,6 @@
     "noAccount": "Don't have an account? ",
     "createAccount": "Create account",
     "error": "Could not sign in.",
-    "logosHeading": "Trusted by leading lenders",
     "logosLabel": "Lender logos"
   },
   "forgotPassword": {
@@ -902,7 +898,6 @@
     "titleBroker": "Broker FAQ's",
     "subtitleBroker": "Answers to the most common questions from mortgage brokers on our platform.",
     "titleLender": "Lender FAQ's",
-    "subtitleLender": "Answers to the most common questions from lenders on our platform.",
     "searchPlaceholder": "Search questions…",
     "allTopics": "All Topics",
     "noResults": "No results found. Try a different keyword.",
@@ -917,7 +912,7 @@
     "questionsOne": "{count} question",
     "questionsMany": "{count} questions",
     "ctaTitle": "Can’t find what you’re looking for?",
-    "ctaSubtitle": "Our support team is available Monday to Friday, 8:00 AM – 6:00 PM EST.",
+    "ctaSubtitle": "Our support team is available Monday to Friday 9:00 AM - 5:00 PM MST.",
     "ctaButton": "Contact Support"
   },
   "footer": {
@@ -930,7 +925,6 @@
   "makeOffer": {
     "title": "Make Offer",
     "titleMany": "Make Offer ({count} deals)",
-    "description": "Commission is entered in basis points (bps). Your identity stays hidden from the broker until they accept your offer.",
     "product": "Mortgage Product",
     "productPlaceholder": "Select product",
     "rate": "Rate (%)",
@@ -957,10 +951,9 @@
     "fieldRequired": "This field is required",
     "lenderFeePct": "Lender Fee % if applicable",
     "lenderFeePctPlaceholder": "Optional, e.g. 0.5",
-    "lenderFeePctHint": "Loan-pricing info shown to the broker for comparison — does not affect the invoice.",
     "platformDeduction": "{brand} service fee ({term}-yr term)",
     "finalCommissionAmount": "Final Commission Amount",
-    "commissionFinePrint": "The final commission amount displayed on your match reflects the net commission you will receive. By accepting this submission, you irrevocably authorize the lender to have deducted {brand}'s applicable service fee from the gross commission payable in connection with this mortgage transaction and remit that amount directly to {brand}. This authorization is provided in accordance with, and is subject to, the Terms of Service.",
+    "commissionFinePrint": "The Lender agrees that, upon funding of any mortgage matched through the platform, the applicable platform fee (calculated in basis points) shall be reserved by the Lender and paid directly to {entity} in accordance with the payment terms specified in the corresponding invoice. The Lender is responsible for ensuring sufficient funds are withheld and remitted when due.",
     "editTitle": "Edit Offer",
     "editDescription": "Update your pending offer. The broker will be notified of the change; your identity stays hidden until acceptance.",
     "editSaved": "Offer updated. The broker has been notified.",
@@ -991,7 +984,6 @@
   "contact": {
     "title": "Contact Us",
     "subtitleBroker": "Our broker support team is here to help. Reach out through any of the channels below.",
-    "subtitleLender": "Our lender support team is here to help. Reach out through any of the channels below.",
     "getInTouch": "Get in Touch",
     "businessHours": "Business Hours",
     "quickLinks": "Quick Links",
@@ -1067,7 +1059,6 @@
     "pendingBody": "Your lender account is pending approval. An administrator will review your registration — you'll be notified by email once your account is approved, and then you can sign in and start browsing deals.",
     "backToSignIn": "Back to sign in",
     "title": "Partner Registration",
-    "subtitle": "Join our secure lending ecosystem and streamline your financial operations.",
     "registeringAs": "I am registering as a:",
     "broker": "Broker",
     "lender": "Lender",

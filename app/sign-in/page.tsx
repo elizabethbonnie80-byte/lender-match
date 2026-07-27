@@ -62,7 +62,6 @@ export default function SignInPage() {
       <main className="flex-1 flex flex-col items-center justify-center py-12 px-4">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">{t("welcomeBack")}</h1>
-          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
 
         <div className="w-full max-w-md bg-card rounded-lg border border-border p-8">

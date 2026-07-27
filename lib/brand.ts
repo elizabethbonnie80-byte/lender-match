@@ -11,6 +11,12 @@
 // COPYRIGHT_HOLDER (the founders) does NOT change with the rebrand.
 
 export const BRAND = "LenderMatch™"
+/**
+ * The legal entity, for contract copy — NOT the wordmark. The client's platform-fee clause (revision
+ * 2026-07-23 A-10) names "LenderMatch Inc." exactly: no ™, and "Inc.". Interpolated as `{entity}` so
+ * contract text stays verbatim while the brand stays centralized here.
+ */
+export const LEGAL_ENTITY = "LenderMatch Inc."
 export const COPYRIGHT_HOLDER = "Elizabeth Iginla and Bonnie Casault" // footer © line (the founders)
 export const SUPPORT_EMAIL = "support@lendermatch.ca"
 export const DOMAIN = "lendermatch.ca"

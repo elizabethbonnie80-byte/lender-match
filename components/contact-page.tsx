@@ -25,7 +25,8 @@ export function ContactPage({
   thankYouKey,
 }: {
   header: ReactNode
-  subtitleKey: 'subtitleBroker' | 'subtitleLender'
+  /** Omitted on the lender contact page — client 2026-07-23 (A-29). */
+  subtitleKey?: 'subtitleBroker' | 'subtitleLender'
   thankYouKey: 'thankYouBroker' | 'thankYouLender'
 }) {
   const t = useT('contact')
@@ -79,7 +80,7 @@ export function ContactPage({
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">{t('title')}</h1>
-          <p className="text-muted-foreground">{t(subtitleKey)}</p>
+          {subtitleKey && <p className="text-muted-foreground">{t(subtitleKey)}</p>}
         </div>
 
         <div className="bg-card border border-border rounded-lg overflow-hidden">

@@ -12,6 +12,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { FieldError } from '@/components/field-error'
 import { RowActions } from '@/components/row-actions'
 import { offerStatusStyle } from '@/lib/status-styles'
+import { sendMessage as sendDealMessage } from '@/lib/queries/messages'
+import { scanContact } from '@/lib/queries/anti-contact'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Dialog,
@@ -46,6 +48,8 @@ import {
   FileText,
   Building2,
   Zap,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -277,6 +281,8 @@ export default function SubmittedOffersPage() {
   const [editTarget, setEditTarget] = useState<OfferEditTarget | null>(null)
   const [withdrawTarget, setWithdrawTarget] = useState<string | null>(null)
   const [messageTarget, setMessageTarget] = useState<string | null>(null)
+  const [messageSending, setMessageSending] = useState(false)
+  const [messageBlockReason, setMessageBlockReason] = useState<string | null>(null)
   const [messageText, setMessageText] = useState('')
   const [messageShowError, setMessageShowError] = useState(false)
 
@@ -349,17 +355,38 @@ export default function SubmittedOffersPage() {
     }
   }
 
-  const sendMessage = (e: React.MouseEvent) => {
-    if (!messageTarget) return
-    if (!messageText.trim()) {
-      e.preventDefault()
+  // Client 2026-07-23 (A-16): this used to only `flash` a fake confirmation — the message was never
+  // persisted, which is why nothing appeared in the messages record. It now goes through the same path
+  // as the deal feeds: anti-contact pre-scan, then send_deal_message (which creates the thread).
+  const sendMessage = async (e: React.MouseEvent) => {
+    e.preventDefault() // never let the AlertDialog close before the send resolves
+    if (!messageTarget || messageSending) return
+    const text = messageText.trim()
+    if (!text) {
       setMessageShowError(true)
       return
     }
-    flash(t('messageSent'))
-    setMessageTarget(null)
-    setMessageText('')
-    setMessageShowError(false)
+    const dealId = getOfferById(messageTarget)?.dealId
+    if (!dealId) return
+    setMessageSending(true)
+    setMessageBlockReason(null)
+    try {
+      const reason = await scanContact(supabase, text, 'chat_message', dealId)
+      if (reason) {
+        // in-dialog, not `flash`: the dialog stays open, so a page banner would sit behind the overlay
+        setMessageBlockReason(t('contactBlocked', { reason }))
+        return
+      }
+      await sendDealMessage(supabase, { dealId, content: text })
+      flash(t('messageSent'))
+      setMessageTarget(null)
+      setMessageText('')
+      setMessageShowError(false)
+    } catch (err) {
+      setMessageBlockReason(err instanceof Error ? err.message : t('messageErr'))
+    } finally {
+      setMessageSending(false)
+    }
   }
 
   const getOfferById = (id: string) =>
@@ -392,7 +419,6 @@ export default function SubmittedOffersPage() {
         {/* Page header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">{t('title')}</h1>
-          <p className="text-muted-foreground text-sm">{t('subtitle')}</p>
         </div>
 
         {/* Summary cards */}
@@ -401,7 +427,6 @@ export default function SubmittedOffersPage() {
             { label: t('total'), value: stats.total, cls: '' },
             { label: tf('Pending'), value: stats.pending, cls: 'text-yellow-700' },
             { label: tf('Accepted'), value: stats.accepted, cls: 'text-green-700' },
-            { label: tf('Declined'), value: stats.declined, cls: 'text-muted-foreground' },
           ].map(({ label, value, cls }) => (
             <div key={label} className="bg-card border border-border rounded-lg p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
@@ -677,7 +702,7 @@ export default function SubmittedOffersPage() {
       </AlertDialog>
 
       {/* ── Message broker dialog ── */}
-      <AlertDialog open={!!messageTarget} onOpenChange={() => setMessageTarget(null)}>
+      <AlertDialog open={!!messageTarget} onOpenChange={() => { setMessageTarget(null); setMessageBlockReason(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -689,7 +714,7 @@ export default function SubmittedOffersPage() {
             <Textarea
               placeholder={t('messagePlaceholder')}
               value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
+              onChange={(e) => { setMessageText(e.target.value); if (messageShowError) setMessageShowError(false); if (messageBlockReason) setMessageBlockReason(null) }}
               aria-invalid={messageShowError && !messageText.trim()}
               rows={4}
               className="resize-none bg-muted/50"
@@ -698,10 +723,17 @@ export default function SubmittedOffersPage() {
               <FieldError show={messageShowError && !messageText.trim()} />
               <p className="text-xs text-muted-foreground text-right ml-auto">{t('charCount', { n: messageText.length })}</p>
             </div>
+            {messageBlockReason && (
+              <div className="mt-2 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-2.5">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <p className="text-xs text-destructive">{messageBlockReason}</p>
+              </div>
+            )}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setMessageText(''); setMessageShowError(false) }}>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={sendMessage} className={!messageText.trim() ? 'opacity-50' : ''}>
+            <AlertDialogCancel onClick={() => { setMessageText(''); setMessageShowError(false); setMessageBlockReason(null) }}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={sendMessage} disabled={messageSending} className={`gap-1.5 ${!messageText.trim() ? 'opacity-50' : ''}`}>
+              {messageSending && <Loader2 className="h-4 w-4 animate-spin" />}
               {t('send')}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -332,7 +332,6 @@ export default function InvoicesPage() {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t('title')}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t('subtitle')}</p>
         </div>
 
         {loading && <p className="text-sm text-muted-foreground animate-pulse">{t('loading')}</p>}
