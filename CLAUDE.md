@@ -105,6 +105,32 @@ don't add RPCs for them. Still open: **#5** (merge the two "Passive" income type
 choice of canonical label, needs a data migration) and **#7** (prequal required when there's no address —
 belongs to the Phase 3 prequal flow, other dev).
 
+## Client revision batches after Round 3 (read before touching the lender or broker portals)
+
+Three feedback rounds have landed since Phase 3 shipped. Each has its own control doc; **they are the
+active work queue.**
+
+1. **2026-07-20** (12 items) → [`docs/client-revisions-2026-07-20.md`](./docs/client-revisions-2026-07-20.md)
+   — **DONE and live on staging + prod.**
+2. **2026-07-27** (2 answers) → [`docs/client-revisions-2026-07-27.md`](./docs/client-revisions-2026-07-27.md)
+   — prequal lender-only expiry + document retention (migration 52). **Done locally, NOT deployed.**
+3. **2026-07-23 + 2026-07-25** (~71 items) → [`docs/client-revisions-2026-07-23-and-25.md`](./docs/client-revisions-2026-07-23-and-25.md)
+   — **the big one, nothing implemented yet.** Batch A (lender side, 30) executes first, then Batch B
+   (41, spanning lender/broker/admin/Create Deal).
+
+⚠️ **Two traps recorded in that doc, worth knowing before you open it:**
+- **`docs/Revisions_23_Jul_2026.pdf` is NOT a reliable source.** It is a Gmail print whose long lines are
+  **clipped at the right page margin — the text is genuinely gone**, including the entity name in a
+  contract clause. Read the Gmail thread (`subject:Revisions`) instead. (Also: no `pdftotext` on this
+  machine, and `file://` is blocked in the driven browser — serve a PDF over `http://localhost` to read it
+  in Chrome.)
+- **The prequal fine print exists in two conflicting versions** (2026-07-25 vs 2026-07-27) and the earlier
+  one asks for a **pop-up** where we shipped an inline banner. Unresolved — do not treat that item as done.
+
+Batch B also settles two things the original extraction left open: **OQ#30 — "Open" term deducts 3 bps,
+not 5** (so `platform_bps_for` must change), and it **reopens OQ#18** by implying Maturing Deals has no
+upper age bound.
+
 ## Stack
 
 - **Next.js 16 (App Router) + React 19 + TypeScript**, package manager **pnpm**.
