@@ -30,9 +30,14 @@ export function DealSection({ title, children }: { title: string; children: Reac
  * The full property/deal/qualifying detail body for a lender-visible deal — shared by New Deals and
  * Maturing Deals so both render the exact same non-identity fields per the client's reference layout.
  */
+/** deals column name -> the camelCase field on LenderDealListItem. */
+function toCamel(col: string) {
+  return col.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
+}
+
 export function LenderDealDetailSections({ deal }: { deal: LenderDealListItem }) {
   const t = useT('newDeals')
-  const { LABELS } = useEnums()
+  const { LABELS, PROPERTY_FLAGS, DEAL_INFO_FLAGS } = useEnums()
   const dash = t('dash')
 
   const enumLabel = (table: Record<string, string>, value: string | null) => (value ? table[value] ?? dash : dash)
@@ -41,6 +46,12 @@ export function LenderDealDetailSections({ deal }: { deal: LenderDealListItem })
   const boolLabel = (v: boolean) => (v ? t('boolYes') : t('boolNo'))
   const textOr = (v: string | null) => v || dash
   const numOr = (v: number | null) => (v === null ? dash : v)
+  const money = (v: number | null) => (v === null ? dash : `$${Math.round(v).toLocaleString('en-US')}`)
+  /** Only the flags that are SET, comma-joined — matches how the client's reference layout shows them. */
+  const flagList = (flags: [string, string][]) => {
+    const on = flags.filter(([col]) => (deal as unknown as Record<string, unknown>)[toCamel(col)] === true)
+    return on.length ? on.map(([, label]) => label).join(', ') : t('cardNone')
+  }
 
   return (
     <>
@@ -58,6 +69,8 @@ export function LenderDealDetailSections({ deal }: { deal: LenderDealListItem })
           label={t('cardAcres')}
           value={deal.acres === null ? dash : t('acresValue', { n: deal.acres })}
         />
+        <DealField label={t('cardOccupancy')} value={enumLabel(LABELS.occupancy, deal.occupancy)} />
+        <DealField label={t('cardPropertyFlags')} value={flagList(PROPERTY_FLAGS)} />
         <DealField label={t('cardGeneralNotes')} value={textOr(deal.generalNotes)} />
       </DealSection>
 
@@ -74,8 +87,11 @@ export function LenderDealDetailSections({ deal }: { deal: LenderDealListItem })
           value={deal.amortizationYears === null ? dash : t('yearsValue', { n: deal.amortizationYears })}
         />
         <DealField label={t('cardInsured')} value={boolLabel(deal.insured)} />
+        <DealField label={t('cardPurpose')} value={enumLabel(LABELS.purpose, deal.purpose)} />
+        <DealField label={t('cardTransactionType')} value={enumLabel(LABELS.transaction_type, deal.transactionType)} />
         <DealField label={t('cardPreviouslyDeclined')} value={boolLabel(deal.previouslyDeclined)} />
         <DealField label={t('cardPreviouslyDeclinedReason')} value={textOr(deal.previouslyDeclinedReason)} />
+        <DealField label={t('cardPrograms')} value={flagList(DEAL_INFO_FLAGS)} />
       </DealSection>
 
       <DealSection title={t('secQualifying')}>
@@ -90,6 +106,10 @@ export function LenderDealDetailSections({ deal }: { deal: LenderDealListItem })
         <DealField label={t('cardDownPaymentSource')} value={listLabel(LABELS.down_payment_source, deal.downPaymentSources)} />
         <DealField label={t('cardOwnsOtherProperties')} value={boolLabel(deal.ownsOtherProperties)} />
         <DealField label={t('cardHowManyDoors')} value={numOr(deal.doorCount)} />
+        <DealField label={t('cardDoorTitles')} value={numOr(deal.doorTitlesCount)} />
+        <DealField label={t('cardAssetsLiquid')} value={money(deal.assetsLiquidValue)} />
+        <DealField label={t('cardAssetsTotal')} value={money(deal.assetsTotalValue)} />
+        <DealField label={t('cardNoLenderExceptions')} value={boolLabel(deal.noLenderExceptionsRequired)} />
         <DealField label={t('cardCreditNotes')} value={textOr(deal.creditNotes)} />
         <DealField label={t('cardIncomeNotes')} value={textOr(deal.incomeNotes)} />
         <DealField label={t('cardDownPaymentNotes')} value={textOr(deal.downPaymentNotes)} />

@@ -255,7 +255,17 @@
     "fAssetsTotalMin": "Total Assets (min)",
     "fMaxDoorTitles": "Max Titles on Doors",
     "fRequireNoExceptions": "Only deals with no lender exceptions required",
-    "prequal": "PREQUAL"
+    "prequal": "PREQUAL",
+    "cardOccupancy": "Occupancy",
+    "cardPurpose": "Transaction Purpose",
+    "cardTransactionType": "Transaction Type",
+    "cardPropertyFlags": "Property Characteristics",
+    "cardPrograms": "Programs & Product Options",
+    "cardAssetsLiquid": "Liquid Assets",
+    "cardAssetsTotal": "Total Assets",
+    "cardDoorTitles": "Titles on Doors",
+    "cardNoLenderExceptions": "No Lender Exceptions Required",
+    "cardNone": "None"
   },
   "maturingDeals": {
     "prequal": "PREQUAL",

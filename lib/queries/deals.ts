@@ -610,6 +610,43 @@ export type LenderDealListItem = {
   downPaymentNotes: string | null
   /** Round 3 Phase 3: a prequal (no property address / closing date yet) — bids carry special fine print. */
   prequal: boolean
+  // Client revisions 2026-07-23 A-14 / 2026-07-25 B-12,B-13,B-14,B-15,B-41 (migration 53): these all
+  // existed on `deals` but never reached the lender. purpose/transactionType were already returned by
+  // the RPC — the type simply dropped them.
+  purpose: Enums["transaction_purpose"] | null
+  transactionType: Enums["transaction_type"] | null
+  occupancy: Enums["occupancy_type"] | null
+  // property characteristics
+  newBuild: boolean
+  hobbyFarm: boolean
+  recreationalProperty: boolean
+  wellWater: boolean
+  septic: boolean
+  // programs / product options
+  fthb: boolean
+  networthProgram: boolean
+  medicalProfessional: boolean
+  newToCanada: boolean
+  purchasePlusImprovements: boolean
+  collateralTransfer: boolean
+  cashback: boolean
+  bridgeLoanNeeded: boolean
+  firstAndHeloc: boolean
+  heloc: boolean
+  fixedSecond: boolean
+  cosignorOccupying: boolean
+  cosignorNotOccupying: boolean
+  guarantor: boolean
+  reverseMortgage: boolean
+  // assets / titles / bureau
+  assetsLiquidValue: number | null
+  assetsTotalValue: number | null
+  doorTitlesCount: number | null
+  transunionBeingUsed: boolean
+  // borrower flags
+  marriedOrCommonLaw: boolean
+  spouseNotOnApplication: boolean
+  noLenderExceptionsRequired: boolean
 }
 
 /**
@@ -663,6 +700,36 @@ function mapOpenDealRow(d: OpenDealRow): LenderDealListItem {
     incomeNotes: d.income_notes,
     downPaymentNotes: d.down_payment_notes,
     prequal: d.prequal ?? false,
+    purpose: d.purpose,
+    transactionType: d.transaction_type,
+    occupancy: d.occupancy,
+    newBuild: d.new_build ?? false,
+    hobbyFarm: d.hobby_farm ?? false,
+    recreationalProperty: d.recreational_property ?? false,
+    wellWater: d.well_water ?? false,
+    septic: d.septic ?? false,
+    fthb: d.fthb ?? false,
+    networthProgram: d.networth_program ?? false,
+    medicalProfessional: d.medical_professional ?? false,
+    newToCanada: d.new_to_canada ?? false,
+    purchasePlusImprovements: d.purchase_plus_improvements ?? false,
+    collateralTransfer: d.collateral_transfer ?? false,
+    cashback: d.cashback ?? false,
+    bridgeLoanNeeded: d.bridge_loan_needed ?? false,
+    firstAndHeloc: d.first_and_heloc ?? false,
+    heloc: d.heloc ?? false,
+    fixedSecond: d.fixed_second ?? false,
+    cosignorOccupying: d.cosignor_occupying ?? false,
+    cosignorNotOccupying: d.cosignor_not_occupying ?? false,
+    guarantor: d.guarantor ?? false,
+    reverseMortgage: d.reverse_mortgage ?? false,
+    assetsLiquidValue: d.assets_liquid_value === null ? null : Number(d.assets_liquid_value),
+    assetsTotalValue: d.assets_total_value === null ? null : Number(d.assets_total_value),
+    doorTitlesCount: d.door_titles_count,
+    transunionBeingUsed: d.transunion_being_used ?? false,
+    marriedOrCommonLaw: d.married_or_common_law ?? false,
+    spouseNotOnApplication: d.spouse_not_on_application ?? false,
+    noLenderExceptionsRequired: d.no_lender_exceptions_required ?? false,
   }
 }
 

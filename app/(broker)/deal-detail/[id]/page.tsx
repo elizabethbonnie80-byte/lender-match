@@ -10,7 +10,7 @@ import { Toaster, toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import {
   getBrokerDealDetail,
-  getBrokerDealFull,
+  getDealFull,
   listDealOffers,
   acceptOffer,
   switchOffer,
@@ -76,7 +76,7 @@ export default function DealDetailPage() {
     const d = await getBrokerDealDetail(supabase, dealId)
     setDeal(d)
     if (!d) return
-    setFullDeal(await getBrokerDealFull(supabase, dealId))
+    setFullDeal(await getDealFull(supabase, dealId))
     setOffers(await listDealOffers(supabase, dealId))
     if (['accepted', 'confirmed', 'funded'].includes(d.status)) {
       setLender(await getAcceptedLender(supabase, dealId))

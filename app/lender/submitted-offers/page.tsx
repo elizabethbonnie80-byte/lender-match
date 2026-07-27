@@ -3,7 +3,9 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { LenderHeader } from '@/components/lender-header'
 import { createClient } from '@/lib/supabase/client'
-import { listSubmittedOffers, withdrawOffer, type SubmittedOfferItem } from '@/lib/queries/offers'
+import { listSubmittedOffers, withdrawOffer, getDealFull, type SubmittedOfferItem } from '@/lib/queries/offers'
+import type { LenderDealListItem } from '@/lib/queries/deals'
+import { LenderDealDetailSections } from '@/components/lender-deal-sections'
 import { MakeOfferDialog, type OfferEditTarget } from '@/components/make-offer-dialog'
 import { useT } from '@/components/i18n-provider'
 import { Button } from '@/components/ui/button'
@@ -117,6 +119,19 @@ function OfferDetailDialog({
 }) {
   const t = useT('submittedOffers')
   const tf = useT('feed')
+  const supabase = useMemo(() => createClient(), [])
+  // Client 2026-07-23 (A-19): "the lender can't see the loan details but they should be able to view
+  // the same data as in new deal." Same component, same fields — RLS lets a lender read the deal they
+  // offered on, and deal_identities is still never selected.
+  const [fullDeal, setFullDeal] = useState<LenderDealListItem | null>(null)
+  useEffect(() => {
+    if (!offer) { setFullDeal(null); return }
+    let active = true
+    getDealFull(supabase, offer.dealId)
+      .then((d) => { if (active) setFullDeal(d) })
+      .catch(() => { if (active) setFullDeal(null) })
+    return () => { active = false }
+  }, [offer, supabase])
   if (!offer) return null
   const { cls, icon } = statusCfg(offer.status)
   const closingDays = daysUntil(offer.closingDate)
@@ -251,6 +266,13 @@ function OfferDetailDialog({
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>{t('close')}</Button>
           </div>
+
+          {/* Full deal record — identical to the New Deals card (A-19) */}
+          {fullDeal && (
+            <div className="space-y-5">
+              <LenderDealDetailSections deal={fullDeal} />
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

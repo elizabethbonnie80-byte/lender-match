@@ -134,16 +134,19 @@ export async function getBrokerDealDetail(supabase: DB, dealId: string): Promise
 }
 
 /**
- * The broker's own deal as the FULL non-identity field set (property/deal/qualifying), shaped like a
- * LenderDealListItem so the shared LenderDealDetailSections component can render it — the broker sees
- * every deal field (the borrower name + address, deliberately hidden from lenders, are shown
- * separately from getBrokerDealDetail). RLS lets the owner read the whole row + junction lists.
+ * A deal as the FULL non-identity field set (property/deal/qualifying), shaped like a
+ * LenderDealListItem so the shared LenderDealDetailSections component can render it.
+ *
+ * Works for BOTH roles and relies on RLS to decide: the owning broker reads their own row, and a lender
+ * reads it once they have offered on it (deals_lender_offered) — which is what lets Submitted Offers
+ * show the same detail as New Deals (client 2026-07-23 A-19). deal_identities is never selected here,
+ * so the borrower name / property address stay behind the anonymity boundary either way.
  */
-export async function getBrokerDealFull(supabase: DB, dealId: string): Promise<LenderDealListItem | null> {
+export async function getDealFull(supabase: DB, dealId: string): Promise<LenderDealListItem | null> {
   const { data, error } = await supabase
     .from("deals")
     .select(
-      "id, deal_number, created_at, city, province, location_type, dwelling_type, property_value, square_footage, acres, general_notes, closing_date, closing_date_flexible, cof_date, mortgage_product, mortgage_position, loan_amount, ltv, amortization_years, insured, previously_declined, previously_declined_reason, primary_credit_score, co_borrower_credit_score, gds, tds, foreign_income_country, owns_other_properties, door_count, credit_notes, income_notes, prequal, down_payment_notes, deal_income_types(income_type), deal_residency_statuses(residency), deal_credit_issues(credit_issue), deal_down_payment_sources(down_payment_source)",
+      "id, deal_number, created_at, city, province, location_type, dwelling_type, property_value, square_footage, acres, general_notes, closing_date, closing_date_flexible, cof_date, mortgage_product, mortgage_position, loan_amount, ltv, amortization_years, insured, previously_declined, previously_declined_reason, primary_credit_score, co_borrower_credit_score, gds, tds, foreign_income_country, owns_other_properties, door_count, credit_notes, income_notes, prequal, down_payment_notes, occupancy, new_build, hobby_farm, recreational_property, well_water, septic, fthb, networth_program, medical_professional, new_to_canada, purchase_plus_improvements, collateral_transfer, cashback, bridge_loan_needed, first_and_heloc, heloc, fixed_second, cosignor_occupying, cosignor_not_occupying, guarantor, reverse_mortgage, assets_liquid_value, assets_total_value, door_titles_count, transunion_being_used, married_or_common_law, spouse_not_on_application, no_lender_exceptions_required, purpose, transaction_type, deal_income_types(income_type), deal_residency_statuses(residency), deal_credit_issues(credit_issue), deal_down_payment_sources(down_payment_source)",
     )
     .eq("id", dealId)
     .maybeSingle()
@@ -188,6 +191,36 @@ export async function getBrokerDealFull(supabase: DB, dealId: string): Promise<L
     incomeNotes: data.income_notes,
     downPaymentNotes: data.down_payment_notes,
     prequal: data.prequal ?? false,
+    purpose: data.purpose,
+    transactionType: data.transaction_type,
+    occupancy: data.occupancy,
+    newBuild: data.new_build ?? false,
+    hobbyFarm: data.hobby_farm ?? false,
+    recreationalProperty: data.recreational_property ?? false,
+    wellWater: data.well_water ?? false,
+    septic: data.septic ?? false,
+    fthb: data.fthb ?? false,
+    networthProgram: data.networth_program ?? false,
+    medicalProfessional: data.medical_professional ?? false,
+    newToCanada: data.new_to_canada ?? false,
+    purchasePlusImprovements: data.purchase_plus_improvements ?? false,
+    collateralTransfer: data.collateral_transfer ?? false,
+    cashback: data.cashback ?? false,
+    bridgeLoanNeeded: data.bridge_loan_needed ?? false,
+    firstAndHeloc: data.first_and_heloc ?? false,
+    heloc: data.heloc ?? false,
+    fixedSecond: data.fixed_second ?? false,
+    cosignorOccupying: data.cosignor_occupying ?? false,
+    cosignorNotOccupying: data.cosignor_not_occupying ?? false,
+    guarantor: data.guarantor ?? false,
+    reverseMortgage: data.reverse_mortgage ?? false,
+    assetsLiquidValue: data.assets_liquid_value === null ? null : Number(data.assets_liquid_value),
+    assetsTotalValue: data.assets_total_value === null ? null : Number(data.assets_total_value),
+    doorTitlesCount: data.door_titles_count,
+    transunionBeingUsed: data.transunion_being_used ?? false,
+    marriedOrCommonLaw: data.married_or_common_law ?? false,
+    spouseNotOnApplication: data.spouse_not_on_application ?? false,
+    noLenderExceptionsRequired: data.no_lender_exceptions_required ?? false,
   }
 }
 

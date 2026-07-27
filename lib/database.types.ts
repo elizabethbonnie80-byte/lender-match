@@ -2149,21 +2149,35 @@ export type Database = {
         Returns: {
           acres: number
           amortization_years: number
+          assets_liquid_value: number
+          assets_total_value: number
+          bridge_loan_needed: boolean
+          cashback: boolean
           city: string
           closing_date: string
           closing_date_flexible: boolean
           co_borrower_credit_score: number
           cof_date: string
+          collateral_transfer: boolean
+          cosignor_not_occupying: boolean
+          cosignor_occupying: boolean
           credit_issues: Database["public"]["Enums"]["credit_issue"][]
           credit_notes: string
           deal_number: string
           door_count: number
+          door_titles_count: number
           down_payment_notes: string
           down_payment_sources: Database["public"]["Enums"]["down_payment_source"][]
           dwelling_type: Database["public"]["Enums"]["dwelling_type"]
+          first_and_heloc: boolean
+          fixed_second: boolean
           foreign_income_country: string
+          fthb: boolean
           gds: number
           general_notes: string
+          guarantor: boolean
+          heloc: boolean
+          hobby_farm: boolean
           id: string
           income_notes: string
           income_types: Database["public"]["Enums"]["income_type"][]
@@ -2171,11 +2185,18 @@ export type Database = {
           loan_amount: number
           location_type: Database["public"]["Enums"]["location_type"]
           ltv: number
+          married_or_common_law: boolean
           match_fails: string[]
           match_filter: string
           match_pct: number
+          medical_professional: boolean
           mortgage_position: Database["public"]["Enums"]["mortgage_position"]
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          networth_program: boolean
+          new_build: boolean
+          new_to_canada: boolean
+          no_lender_exceptions_required: boolean
+          occupancy: Database["public"]["Enums"]["occupancy_type"]
           owns_other_properties: boolean
           prequal: boolean
           previously_declined: boolean
@@ -2183,12 +2204,19 @@ export type Database = {
           primary_credit_score: number
           property_value: number
           province: Database["public"]["Enums"]["province"]
+          purchase_plus_improvements: boolean
           purpose: Database["public"]["Enums"]["transaction_purpose"]
+          recreational_property: boolean
           residency_statuses: Database["public"]["Enums"]["residency_status"][]
+          reverse_mortgage: boolean
+          septic: boolean
+          spouse_not_on_application: boolean
           square_footage: number
           submitted_at: string
           tds: number
           transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transunion_being_used: boolean
+          well_water: boolean
         }[]
       }
       maturing_deals_for_lender: {
@@ -2196,21 +2224,35 @@ export type Database = {
         Returns: {
           acres: number
           amortization_years: number
+          assets_liquid_value: number
+          assets_total_value: number
+          bridge_loan_needed: boolean
+          cashback: boolean
           city: string
           closing_date: string
           closing_date_flexible: boolean
           co_borrower_credit_score: number
           cof_date: string
+          collateral_transfer: boolean
+          cosignor_not_occupying: boolean
+          cosignor_occupying: boolean
           credit_issues: Database["public"]["Enums"]["credit_issue"][]
           credit_notes: string
           deal_number: string
           door_count: number
+          door_titles_count: number
           down_payment_notes: string
           down_payment_sources: Database["public"]["Enums"]["down_payment_source"][]
           dwelling_type: Database["public"]["Enums"]["dwelling_type"]
+          first_and_heloc: boolean
+          fixed_second: boolean
           foreign_income_country: string
+          fthb: boolean
           gds: number
           general_notes: string
+          guarantor: boolean
+          heloc: boolean
+          hobby_farm: boolean
           id: string
           income_notes: string
           income_types: Database["public"]["Enums"]["income_type"][]
@@ -2218,11 +2260,18 @@ export type Database = {
           loan_amount: number
           location_type: Database["public"]["Enums"]["location_type"]
           ltv: number
+          married_or_common_law: boolean
           match_fails: string[]
           match_filter: string
           match_pct: number
+          medical_professional: boolean
           mortgage_position: Database["public"]["Enums"]["mortgage_position"]
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          networth_program: boolean
+          new_build: boolean
+          new_to_canada: boolean
+          no_lender_exceptions_required: boolean
+          occupancy: Database["public"]["Enums"]["occupancy_type"]
           owns_other_properties: boolean
           prequal: boolean
           previously_declined: boolean
@@ -2230,12 +2279,19 @@ export type Database = {
           primary_credit_score: number
           property_value: number
           province: Database["public"]["Enums"]["province"]
+          purchase_plus_improvements: boolean
           purpose: Database["public"]["Enums"]["transaction_purpose"]
+          recreational_property: boolean
           residency_statuses: Database["public"]["Enums"]["residency_status"][]
+          reverse_mortgage: boolean
+          septic: boolean
+          spouse_not_on_application: boolean
           square_footage: number
           submitted_at: string
           tds: number
           transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transunion_being_used: boolean
+          well_water: boolean
         }[]
       }
       my_brokerage: { Args: never; Returns: string }
@@ -2309,21 +2365,35 @@ export type Database = {
         Returns: {
           acres: number
           amortization_years: number
+          assets_liquid_value: number
+          assets_total_value: number
+          bridge_loan_needed: boolean
+          cashback: boolean
           city: string
           closing_date: string
           closing_date_flexible: boolean
           co_borrower_credit_score: number
           cof_date: string
+          collateral_transfer: boolean
+          cosignor_not_occupying: boolean
+          cosignor_occupying: boolean
           credit_issues: Database["public"]["Enums"]["credit_issue"][]
           credit_notes: string
           deal_number: string
           door_count: number
+          door_titles_count: number
           down_payment_notes: string
           down_payment_sources: Database["public"]["Enums"]["down_payment_source"][]
           dwelling_type: Database["public"]["Enums"]["dwelling_type"]
+          first_and_heloc: boolean
+          fixed_second: boolean
           foreign_income_country: string
+          fthb: boolean
           gds: number
           general_notes: string
+          guarantor: boolean
+          heloc: boolean
+          hobby_farm: boolean
           id: string
           income_notes: string
           income_types: Database["public"]["Enums"]["income_type"][]
@@ -2331,8 +2401,15 @@ export type Database = {
           loan_amount: number
           location_type: Database["public"]["Enums"]["location_type"]
           ltv: number
+          married_or_common_law: boolean
+          medical_professional: boolean
           mortgage_position: Database["public"]["Enums"]["mortgage_position"]
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          networth_program: boolean
+          new_build: boolean
+          new_to_canada: boolean
+          no_lender_exceptions_required: boolean
+          occupancy: Database["public"]["Enums"]["occupancy_type"]
           owns_other_properties: boolean
           prequal: boolean
           previously_declined: boolean
@@ -2340,12 +2417,19 @@ export type Database = {
           primary_credit_score: number
           property_value: number
           province: Database["public"]["Enums"]["province"]
+          purchase_plus_improvements: boolean
           purpose: Database["public"]["Enums"]["transaction_purpose"]
+          recreational_property: boolean
           residency_statuses: Database["public"]["Enums"]["residency_status"][]
+          reverse_mortgage: boolean
+          septic: boolean
+          spouse_not_on_application: boolean
           square_footage: number
           submitted_at: string
           tds: number
           transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transunion_being_used: boolean
+          well_water: boolean
         }[]
       }
       open_deals_for_lender: {
@@ -2353,21 +2437,35 @@ export type Database = {
         Returns: {
           acres: number
           amortization_years: number
+          assets_liquid_value: number
+          assets_total_value: number
+          bridge_loan_needed: boolean
+          cashback: boolean
           city: string
           closing_date: string
           closing_date_flexible: boolean
           co_borrower_credit_score: number
           cof_date: string
+          collateral_transfer: boolean
+          cosignor_not_occupying: boolean
+          cosignor_occupying: boolean
           credit_issues: Database["public"]["Enums"]["credit_issue"][]
           credit_notes: string
           deal_number: string
           door_count: number
+          door_titles_count: number
           down_payment_notes: string
           down_payment_sources: Database["public"]["Enums"]["down_payment_source"][]
           dwelling_type: Database["public"]["Enums"]["dwelling_type"]
+          first_and_heloc: boolean
+          fixed_second: boolean
           foreign_income_country: string
+          fthb: boolean
           gds: number
           general_notes: string
+          guarantor: boolean
+          heloc: boolean
+          hobby_farm: boolean
           id: string
           income_notes: string
           income_types: Database["public"]["Enums"]["income_type"][]
@@ -2375,8 +2473,15 @@ export type Database = {
           loan_amount: number
           location_type: Database["public"]["Enums"]["location_type"]
           ltv: number
+          married_or_common_law: boolean
+          medical_professional: boolean
           mortgage_position: Database["public"]["Enums"]["mortgage_position"]
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          networth_program: boolean
+          new_build: boolean
+          new_to_canada: boolean
+          no_lender_exceptions_required: boolean
+          occupancy: Database["public"]["Enums"]["occupancy_type"]
           owns_other_properties: boolean
           prequal: boolean
           previously_declined: boolean
@@ -2384,12 +2489,19 @@ export type Database = {
           primary_credit_score: number
           property_value: number
           province: Database["public"]["Enums"]["province"]
+          purchase_plus_improvements: boolean
           purpose: Database["public"]["Enums"]["transaction_purpose"]
+          recreational_property: boolean
           residency_statuses: Database["public"]["Enums"]["residency_status"][]
+          reverse_mortgage: boolean
+          septic: boolean
+          spouse_not_on_application: boolean
           square_footage: number
           submitted_at: string
           tds: number
           transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transunion_being_used: boolean
+          well_water: boolean
         }[]
       }
       platform_bps_for: {

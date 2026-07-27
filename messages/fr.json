@@ -255,7 +255,17 @@
     "fAssetsTotalMin": "Actifs totaux (min.)",
     "fMaxDoorTitles": "Nombre de titres max. (portes)",
     "fRequireNoExceptions": "Seulement les dossiers sans exception prêteur requise",
-    "prequal": "PRÉQUAL"
+    "prequal": "PRÉQUAL",
+    "cardOccupancy": "Occupation",
+    "cardPurpose": "But de la transaction",
+    "cardTransactionType": "Type de transaction",
+    "cardPropertyFlags": "Caractéristiques de la propriété",
+    "cardPrograms": "Programmes et options de produit",
+    "cardAssetsLiquid": "Actifs liquides",
+    "cardAssetsTotal": "Actifs totaux",
+    "cardDoorTitles": "Titres (portes)",
+    "cardNoLenderExceptions": "Aucune exception prêteur requise",
+    "cardNone": "Aucune"
   },
   "maturingDeals": {
     "prequal": "PRÉQUAL",
