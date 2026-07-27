@@ -90,7 +90,7 @@ export default function MaturingDealsPage() {
     selectedIds, setSelectedIds, toggleSelect, toggleSelectAll,
     pendingDeals, allSelected, someSelected, bulkSelected, lenderStatus,
     currentPage, setCurrentPage, totalPages, startIndex,
-    offerTarget, setOfferTarget, handleMakeOffer, onOfferSent, offerPrefillProduct, offerHasPrequal,
+    offerTarget, setOfferTarget, handleMakeOffer, onOfferSent, offerPrefillProduct,
     declineTarget, setDeclineTarget, confirmDecline,
     messageTarget, setMessageTarget, messageText, setMessageText,
     messageSending, messageShowError, setMessageShowError, sendMessage,
@@ -441,7 +441,7 @@ export default function MaturingDealsPage() {
       </main>
 
       {/* ── Make Offer (shared component: form + anti-contact + make_offer) ── */}
-      <MakeOfferDialog dealIds={offerTarget} prefillProduct={offerPrefillProduct} prequal={offerHasPrequal} onClose={() => setOfferTarget(null)} onSuccess={onOfferSent} />
+      <MakeOfferDialog dealIds={offerTarget} prefillProduct={offerPrefillProduct} onClose={() => setOfferTarget(null)} onSuccess={onOfferSent} />
 
       {/* ── Decline confirmation ── */}
       <AlertDialog open={!!declineTarget} onOpenChange={() => setDeclineTarget(null)}>

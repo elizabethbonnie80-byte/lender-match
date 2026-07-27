@@ -100,15 +100,12 @@ export function MakeOfferDialog({
   dealIds,
   edit = null,
   prefillProduct = null,
-  prequal = false,
   onClose,
   onSuccess,
 }: {
   dealIds: string[] | null
   edit?: OfferEditTarget | null
   prefillProduct?: MortgageProduct | null
-  /** Round 3 Phase 3: the target deal is a prequal → show the special prequal fine print. */
-  prequal?: boolean
   onClose: () => void
   onSuccess: (ids: string[], message: string) => void
 }) {
@@ -225,12 +222,10 @@ export function MakeOfferDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Round 3 Phase 3: bidding on a prequal — the offer carries over when the deal goes live. */}
-        {prequal && !isEdit && (
-          <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
-            {t("prequalFinePrint")}
-          </div>
-        )}
+        {/* Round 3 Phase 3: nothing is different for a LENDER bidding on a prequal (client 2026-07-27
+            — "There is nothing different for a lender when they're sending an offer on a prequal").
+            The pre-qualification disclaimer is shown to the BROKER when they view the offers, on
+            app/(broker)/deal-detail/[id]. The card in the feed already badges the deal PREQUAL. */}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">

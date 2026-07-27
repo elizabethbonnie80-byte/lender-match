@@ -74,6 +74,7 @@
     "dealDeleted": "Deal deleted",
     "moveToLiveDeal": "Move to Live Deal",
     "prequalBadge": "Prequal",
+    "prequalQueueClosed": "Past its 15 days on the lender queues — still yours to move to a live deal or delete.",
     "convertTitle": "Move {deal} to a live deal",
     "convertDesc": "Add the property address and closing date. Offers already placed on this prequal carry over and stay acceptable — the deal will not re-enter the lender marketplace.",
     "convertAddress": "Property Address",
@@ -485,6 +486,8 @@
     "switchOffer": "Switch Offer",
     "availableOffers": "Available Offers",
     "listedByArrival": "Listed by order of arrival (oldest first)",
+    "acceptNeedsLiveDeal": "To accept an offer, first use \"Move to Live Deal\" in the Deal Room to add the property address and closing date. This offer carries over.",
+    "prequalOfferNotice": "Please Note: Pre-qualification offers are intended to help identify potential lender interest and are not binding commitments or rate holds. Rates, terms, and lending conditions are subject to change at any time prior to the submission and review of a complete application. Offers shown on the platform will not be updated to reflect future rate changes.",
     "noOffersTitle": "No offers yet",
     "noOffersBody": "Lenders haven't submitted offers on this deal.",
     "submitted": "Submitted {date}",
@@ -962,8 +965,7 @@
     "editDescription": "Update your pending offer. The broker will be notified of the change; your identity stays hidden until acceptance.",
     "editSaved": "Offer updated. The broker has been notified.",
     "saveEdit": "Save Changes",
-    "savingEdit": "Saving...",
-    "prequalFinePrint": "This is a prequalification. If you win, your offer carries over automatically when the broker adds the property address and closing date — the deal will not return to the marketplace. Rate-hold and conditions apply from the live-deal date."
+    "savingEdit": "Saving..."
   },
   "survey": {
     "title": "Closing Survey — {deal}",

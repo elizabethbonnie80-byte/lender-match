@@ -92,6 +92,11 @@ export type BrokerDealDetail = {
   closingDate: string | null
   acceptedOfferId: string | null
   lenderConfirmed: boolean
+  /** Round 3 Phase 3: still a prequal (no address/closing date yet). */
+  prequal: boolean
+  /** Non-null once "Move to Live Deal" ran. Either flag means the offers on this deal were placed on
+   *  a pre-qualification, which is what the broker-facing prequal disclaimer is keyed off. */
+  prequalConvertedAt: string | null
 }
 
 /** The broker's own deal with the borrower identity (RLS lets the owner read deal_identities). */
@@ -99,7 +104,7 @@ export async function getBrokerDealDetail(supabase: DB, dealId: string): Promise
   const { data, error } = await supabase
     .from("deals")
     .select(
-      "id, deal_number, status, city, province, loan_amount, ltv, mortgage_product, amortization_years, closing_date, accepted_offer_id, lender_confirmed, deal_identities(borrower_first_name, borrower_last_name, property_address)",
+      "id, deal_number, status, city, province, loan_amount, ltv, mortgage_product, amortization_years, closing_date, accepted_offer_id, lender_confirmed, prequal, prequal_converted_at, deal_identities(borrower_first_name, borrower_last_name, property_address)",
     )
     .eq("id", dealId)
     .maybeSingle()
@@ -123,6 +128,8 @@ export async function getBrokerDealDetail(supabase: DB, dealId: string): Promise
     closingDate: data.closing_date,
     acceptedOfferId: data.accepted_offer_id,
     lenderConfirmed: data.lender_confirmed,
+    prequal: data.prequal ?? false,
+    prequalConvertedAt: data.prequal_converted_at,
   }
 }
 

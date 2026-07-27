@@ -1,12 +1,15 @@
-// LenderMatch — Round 3 Phase 3: 120-day retention purge for deal documents (deploy-gated).
+// LenderMatch — Round 3 Phase 3: retention purge for deal documents (deploy-gated).
 //
 // Brokers upload a consent form + photo ID per deal into the private `deal-documents` bucket. The
-// client rule is: 120 days AFTER the deal's closing date, both files are permanently deleted.
+// retention rule itself lives in SQL — `documents_to_purge()` (migration 52) — so this function holds
+// no policy of its own: 120 days after the deal's closing date, or 120 days after upload when there
+// is no closing date (a prequal, which may stay active in the broker's Deal Room indefinitely), with
+// a hard ceiling of 240 days after upload.
 //
 // This function is invoked daily by the `purge_expired_documents` pg_cron job (migration 45) via
-// pg_net, using the service-role key. It finds every deal_documents row whose deal closed 120+ days
-// ago, removes the objects from Storage (the SDK's .remove() deletes the actual bytes, not just the
-// metadata row), then deletes the tracking rows. Purely server-side; never reachable with the anon key.
+// pg_net, using the service-role key. It removes the objects from Storage (the SDK's .remove() deletes
+// the actual bytes, not just the metadata row), then deletes the tracking rows. Purely server-side;
+// `documents_to_purge()` is revoked from anon/authenticated, so the anon key cannot even enumerate.
 //
 // Wiring at deploy (values are secrets — NOT committed):
 //   supabase functions deploy purge-documents
@@ -18,7 +21,6 @@ import { createClient } from "npm:@supabase/supabase-js@2"
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-const RETENTION_DAYS = 120
 
 function json(status: number, payload: unknown) {
   return new Response(JSON.stringify(payload), { status, headers: { "Content-Type": "application/json" } })
@@ -33,12 +35,8 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } })
 
-  // Documents whose deal closed more than RETENTION_DAYS ago.
-  const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  const { data: rows, error } = await admin
-    .from("deal_documents")
-    .select("id, storage_path, deals!inner(closing_date)")
-    .lt("deals.closing_date", cutoff)
+  // Documents whose retention has lapsed — the rule is defined in SQL, not here.
+  const { data: rows, error } = await admin.rpc("documents_to_purge")
   if (error) return json(500, { error: error.message })
   if (!rows || rows.length === 0) return json(200, { purged: 0 })
 

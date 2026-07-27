@@ -309,7 +309,8 @@ second email; a non-existent id still errors. Signatures unchanged) · `45_round
 (**Round 3 Phase 3**: `deal_documents` [consent PDF + photo ID per deal] + RLS [owner/admin/brokerage-admin
 read — **never lenders**] + the private `deal-documents` bucket & object policies; `submit_deal` gains a
 two-document gate; `purge_expired_documents` cron → `purge-documents` edge fn deletes the bytes 120 days
-after `closing_date`) · `46_round3_phase3_name_match` (`deal_documents.extracted_name`/`name_matches`/
+after `closing_date` — **superseded by migration 52**, which moved the rule into `documents_to_purge()` to
+cover a prequal's missing closing date) · `46_round3_phase3_name_match` (`deal_documents.extracted_name`/`name_matches`/
 `name_variance`/`checked_at` + `invoices.document_name`; `accept_offer` stamps a variance name onto the
 invoice [photo ID preferred]; the `match-document-name` edge fn reads the name with Claude vision —
 advisory, fail-open, never blocks submit) · `47_round3_phase3_auto_offers` (**auto-offer engine**:
@@ -332,15 +333,28 @@ date]) · `49_round3_phase3_feeds_prequal` (the four lender feed RPCs gain a tra
 so the New Deals card can badge it and the offer dialog can show the prequal fine print) ·
 `50_round3_phase3_lender_logos` (**login-page lender logos**: `lender_logos` + a PUBLIC `lender-logos`
 bucket; ACTIVE rows are **anon-readable** because the sign-in page is unauthenticated, writes are
-`is_admin()`-only on both the table and the objects; managed at `/admin/logos`).
+`is_admin()`-only on both the table and the objects; managed at `/admin/logos`) ·
 `51_dwelling_types_client_revision` (**client revision 2026-07-22**: adds the `duplex_detached` /
 `duplex_semi_detached` / `apartment_low_rise` / `apartment_high_rise` dwelling types. `condo_apartment`,
 `farm` and `recreational` are **retired, NOT dropped** — Postgres can't remove an enum value in place and
 a historical deal could still carry one, so they keep their labels in `lib/enums.ts` and are filtered out
-of every picker by `RETIRED_DWELLING_TYPES`; same "retire, never delete" rule as brokerages/institutions).
+of every picker by `RETIRED_DWELLING_TYPES`; same "retire, never delete" rule as brokerages/institutions) ·
+`52_prequal_lender_window_and_doc_retention` (**client answers 2026-07-27** — the two questions Phase 3
+left open, see `docs/client-revisions-2026-07-27.md`: (a) **a prequal expires for LENDERS only** — it never
+reaches status `expired` (that is broker-visible, and archiving would bury it), so the 15-day cutoff is a
+VISIBILITY clause in `lender_can_see_deal` computed from `created_at` [closes on time even if the cron never
+runs; covers the feeds + the make_offer guard + chat in one place, like migration 48's re-entry clause], with
+an `i_offered_on` exemption so a lender holding an offer keeps access. `job_expire_old_deals` skips prequals
+and instead sends ONE notice; `deals.prequal_lender_notice_at` is that idempotency marker ONLY — never the
+source of truth for visibility. (b) **document retention** moved into `documents_to_purge()`: 120 days after
+`closing_date`, **or 120 days after upload when there is no closing date** [a prequal has none, so the old
+`closing_date < cutoff` predicate never matched it and its PDFs would have been kept forever], with a hard
+240-day-after-upload ceiling. ⚠️ **`revoke execute … from public`** is load-bearing there — see Security
+invariants #6).
 **Hosted status: migrations 36–51 are applied to BOTH staging AND prod**
 (36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; **45–51 on 2026-07-22** — 51/51 on each,
-advisors 0 ERROR, browser-QA'd). That deploy also shipped `match-document-name` + `purge-documents` (new)
+advisors 0 ERROR, browser-QA'd). **52 is LOCAL ONLY so far** (with the reworked `purge-documents` edge fn —
+both need deploying together, since the function now calls `documents_to_purge()`). That deploy also shipped `match-document-name` + `purge-documents` (new)
 and redeployed `notify-email` + `invoice-pdf`; **both** environments now have the `APP_URL` secret (the
 auto-offer digest's edit link) and the `purge_documents_url` Vault secret (the retention cron reads
 GUC → Vault like the email trigger, so it no-ops until that exists).
@@ -481,8 +495,9 @@ lender/invoices); **auto-offer engine** (lender Settings → Auto-Offers section
 filter, optional end date, active toggle, edit/delete, with the same bps-deduction/"Final Commission Amount"
 preview as Make Offer; `send_auto_offers` fires it inside `submit_deal`, Submitted Offers badges the result
 "Auto", and the daily digest notification/email links back there to edit); **Prequal → Live Deal** (a deal
-with no address submits only as a prequal; lenders see a PREQUAL badge on the New Deals card and the special
-fine print in the Make Offer dialog; the broker's Deal Room "Move to Live Deal" action collects
+with no address submits only as a prequal; lenders see a PREQUAL badge on the New Deals card — and NOTHING
+else, the prequal disclaimer is a BROKER-side notice on deal-detail (client 2026-07-27, migration 52); the
+broker's Deal Room "Move to Live Deal" action collects
 address + closing + COF via `convertPrequalToLive` → offers carry over and the deal never re-enters another
 lender's feed); **login-page lender logos** (`components/logo-marquee.tsx` scrolls the admin-maintained
 strip on `/sign-in` — CSS-only marquee, pauses on hover, still under `prefers-reduced-motion`, renders
@@ -597,6 +612,15 @@ on several sets — any data migration must map **by display label** using the t
    approval queue) are RLS admin-only. Bubble leaked all User fields (incl. verification codes) and
    all Deal fields to lenders — do not reproduce (open-questions #1–5).
 5. Verification codes, Claude API key, service keys: server-side only.
+6. **A `security definer` function that must not be callable with a user token has to be revoked from
+   `public`** — not just from `anon`/`authenticated`. Postgres grants EXECUTE to **PUBLIC** on every new
+   function, so those roles inherit access and a `revoke … from anon, authenticated` is a no-op. This bit
+   `documents_to_purge()` (migration 52): it spans every brokerage's document storage paths and was
+   callable by any signed-in broker or lender until `revoke execute … from public` was added. The migration
+   applies cleanly either way, so **prove the lockdown with a smoke assertion** (`smoke-prequal` asserts
+   both roles get `permission denied`) and check `pg_proc.proacl` — a leading `=X/postgres` entry IS the
+   PUBLIC grant. Most admin-only RPCs here instead gate *inside* the body with `is_admin()`, which is
+   immune to this; prefer that when the caller is a user rather than the cron/service role.
 
 ## Core business rules (exact — regression-test against `docs/extracted/test-vectors.md`)
 
@@ -628,7 +652,18 @@ on several sets — any data migration must map **by display label** using the t
   (deal → `confirmed`, `lender_confirmed`) + generates the platform-fee invoice + notifies the lender
   once. `confirm_lender` no longer exists; Switch remains available after acceptance.
 - **Expiration**: submitted deals with no offer expire after 15 days (notify broker); archived 30
-  days after expiring.
+  days after expiring. **A PREQUAL is the exception (client 2026-07-27, migration 52): it expires for
+  LENDERS only.** It never reaches status `expired` — it just stops being visible to lenders at 15 days
+  (a clause in `lender_can_see_deal`, computed from `created_at`, with an `i_offered_on` exemption so a
+  lender holding an offer keeps access) and stays active in the broker's Deal Room until they delete it.
+  The broker gets exactly one notice (`prequal_lender_notice_at` is the idempotency marker, NOT the
+  visibility source). Consequence to know: a stale prequal can still be converted, but migration 48's
+  "no marketplace re-entry" means it will not reappear in any feed.
+- **Document retention** (client 2026-07-27, migration 52): the rule lives in `documents_to_purge()`,
+  NOT in the edge function — 120 days after `closing_date`, **or 120 days after upload when there is no
+  closing date** (a prequal has none; the old `closing_date < cutoff` predicate silently kept its PDFs
+  forever), with a hard **240-day-after-upload ceiling** because `closing_date` is broker-entered and can
+  be arbitrarily far out.
 - **Anti-contact**: regex (email / phone / URL / sender's own first+last name) + Claude API second
   layer (only when regex clean and text > 20 chars) on: offer comments, messages/chat, the 4 deal
   notes. Target behavior: **block before persisting** everywhere + create `admin_alerts` row
@@ -666,12 +701,12 @@ on several sets — any data migration must map **by display label** using the t
 
 | Job | Schedule | Action |
 |---|---|---|
-| `expire_old_deals` | daily 02:00 | submitted, no accepted offer, 15+ days → expired + notify broker |
+| `expire_old_deals` | daily 02:00 | submitted, no accepted offer, 15+ days → expired + notify broker. **Prequals are skipped** (they leave the lender queues via `lender_can_see_deal` instead) but get a one-shot notice |
 | `archive_expired_deals` | daily 02:10 | expired 30+ days → archived |
 | `trigger_closing_surveys` | daily 08:00 | confirmed deals with closing_date ≤ today and no survey → survey + notification |
 | `reset_monthly_switches` | monthly 1st 00:01 | reset `offer_switches_this_month` |
 | `apply_rating_penalties` | weekly Mon 03:00 | recompute `penalty_active` per lender |
-| `purge_expired_documents` | daily 02:30 | deal documents 120+ days past `closing_date` → `purge-documents` edge fn deletes bytes + rows |
+| `purge_expired_documents` | daily 02:30 | documents past retention per `documents_to_purge()` (closing+120, or upload+120 with no closing date, ceiling upload+240) → `purge-documents` edge fn deletes bytes + rows |
 | `auto_offer_digest` | daily 07:00 | one `auto_offer_sent` notification per lender summarising the last 24 h of auto-offers (→ confirmation email w/ edit link) |
 
 ## Conventions

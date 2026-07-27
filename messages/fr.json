@@ -74,6 +74,7 @@
     "dealDeleted": "Dossier supprimé",
     "moveToLiveDeal": "Convertir en dossier réel",
     "prequalBadge": "Préqualification",
+    "prequalQueueClosed": "Ses 15 jours dans les files des prêteurs sont écoulés — vous pouvez toujours la convertir en dossier réel ou la supprimer.",
     "convertTitle": "Convertir {deal} en dossier réel",
     "convertDesc": "Ajoutez l’adresse de la propriété et la date de clôture. Les offres déjà déposées sur cette préqualification sont conservées et restent acceptables — le dossier ne réintègre pas le marché des prêteurs.",
     "convertAddress": "Adresse de la propriété",
@@ -485,6 +486,8 @@
     "switchOffer": "Changer d'offre",
     "availableOffers": "Offres disponibles",
     "listedByArrival": "Classées par ordre d'arrivée (plus anciennes d'abord)",
+    "acceptNeedsLiveDeal": "Pour accepter une offre, utilisez d’abord « Convertir en dossier réel » dans le Deal Room afin d’ajouter l’adresse et la date de clôture. Cette offre est conservée.",
+    "prequalOfferNotice": "Veuillez noter : les offres de préqualification servent à évaluer l’intérêt potentiel des prêteurs et ne constituent ni un engagement ferme ni une garantie de taux. Les taux, les modalités et les conditions de prêt peuvent changer à tout moment avant la soumission et l’examen d’une demande complète. Les offres affichées sur la plateforme ne seront pas mises à jour pour refléter les variations de taux futures.",
     "noOffersTitle": "Aucune offre pour l'instant",
     "noOffersBody": "Les prêteurs n'ont pas encore soumis d'offre sur ce dossier.",
     "submitted": "Soumise le {date}",
@@ -962,8 +965,7 @@
     "editDescription": "Modifiez votre offre en attente. Le courtier sera avisé du changement; votre identité reste cachée jusqu'à l'acceptation.",
     "editSaved": "Offre mise à jour. Le courtier a été avisé.",
     "saveEdit": "Enregistrer les modifications",
-    "savingEdit": "Enregistrement...",
-    "prequalFinePrint": "Ceci est une préqualification. Si vous êtes retenu, votre offre est reportée automatiquement lorsque le courtier ajoute l’adresse et la date de clôture — le dossier ne revient pas sur le marché. La garantie de taux et les conditions s’appliquent à partir de la date du dossier réel."
+    "savingEdit": "Enregistrement..."
   },
   "survey": {
     "title": "Sondage de clôture — {deal}",

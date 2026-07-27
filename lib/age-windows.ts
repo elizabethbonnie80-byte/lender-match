@@ -12,6 +12,14 @@
  */
 export const NEW_DEAL_MAX_AGE_DAYS = 2
 
+/**
+ * How long a deal stays on the lender queues. A live deal simply expires at this age
+ * (job_expire_old_deals); a PREQUAL does not — it leaves the lender side but stays active in the
+ * broker's Deal Room until they delete it (client 2026-07-27), which lender_can_see_deal enforces off
+ * `created_at`. Mirrors the 15-day boundary in migrations 04/37/52.
+ */
+export const LENDER_QUEUE_MAX_AGE_DAYS = 15
+
 /** Whole days elapsed between `iso` and now (floored, so "today" = 0). */
 export function ageInDays(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
@@ -20,4 +28,9 @@ export function ageInDays(iso: string): number {
 /** A deal is "new" while it is younger than the New→Maturing boundary (rolling, not a fixed date). */
 export function isNewDeal(submittedAt: string): boolean {
   return ageInDays(submittedAt) < NEW_DEAL_MAX_AGE_DAYS
+}
+
+/** Whether a deal has aged out of the lender queues. Only meaningful for a prequal, which survives it. */
+export function isLenderQueueClosed(submittedAt: string): boolean {
+  return ageInDays(submittedAt) >= LENDER_QUEUE_MAX_AGE_DAYS
 }

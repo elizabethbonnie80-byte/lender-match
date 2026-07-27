@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
 import type { FilterCriteria } from "@/lib/queries/saved-filters"
+import { isLenderQueueClosed } from "@/lib/age-windows"
 
 type DB = SupabaseClient<Database>
 type Enums = Database["public"]["Enums"]
@@ -437,6 +438,9 @@ export type BrokerDealListItem = {
   submittedByName: string
   /** Round 3 Phase 3: still a prequal (no address/closing date yet) → offer the "Move to Live Deal" action. */
   prequal: boolean
+  /** A prequal past its 15 days on the lender queues: no longer visible to lenders, but still the
+   *  broker's to work or delete (client 2026-07-27). False for live deals — those just expire. */
+  lenderQueueClosed: boolean
 }
 
 /**
@@ -494,6 +498,11 @@ export async function listBrokerDeals(
       submittedByBrokerId: d.broker_id,
       submittedByName: [broker?.first_name, broker?.last_name].filter(Boolean).join(" ") || "—",
       prequal: d.prequal ?? false,
+      lenderQueueClosed:
+        (d.prequal ?? false) &&
+        ["submitted", "offer_received"].includes(d.status) &&
+        !!d.created_at &&
+        isLenderQueueClosed(d.created_at),
     }
   })
   return { deals, isBrokerAdmin }

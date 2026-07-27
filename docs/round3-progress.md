@@ -199,9 +199,13 @@ Defects found and fixed during that pass (each its own commit):
       the deal is an unconverted prequal** (the invoice needs a closing date). Client: Deal Room "Move to
       Live Deal" action + dialog (address/closing/COF) and a Prequal badge, the wizard makes the closing
       date optional and the address required-unless-prequal, the New Deals card badges prequals and the
-      Make Offer dialog shows the **special prequal fine print**. i18n EN/FR. Covered by `smoke-prequal`
-      (27 checks); suite 22/22 green. ⚠️ The fine-print COPY is ours, not the client's — confirm the exact
-      wording with them (`makeOffer.prequalFinePrint`).
+      Make Offer dialog shows the prequal fine print. i18n EN/FR. Covered by `smoke-prequal`
+      (27 checks); suite 22/22 green.
+      **Client answers (2026-07-27, migration 52):** the fine print moved — nothing is shown to the
+      LENDER any more, and the client's exact copy is shown to the BROKER when they view the offers. And
+      a prequal now expires **for lenders only** (15 days off the queues, active for the broker until
+      they delete it), with document retention reworked to cover a prequal's missing closing date. See
+      `docs/client-revisions-2026-07-27.md`.
       **QA fix (2026-07-22):** the "Pre-Qualification" checkbox was sitting in the Property step's
       characteristics grid (step 4) while the closing-date requirement it waives is on the **Deal** step
       (step 2) — and `advanceTo` blocks Next until the current step is complete, so a broker could not
@@ -228,9 +232,16 @@ Defects found and fixed during that pass (each its own commit):
 
 ## Blockers / needs client input
 
-- None for Phase 2 (rebrand + domain both closed 2026-07-17). Optional: a LenderMatch™ **image** logo
-  asset if the client wants a graphical wordmark instead of the current text one.
-- **Phase 3 — prequal fine print**: the change request says lenders bid "with special fine print" but
-  never quotes it. `makeOffer.prequalFinePrint` (EN/FR) is our wording — get the client's exact copy.
-- **Phase 3 — do prequals expire?** `expire_old_deals` still expires a submitted prequal after 15 days
-  like any other deal. Left at parity deliberately; confirm whether prequals should sit longer.
+**None.** The last two open questions were answered by the client on **2026-07-27** and implemented in
+**migration 52** — see `docs/client-revisions-2026-07-27.md` for the full record. In short:
+
+- **Prequal fine print — ANSWERED.** *"Here is the verbiage for brokers when they view an offer. There
+  is nothing different for a lender when they're sending an offer on a prequal."* So the banner was
+  **removed** from the lender's Make Offer dialog (our invented copy, `makeOffer.prequalFinePrint`,
+  deleted from both catalogs) and the client's exact wording now renders for the **broker** on
+  `/deal-detail/[id]` above the offers list (`dealDetail.prequalOfferNotice`, EN + FR).
+- **Do prequals expire — ANSWERED, and it is a split rule.** *"Prequals should expire for the lenders
+  but not for the brokers… only 15 days on the lender queues but the file should stay active for the
+  broker until they delete it."* A prequal therefore **never reaches status `expired`**; it drops off
+  the lender side through `lender_can_see_deal` instead. Documents: 120 days after the closing date,
+  **or 120 days after upload when there is no closing date**, with a hard 240-day ceiling.

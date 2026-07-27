@@ -74,7 +74,7 @@ export default function NewDealsPage() {
     selectedIds, setSelectedIds, toggleSelect, toggleSelectAll,
     pendingDeals, allSelected, someSelected, bulkSelected, lenderStatus,
     currentPage, setCurrentPage, totalPages, startIndex,
-    offerTarget, setOfferTarget, handleMakeOffer, onOfferSent, offerPrefillProduct, offerHasPrequal,
+    offerTarget, setOfferTarget, handleMakeOffer, onOfferSent, offerPrefillProduct,
     declineTarget, setDeclineTarget, confirmDecline,
     messageTarget, setMessageTarget, messageText, setMessageText,
     messageSending, messageShowError, setMessageShowError, sendMessage,
@@ -445,7 +445,7 @@ export default function NewDealsPage() {
       </AlertDialog>
 
       {/* Make Offer dialog (shared component: form + anti-contact + make_offer) */}
-      <MakeOfferDialog dealIds={offerTarget} prefillProduct={offerPrefillProduct} prequal={offerHasPrequal} onClose={() => setOfferTarget(null)} onSuccess={onOfferSent} />
+      <MakeOfferDialog dealIds={offerTarget} prefillProduct={offerPrefillProduct} onClose={() => setOfferTarget(null)} onSuccess={onOfferSent} />
 
       {/* Filters sidepanel — full-criteria (province → the 20 "Others" checkboxes), matching the
           client's reference Bubble panel. */}

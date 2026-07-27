@@ -312,6 +312,15 @@ export default function DealDetailPage() {
                     <h3 className="text-lg font-semibold text-foreground mb-4">{t('availableOffers')}</h3>
                     <p className="text-sm text-muted-foreground mb-6">{t('listedByArrival')}</p>
 
+                    {/* Client-supplied disclaimer (2026-07-27), shown to the BROKER when viewing offers
+                        placed on a pre-qualification — before conversion, and after it too, since those
+                        offers carried over from the prequal. Nothing equivalent is shown to the lender. */}
+                    {offers.length > 0 && (deal.prequal || deal.prequalConvertedAt) && (
+                      <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                        <p className="text-xs leading-relaxed text-amber-900">{t('prequalOfferNotice')}</p>
+                      </div>
+                    )}
+
                     {offers.length === 0 ? (
                       <div className="bg-card border border-border rounded-lg p-12 text-center">
                         <p className="text-sm font-semibold text-foreground mb-1">{t('noOffersTitle')}</p>
@@ -385,6 +394,13 @@ export default function DealDetailPage() {
                               <div className="flex items-center gap-2 text-red-600 text-sm">
                                 <X className="h-4 w-4" />
                                 {t('offerDeclined')}
+                              </div>
+                            ) : deal.prequal ? (
+                              // accept_offer refuses an unconverted prequal (the invoice needs a closing
+                              // date). Say so up front instead of letting the broker through a modal that
+                              // promises an identity reveal + invoice and then fails on the RPC.
+                              <div className="rounded-md border border-border bg-muted/40 p-3 text-center">
+                                <p className="text-sm text-muted-foreground">{t('acceptNeedsLiveDeal')}</p>
                               </div>
                             ) : (
                               <Button onClick={() => setPendingAcceptId(offer.id)} disabled={busy} className="w-full">

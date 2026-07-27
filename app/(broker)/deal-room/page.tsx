@@ -379,6 +379,11 @@ export default function DealRoomPage() {
                               {t('prequalBadge')}
                             </span>
                           )}
+                          {/* Client 2026-07-27: past 15 days a prequal is off the lender queues but
+                              still the broker's — say so, or "Submitted" reads as still circulating. */}
+                          {deal.lenderQueueClosed && (
+                            <p className="mt-1.5 text-xs text-muted-foreground">{t('prequalQueueClosed')}</p>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-sm text-foreground">{deal.createdDate}</td>
                         <td className="px-6 py-4 text-sm text-foreground">{deal.closingDate}</td>

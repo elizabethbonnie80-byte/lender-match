@@ -610,6 +610,7 @@ export type Database = {
           owns_other_properties: boolean
           prequal: boolean
           prequal_converted_at: string | null
+          prequal_lender_notice_at: string | null
           previously_declined: boolean
           previously_declined_reason: string | null
           primary_credit_score: number | null
@@ -691,6 +692,7 @@ export type Database = {
           owns_other_properties?: boolean
           prequal?: boolean
           prequal_converted_at?: string | null
+          prequal_lender_notice_at?: string | null
           previously_declined?: boolean
           previously_declined_reason?: string | null
           primary_credit_score?: number | null
@@ -772,6 +774,7 @@ export type Database = {
           owns_other_properties?: boolean
           prequal?: boolean
           prequal_converted_at?: string | null
+          prequal_lender_notice_at?: string | null
           previously_declined?: boolean
           previously_declined_reason?: string | null
           primary_credit_score?: number | null
@@ -1898,6 +1901,7 @@ export type Database = {
           owns_other_properties: boolean
           prequal: boolean
           prequal_converted_at: string | null
+          prequal_lender_notice_at: string | null
           previously_declined: boolean
           previously_declined_reason: string | null
           primary_credit_score: number | null
@@ -1937,6 +1941,13 @@ export type Database = {
       }
       deal_has_offers: { Args: { p_deal_id: string }; Returns: boolean }
       decline_deal: { Args: { p_deal_id: string }; Returns: undefined }
+      documents_to_purge: {
+        Args: never
+        Returns: {
+          id: string
+          storage_path: string
+        }[]
+      }
       edit_offer: {
         Args: {
           p_comments?: string
@@ -2509,6 +2520,7 @@ export type Database = {
           owns_other_properties: boolean
           prequal: boolean
           prequal_converted_at: string | null
+          prequal_lender_notice_at: string | null
           previously_declined: boolean
           previously_declined_reason: string | null
           primary_credit_score: number | null
