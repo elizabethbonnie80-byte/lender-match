@@ -40,6 +40,7 @@ import {
   ChevronRight,
   Building2,
   Loader2,
+  AlertCircle,
 } from 'lucide-react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -78,6 +79,7 @@ export default function NewDealsPage() {
     declineTarget, setDeclineTarget, confirmDecline,
     messageTarget, setMessageTarget, messageText, setMessageText,
     messageSending, messageShowError, setMessageShowError, sendMessage,
+    messageBlockReason, setMessageBlockReason,
     openMessage, feedback,
   } = useLenderDealFeed<LenderDealListItem>({
     t,
@@ -410,7 +412,7 @@ export default function NewDealsPage() {
       </AlertDialog>
 
       {/* ── Message modal ── */}
-      <AlertDialog open={!!messageTarget} onOpenChange={() => { setMessageTarget(null); setMessageShowError(false) }}>
+      <AlertDialog open={!!messageTarget} onOpenChange={() => { setMessageTarget(null); setMessageShowError(false); setMessageBlockReason(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -424,7 +426,7 @@ export default function NewDealsPage() {
             <Textarea
               placeholder={t('messagePlaceholder')}
               value={messageText}
-              onChange={(e) => { setMessageText(e.target.value); if (messageShowError) setMessageShowError(false) }}
+              onChange={(e) => { setMessageText(e.target.value); if (messageShowError) setMessageShowError(false); if (messageBlockReason) setMessageBlockReason(null) }}
               aria-invalid={messageShowError && !messageText.trim()}
               rows={4}
               className="resize-none bg-muted/50"
@@ -433,9 +435,17 @@ export default function NewDealsPage() {
               <FieldError show={messageShowError && !messageText.trim()} />
               <p className="text-xs text-muted-foreground text-right ml-auto">{t('charCount', { n: messageText.length })}</p>
             </div>
+            {/* Why the send was refused. Has to live in the dialog: it stays open on a block, so a
+                page-level banner would sit behind the overlay. */}
+            {messageBlockReason && (
+              <div className="mt-2 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-2.5">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <p className="text-xs text-destructive">{messageBlockReason}</p>
+              </div>
+            )}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setMessageText(''); setMessageShowError(false) }}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => { setMessageText(''); setMessageShowError(false); setMessageBlockReason(null) }}>{t('cancel')}</AlertDialogCancel>
             <Button onClick={sendMessage} disabled={messageSending} className={`gap-1.5 ${!messageText.trim() ? 'opacity-50' : ''}`}>
               {messageSending && <Loader2 className="h-4 w-4 animate-spin" />}
               {t('send')}

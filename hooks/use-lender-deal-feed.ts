@@ -104,6 +104,8 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
   const [messageText, setMessageText] = useState('')
   const [messageSending, setMessageSending] = useState(false)
   const [messageShowError, setMessageShowError] = useState(false)
+  // Why a send was refused (anti-contact hit, or a failure), rendered inside the still-open dialog.
+  const [messageBlockReason, setMessageBlockReason] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
 
   useEffect(() => {
@@ -245,10 +247,15 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
       return
     }
     setMessageSending(true)
+    setMessageBlockReason(null)
     try {
       const reason = await scanContact(supabase, text, 'chat_message', messageTarget[0])
       if (reason) {
-        flash(t('contactBlocked', { reason }))
+        // Must surface INSIDE the dialog: the dialog stays open on a block, so `flash` would paint the
+        // reason on the page behind the overlay — invisible — and in the green success style at that.
+        // Reported 2026-07-27: "no me deja enviar el mensaje pero no me indica que es debido a que no
+        // puedo agregar info de contacto". The draft is kept so the lender can edit it.
+        setMessageBlockReason(t('contactBlocked', { reason }))
         return
       }
       for (const dealId of messageTarget) {
@@ -259,7 +266,8 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
       setMessageText('')
       void refreshThreadMap() // now these deals route to their conversation
     } catch (err) {
-      flash(err instanceof Error ? err.message : t('messageErr'))
+      // same reasoning as the block above — the dialog is still open, so keep the reason in it
+      setMessageBlockReason(err instanceof Error ? err.message : t('messageErr'))
     } finally {
       setMessageSending(false)
     }
@@ -323,6 +331,7 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
     declineTarget, setDeclineTarget, confirmDecline,
     messageTarget, setMessageTarget, messageText, setMessageText,
     messageSending, messageShowError, setMessageShowError, sendMessage,
+    messageBlockReason, setMessageBlockReason,
     openMessage, threadByDeal,
     // misc
     feedback,

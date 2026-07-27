@@ -1271,7 +1271,7 @@
     "docsRequired": "Le formulaire de consentement et une pièce d’identité avec photo sont requis pour soumettre.",
     "docNameVerified": "Le nom correspond à l’emprunteur principal",
     "docNameVariance": "Nom sur le document : {name} — variante de nom d’usage; les deux noms figureront sur la facture",
-    "docNameMismatch": "Le nom sur ce document ne semble pas correspondre à l’emprunteur principal — veuillez vérifier",
+    "docNameMismatch": "À noter : le nom sur ce document ne semble pas correspondre à l’emprunteur principal. Veuillez le vérifier. Ceci n’est qu’un avertissement — cela ne vous empêche pas de soumettre le dossier.",
     "creditIssuesMulti": "Problèmes de crédit — cochez tout ce qui s’applique",
     "downPaymentSourceMulti": "Source de la mise de fonds — cochez tout ce qui s’applique",
     "residencyStatusMulti": "Statut de résidence — cochez tout ce qui s’applique",

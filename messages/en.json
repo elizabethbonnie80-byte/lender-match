@@ -1271,7 +1271,7 @@
     "docsRequired": "Both the consent form and a photo ID are required to submit.",
     "docNameVerified": "Name matches the primary borrower",
     "docNameVariance": "Name on document: {name} — a preferred-name variance; both names will appear on the invoice",
-    "docNameMismatch": "The name on this document does not appear to match the primary borrower — please double-check",
+    "docNameMismatch": "Heads-up: the name on this document does not appear to match the primary borrower. Please double-check it. This is only a warning — it does not stop you from submitting the deal.",
     "creditIssuesMulti": "Credit Issues — check all that apply",
     "downPaymentSourceMulti": "Source of Down Payment — check all that apply",
     "residencyStatusMulti": "Residency Status — check all that apply",
