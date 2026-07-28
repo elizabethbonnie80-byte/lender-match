@@ -63,9 +63,12 @@ type OfferStatus = SubmittedOffer['status']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function daysUntil(dateStr: string): number {
+function daysUntil(dateStr: string | null): number | null {
   // Calendar days from today (real current date) to the target date. Both anchored at UTC midnight so
   // the difference is a clean whole-day count, independent of the time of day.
+  // Null-tolerant: a PREQUAL has no closing date, and `new Date(null)` gave NaN, which rendered as
+  // "NaNd remaining" in the Closing column (found in QA 2026-07-27).
+  if (!dateStr) return null
   const now = new Date()
   const todayUtcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   return Math.round((new Date(dateStr).getTime() - todayUtcMidnight) / 86400000)
@@ -85,7 +88,8 @@ function statusCfg(status: OfferStatus) {
   }
 }
 
-function closingCls(days: number): string {
+function closingCls(days: number | null): string {
+  if (days === null) return 'text-muted-foreground'
   if (days <= 14) return 'text-red-600 font-semibold'
   if (days <= 30) return 'text-amber-600 font-medium'
   return 'text-muted-foreground'
@@ -96,6 +100,7 @@ type ExpiryWarn = { key: 'expired' | 'expiresToday' | 'expiresIn'; days: number 
 function expiryWarning(expiryDate: string, status: OfferStatus): ExpiryWarn {
   if (status !== 'Pending') return null
   const d = daysUntil(expiryDate)
+  if (d === null) return null   // an offer always has an expiry; belt and braces since daysUntil is nullable
   if (d < 0) return { key: 'expired', days: d }
   if (d === 0) return { key: 'expiresToday', days: d }
   if (d <= 5) return { key: 'expiresIn', days: d }
@@ -236,7 +241,9 @@ function OfferDetailDialog({
                 <p className="text-xs text-muted-foreground mb-0.5">{t('dealClosing')}</p>
                 <p className={`font-medium ${closingClass}`}>
                   {offer.closingDate}
-                  <span className="block text-xs">{t('closingRemaining', { days: closingDays })}</span>
+                  {closingDays !== null && (
+                    <span className="block text-xs">{t('closingRemaining', { days: closingDays })}</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -593,13 +600,15 @@ export default function SubmittedOffersPage() {
 
                           {/* Closing */}
                           <td className="px-6 py-4">
-                            <p className="text-foreground">{offer.closingDate}</p>
-                            <p className={`text-xs flex items-center gap-1 ${closingClass}`}>
-                              {closingDays <= 14 && (
-                                <AlertTriangle className="h-3 w-3" />
-                              )}
-                              {t('closingRemaining', { days: closingDays })}
-                            </p>
+                            <p className="text-foreground">{offer.closingDate || t('noClosingDate')}</p>
+                            {closingDays !== null && (
+                              <p className={`text-xs flex items-center gap-1 ${closingClass}`}>
+                                {closingDays <= 14 && (
+                                  <AlertTriangle className="h-3 w-3" />
+                                )}
+                                {t('closingRemaining', { days: closingDays })}
+                              </p>
+                            )}
                           </td>
 
                           {/* Status */}

@@ -460,7 +460,8 @@
     "editOffer": "Modifier l'offre",
     "autoBadge": "Auto",
     "contactBlocked": "Votre message ne peut pas contenir {reason}. Veuillez le retirer et réessayer.",
-    "messageErr": "Impossible d’envoyer le message."
+    "messageErr": "Impossible d’envoyer le message.",
+    "noClosingDate": "Aucune date de clôture (préqualification)"
   },
   "dealDetail": {
     "back": "Retour à la salle des dossiers",

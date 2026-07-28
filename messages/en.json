@@ -460,7 +460,8 @@
     "editOffer": "Edit Offer",
     "autoBadge": "Auto",
     "contactBlocked": "Your message can't contain {reason}. Please remove it and try again.",
-    "messageErr": "Could not send the message."
+    "messageErr": "Could not send the message.",
+    "noClosingDate": "No closing date (prequal)"
   },
   "dealDetail": {
     "back": "Back to Deal Room",
