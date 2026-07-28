@@ -538,15 +538,35 @@ export const PROVINCE_CODE: Record<Enums["province"], string> = {
 }
 
 /**
- * Mortgage product → term in years, for TERM-LABEL display only. Mirrors the SQL product_years()
- * (migration 02) for contexts that don't persist the term (e.g. an offer row) — invoices DO store
- * `term_years`, so read that column there rather than this map. Note `open` maps to 0 here (a display
- * choice) whereas SQL product_years('open') is null; keep them in sync if the product set changes.
+ * Mortgage product → term in years. Mirrors the SQL product_years() (migration 02) for contexts that
+ * don't persist the term (e.g. an offer row) — invoices DO store `term_years`, so read that column
+ * there rather than this map.
+ *
+ * ⚠️ `open` maps to 0, which is a PLACEHOLDER, not a term (SQL product_years('open') is null). Never
+ * interpolate this map straight into a label: it renders "0-yr term" / "0yr Fixed" for an open
+ * mortgage, which is both wrong and, since migration 55 gave Open its own 3 bps rate, right next to a
+ * number the lender is being charged. Use `productTermYears` / `productTermLabel` below for display.
  */
 export const PRODUCT_TERM_YEARS: Record<Enums["mortgage_product"], number> = {
   "5_year_fixed": 5, "5_year_arm_vrm": 5, "3_year_fixed": 3, "3_year_arm_vrm": 3,
   "4_year_fixed": 4, "2_year_fixed": 2, "1_year_fixed": 1, "6_month_convertible": 0.5,
   open: 0, "7_year_fixed": 7, "10_year_fixed": 10,
+}
+
+/** Term in years for DISPLAY, or null when the product has no term (only "Open" today). */
+export function productTermYears(product: Enums["mortgage_product"]): number | null {
+  return product === "open" ? null : PRODUCT_TERM_YEARS[product]
+}
+
+/**
+ * Short term descriptor for an invoice/offer row: "5yr Fixed", "3yr Variable" — or plain "Open",
+ * which has neither a term nor a rate type (the arm_vrm test would have called it "Fixed").
+ * Deliberately English, like the other `inv.term` codes — see `docs/backlog.md` §2.
+ */
+export function productTermLabel(product: Enums["mortgage_product"]): string {
+  const years = productTermYears(product)
+  if (years === null) return "Open"
+  return `${years}yr ${product.includes("arm_vrm") ? "Variable" : "Fixed"}`
 }
 
 /**

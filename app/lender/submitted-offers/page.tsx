@@ -193,7 +193,9 @@ function OfferDetailDialog({
               </p>
               {[
                 [t('dRate'), `${offer.offeredRate}% ${tf(offer.rateType)}`],
-                [t('dTerm'), offer.term === 1 ? t('yearsOne', { n: offer.term }) : t('years', { n: offer.term })],
+                // term is null for an open mortgage, which has none — don't render it as "0 years".
+                [t('dTerm'), offer.term === null ? t('termOpen')
+                  : offer.term === 1 ? t('yearsOne', { n: offer.term }) : t('years', { n: offer.term })],
                 [t('dAmortization'), t('years', { n: offer.amortization })],
                 [t('dCommission'), t('commissionBps', { bps: offer.commissionBps })],
               ].map(([label, value]) => (
@@ -594,7 +596,9 @@ export default function SubmittedOffersPage() {
 
                           {/* Term & Amortization */}
                           <td className="px-6 py-4">
-                            <p className="text-foreground">{t('termYr', { term: offer.term })}</p>
+                            <p className="text-foreground">
+                              {offer.term === null ? t('termOpen') : t('termYr', { term: offer.term })}
+                            </p>
                             <p className="text-xs text-muted-foreground">{t('amortLine', { years: offer.amortization })}</p>
                           </td>
 

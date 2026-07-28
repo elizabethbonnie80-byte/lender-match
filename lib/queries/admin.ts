@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
-import { PRODUCT_TERM_YEARS } from "./deals"
+import { productTermLabel } from "./deals"
 
 type DB = SupabaseClient<Database>
 type Enums = Database["public"]["Enums"]
@@ -394,7 +394,6 @@ export async function listAllInvoices(supabase: DB): Promise<AdminInvoiceRow[]> 
         ? lender.lender_institutions[0]
         : lender.lender_institutions
       : null
-    const rateType = i.mortgage_product.includes("arm_vrm") ? "Variable" : "Fixed"
     return {
       id: i.id,
       invoiceNumber: i.invoice_number,
@@ -405,7 +404,7 @@ export async function listAllInvoices(supabase: DB): Promise<AdminInvoiceRow[]> 
       loanAmount: Number(i.loan_amount),
       amount: Number(i.amount),
       bps: i.platform_bps,
-      term: `${PRODUCT_TERM_YEARS[i.mortgage_product]}yr ${rateType}`,
+      term: productTermLabel(i.mortgage_product),
       status: i.status,
       issueDate: i.created_at.slice(0, 10),
       dueDate: i.due_date,

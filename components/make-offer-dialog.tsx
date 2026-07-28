@@ -20,7 +20,7 @@ import { makeOffer, editOffer } from "@/lib/queries/offers"
 import { scanContact } from "@/lib/queries/anti-contact"
 import { useT } from "@/components/i18n-provider"
 import { useEnums } from "@/lib/use-enums"
-import { PRODUCT_TERM_YEARS, platformBpsFor } from "@/lib/queries/deals"
+import { productTermYears, platformBpsFor } from "@/lib/queries/deals"
 import { BRAND, LEGAL_ENTITY } from "@/lib/brand"
 import type { Database } from "@/lib/database.types"
 
@@ -296,13 +296,18 @@ export function MakeOfferDialog({
               const product = form.mortgageProduct as MortgageProduct
               const platformBps = platformBpsFor(product)
               const netBps = Math.max(0, grossBps - platformBps)
+              // An open mortgage has no term, so it takes a label that doesn't name one — the years
+              // map carries a placeholder 0 for it, which would read "0-yr term" next to the fee.
+              const termYears = productTermYears(product)
               // Two label/amount rows rather than three spans on one line: the fee label is long
               // enough to wrap in the dialog's width, which used to squeeze the amounts together.
               return (
                 <div className="space-y-1.5 text-sm">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-muted-foreground">
-                      {t("platformDeduction", { brand: BRAND, term: PRODUCT_TERM_YEARS[product] })}
+                      {termYears === null
+                        ? t("platformDeductionNoTerm", { brand: BRAND })
+                        : t("platformDeduction", { brand: BRAND, term: termYears })}
                     </span>
                     <span className="text-destructive whitespace-nowrap">-{platformBps} bps</span>
                   </div>

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
-import { PROVINCE_CODE, PRODUCT_TERM_YEARS, type LenderDealListItem } from "@/lib/queries/deals"
+import { PROVINCE_CODE, productTermYears, productTermLabel, type LenderDealListItem } from "@/lib/queries/deals"
 
 type DB = SupabaseClient<Database>
 type Enums = Database["public"]["Enums"]
@@ -307,7 +307,8 @@ export type SubmittedOfferItem = {
   closingDate: string
   offeredRate: number
   rateType: "Fixed" | "Variable" | "Hybrid"
-  term: number
+  /** Years, or null for an open mortgage — which has no term. */
+  term: number | null
   amortization: number
   commissionBps: number
   conditions: string[]
@@ -398,7 +399,7 @@ export async function listSubmittedOffers(supabase: DB): Promise<SubmittedOfferI
       closingDate: d?.closing_date ?? "",
       offeredRate: Number(o.rate),
       rateType: o.mortgage_product.includes("arm_vrm") ? "Variable" : "Fixed",
-      term: PRODUCT_TERM_YEARS[o.mortgage_product],
+      term: productTermYears(o.mortgage_product),
       amortization: d?.amortization_years === null || d?.amortization_years === undefined ? 0 : Number(d.amortization_years),
       commissionBps: o.commission_bps,
       conditions: o.comments ? [o.comments] : [],
@@ -489,7 +490,6 @@ export async function listLenderInvoices(supabase: DB): Promise<LenderInvoiceIte
   if (error) throw new Error(error.message)
   return (data ?? []).map((i) => {
     const d = Array.isArray(i.deals) ? i.deals[0] : i.deals
-    const rateType = i.mortgage_product.includes("arm_vrm") ? "Variable" : "Fixed"
     return {
       id: i.id,
       invoiceNumber: i.invoice_number,
@@ -497,7 +497,7 @@ export async function listLenderInvoices(supabase: DB): Promise<LenderInvoiceIte
       propertyCity: d?.city ?? "",
       propertyProvince: d?.province ? PROVINCE_CODE[d.province as Enums["province"]] : "",
       dealType: d?.purpose === "refinance" ? "Refinance" : d?.purpose === "renewal" ? "Renewal" : "Purchase",
-      term: `${PRODUCT_TERM_YEARS[i.mortgage_product]}yr ${rateType}`,
+      term: productTermLabel(i.mortgage_product),
       loanAmount: Number(i.loan_amount),
       closingDate: i.closing_date,
       bps: i.platform_bps,

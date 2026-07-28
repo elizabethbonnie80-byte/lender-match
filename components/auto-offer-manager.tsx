@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useT } from '@/components/i18n-provider'
 import { useEnums } from '@/lib/use-enums'
 import { BRAND } from '@/lib/brand'
-import { PRODUCT_TERM_YEARS, platformBpsFor } from '@/lib/queries/deals'
+import { productTermYears, platformBpsFor } from '@/lib/queries/deals'
 import {
   listAutoOffers,
   createAutoOffer,
@@ -322,7 +322,13 @@ export function AutoOfferManager() {
                   <div className="space-y-1.5 text-sm">
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="text-muted-foreground">
-                        {t('platformDeduction', { brand: BRAND, term: PRODUCT_TERM_YEARS[editing.mortgageProduct] })}
+                        {(() => {
+                          // An open mortgage has no term, so it takes a label that doesn't name one.
+                          const years = productTermYears(editing.mortgageProduct)
+                          return years === null
+                            ? t('platformDeductionNoTerm', { brand: BRAND })
+                            : t('platformDeduction', { brand: BRAND, term: years })
+                        })()}
                       </span>
                       <span className="text-destructive whitespace-nowrap">
                         -{platformBpsFor(editing.mortgageProduct)} bps
