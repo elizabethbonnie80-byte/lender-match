@@ -76,7 +76,7 @@ async function main() {
   const svc = service()
   const markNum = nums(baseline)[0]
   const { data: markRow } = await svc.from("deals")
-    .select("id, reverse_mortgage, assets_liquid_value, no_lender_exceptions_required")
+    .select("id, reverse_mortgage, assets_liquid_value, no_lender_exceptions_required, gds, tds, acres, door_count, door_titles_count, amortization_years")
     .eq("deal_number", markNum).single()
   try {
     await svc.from("deals").update({
@@ -106,12 +106,49 @@ async function main() {
     const { data: noExc } = await lender.rpc("open_deals_filtered", { p_require_no_exceptions: true })
     check("require_no_exceptions keeps the no-exceptions deal",
       nums(noExc).includes(markNum), `${noExc?.length ?? 0} rows`)
+
+    // ── Null-safe MAX filters (migration 54; client A-15 + B-18/19/20) ──────────
+    // `NULL <= 5` is NULL, not TRUE, so a max filter used to throw away every deal that simply had no
+    // value for that field. A max is an exclusion tool: it must only drop deals that EXCEED it.
+    await svc.from("deals").update({
+      gds: null, tds: null, acres: null, door_count: null, door_titles_count: null,
+      amortization_years: null,
+    }).eq("id", markRow.id)
+
+    for (const [label, params] of [
+      ["gds_max", { p_gds_max: 40 }],
+      ["tds_max", { p_tds_max: 40 }],
+      ["acres_max", { p_acres_max: 5 }],
+      ["max_doors", { p_max_doors: 2 }],
+      ["max_door_titles", { p_max_door_titles: 2 }],
+      ["amortization_max", { p_amortization_max: 25 }],
+    ]) {
+      const { data, error } = await lender.rpc("open_deals_filtered", params)
+      check(`${label} KEEPS a deal whose value is null`,
+        !error && nums(data).includes(markNum), error?.message ?? `${data?.length ?? 0} rows`)
+    }
+
+    // …and still excludes one that genuinely exceeds the max.
+    await svc.from("deals").update({ door_count: 9, gds: 55 }).eq("id", markRow.id)
+    const { data: overDoors } = await lender.rpc("open_deals_filtered", { p_max_doors: 2 })
+    check("max_doors still drops a deal with MORE doors than allowed",
+      !nums(overDoors).includes(markNum), `${overDoors?.length ?? 0} rows`)
+    const { data: overGds } = await lender.rpc("open_deals_filtered", { p_gds_max: 40 })
+    check("gds_max still drops a deal above the ceiling", !nums(overGds).includes(markNum))
+
+    // 0 was never the broken case (`0 <= 2` is TRUE) — assert it anyway so nobody "fixes" it later.
+    await svc.from("deals").update({ door_count: 0 }).eq("id", markRow.id)
+    const { data: zeroDoors } = await lender.rpc("open_deals_filtered", { p_max_doors: 2 })
+    check("max_doors keeps a deal with 0 doors", nums(zeroDoors).includes(markNum))
   } finally {
     await svc.from("deal_credit_issues").delete().eq("deal_id", markRow.id).eq("credit_issue", "active_bankruptcy")
     await svc.from("deals").update({
       reverse_mortgage: markRow.reverse_mortgage,
       assets_liquid_value: markRow.assets_liquid_value,
       no_lender_exceptions_required: markRow.no_lender_exceptions_required,
+      gds: markRow.gds, tds: markRow.tds, acres: markRow.acres,
+      door_count: markRow.door_count, door_titles_count: markRow.door_titles_count,
+      amortization_years: markRow.amortization_years,
     }).eq("id", markRow.id)
   }
 
