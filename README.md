@@ -286,7 +286,7 @@ Vercel is underway. The **authoritative, step-by-step deploy guide is [`docs/DEP
 
 | | |
 |---|---|
-| **Repo** | GitHub `elizabethbonnie80-byte/test` (`origin`) |
+| **Repo** | GitHub `elizabethbonnie80-byte/lender-match` (`origin`) — renamed from `…/test` 2026-07-27 |
 | **Supabase — prod** | `lender-match` · ref `bcedtccidfehdbthmhss` · `ca-central-1` · Free |
 | **Supabase — staging** | `lender-match-staging` · ref `kejjhlfelidajdijojmp` · `ca-central-1` · Free |
 | **Vercel** | project `lender-match` · framework `nextjs` |

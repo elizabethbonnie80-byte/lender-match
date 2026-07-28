@@ -582,7 +582,10 @@ false` as defense-in-depth). In hosted deploys, `supabase functions deploy <name
 own GitHub + Supabase + Vercel. **Full step-by-step in [`docs/DEPLOY_RUNBOOK.md`](./docs/DEPLOY_RUNBOOK.md)** —
 read it before touching hosted infra. Current state:
 
-- **Repo**: GitHub `elizabethbonnie80-byte/test` (`origin`; single squashed history).
+- **Repo**: GitHub `elizabethbonnie80-byte/lender-match` (`origin`; single squashed history). Renamed
+  from `…/test` on 2026-07-27 — GitHub redirects the old URL, so a stale `origin` still pushes (with a
+  "This repository moved" warning), and **Vercel followed the rename by itself** because the
+  integration binds to the numeric repo ID, not the name.
 - **Supabase** (org `vercel_icfg_NibyY0GS3ZwLKfHfaDirmYCb`, Free): **prod** `lender-match` `bcedtccidfehdbthmhss`
   + **staging** `lender-match-staging` `kejjhlfelidajdijojmp`, both `ca-central-1`. Two separate Free projects
   (branching is Pro-only).

@@ -13,7 +13,7 @@ values**. Keep this in sync when the process changes.
 
 | Piece | Value |
 |---|---|
-| **Repo** | GitHub `elizabethbonnie80-byte/test` (single squashed history; `origin`) |
+| **Repo** | GitHub `elizabethbonnie80-byte/lender-match` (single squashed history; `origin`). Renamed from `…/test` 2026-07-27; the old URL still redirects, and Vercel followed the rename on its own (it binds to the repo ID) |
 | **Supabase org** | `vercel_icfg_NibyY0GS3ZwLKfHfaDirmYCb` (`elizabethbonnie80-5249's projects`, **Free**) |
 | **Supabase prod** | `lender-match` · ref `bcedtccidfehdbthmhss` · `ca-central-1` |
 | **Supabase staging** | `lender-match-staging` · ref `kejjhlfelidajdijojmp` · `ca-central-1` |
