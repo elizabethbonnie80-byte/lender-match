@@ -550,13 +550,16 @@ export const PRODUCT_TERM_YEARS: Record<Enums["mortgage_product"], number> = {
 }
 
 /**
- * Platform bps by term — mirrors the SQL `platform_bps_for()` (migration 02) for a client-side LIVE
- * preview in the offer dialog: ≤3y → 3 bps, 4y → 4 bps, else → 5 bps. "Open" has no term in the SQL
- * (product_years('open') is null, which falls through the CASE to the else branch), so it must NOT
- * reuse PRODUCT_TERM_YEARS' display-only `open: 0` — that would wrongly match "≤3y" here.
+ * Platform bps by term — mirrors the SQL `platform_bps_for()` for a client-side LIVE preview in the
+ * offer dialog: ≤3y → 3 bps, 4y → 4 bps, else → 5 bps.
+ *
+ * "Open" is special-cased rather than read from PRODUCT_TERM_YEARS (whose `open: 0` is display-only):
+ * the SQL has no term for it either. It billed 5 bps until the client decided on 2026-07-25 (B-22)
+ * that an open term is billed at the ≤3-year rate — see migration 55, which settles OQ#30.
+ * ⚠️ Keep this in step with the SQL: this preview tells the lender what they will be charged.
  */
 export function platformBpsFor(product: Enums["mortgage_product"]): number {
-  if (product === "open") return 5
+  if (product === "open") return 3
   const years = PRODUCT_TERM_YEARS[product]
   if (years <= 3) return 3
   if (years === 4) return 4
@@ -781,6 +784,7 @@ export async function listOpenDealsFiltered(supabase: DB, f: OpenDealFilters): P
     p_property_value_max: f.propertyValueMax ?? undefined,
     p_square_footage_min: f.squareFootageMin ?? undefined,
     p_acres_max: f.acresMax ?? undefined,
+    p_dwelling_types_excluded: f.dwellingTypesExcluded.length ? f.dwellingTypesExcluded : undefined,
     p_income_types_excluded: f.incomeTypesExcluded.length ? f.incomeTypesExcluded : undefined,
     p_residency_statuses_excluded: f.residencyStatusesExcluded.length ? f.residencyStatusesExcluded : undefined,
     p_others_excluded: othersExcludedKeys(f),
@@ -892,6 +896,7 @@ export async function listMaturingDealsFiltered(supabase: DB, f: OpenDealFilters
     p_property_value_max: f.propertyValueMax ?? undefined,
     p_square_footage_min: f.squareFootageMin ?? undefined,
     p_acres_max: f.acresMax ?? undefined,
+    p_dwelling_types_excluded: f.dwellingTypesExcluded.length ? f.dwellingTypesExcluded : undefined,
     p_income_types_excluded: f.incomeTypesExcluded.length ? f.incomeTypesExcluded : undefined,
     p_residency_statuses_excluded: f.residencyStatusesExcluded.length ? f.residencyStatusesExcluded : undefined,
     p_others_excluded: othersExcludedKeys(f),

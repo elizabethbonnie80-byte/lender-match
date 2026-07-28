@@ -555,3 +555,25 @@ export async function downloadInvoicePdf(supabase: DB, invoiceId: string): Promi
   const base = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, "")
   return `${base}${signedPath}`
 }
+
+/**
+ * Client 2026-07-25 (B-32): "In bubble, you had a switch counter per calendar month. Can you please
+ * add that back instead of the blurb above?" The data already exists — `profiles` tracks the count and
+ * the month, and a monthly cron resets it — so this only surfaces it. `switch_month` is checked here
+ * because the lazy reset happens inside switch_offer(): a stale month means the stored count belongs to
+ * a previous month and should read as 0.
+ */
+export const MAX_SWITCHES_PER_MONTH = 2
+
+export async function getSwitchCounter(supabase: DB): Promise<{ used: number; max: number }> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { used: 0, max: MAX_SWITCHES_PER_MONTH }
+  const { data } = await supabase
+    .from("profiles")
+    .select("offer_switches_this_month, switch_month")
+    .eq("id", user.id)
+    .maybeSingle()
+  const thisMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+  const stale = !data?.switch_month || !data.switch_month.startsWith(thisMonth)
+  return { used: stale ? 0 : data?.offer_switches_this_month ?? 0, max: MAX_SWITCHES_PER_MONTH }
+}

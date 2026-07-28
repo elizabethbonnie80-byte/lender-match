@@ -21,7 +21,6 @@
   },
   "dealRoom": {
     "title": "Salle des dossiers",
-    "subtitle": "Gérez et suivez tous vos dossiers hypothécaires",
     "surveyToComplete": "{count} sondage de clôture à compléter",
     "surveysToComplete": "{count} sondages de clôture à compléter",
     "dealFallback": "Dossier",
@@ -265,7 +264,9 @@
     "cardAssetsTotal": "Actifs totaux",
     "cardDoorTitles": "Titres (portes)",
     "cardNoLenderExceptions": "Aucune exception prêteur requise",
-    "cardNone": "Aucune"
+    "cardNone": "Aucune",
+    "feedDisclaimer": "Les dossiers hypothécaires sont fournis à des fins d’évaluation préliminaire seulement. Les renseignements proviennent du courtier d’origine et n’ont pas été vérifiés de façon indépendante par la plateforme.",
+    "fDwellingHint": "Cochez les types de logement que vous NE voulez PAS voir."
   },
   "maturingDeals": {
     "prequal": "PRÉQUAL",
@@ -339,7 +340,8 @@
     "declineErr": "Impossible de refuser le dossier.",
     "contactBlocked": "Votre message ne peut pas contenir {reason}. Veuillez le retirer et réessayer.",
     "messageSent": "Message envoyé pour {count} dossier(s).",
-    "messageErr": "Impossible d'envoyer le message."
+    "messageErr": "Impossible d'envoyer le message.",
+    "feedDisclaimer": "Les dossiers hypothécaires sont fournis à des fins d’évaluation préliminaire seulement. Les renseignements proviennent du courtier d’origine et n’ont pas été vérifiés de façon indépendante par la plateforme."
   },
   "expiredDeals": {
     "title": "Dossiers expirés",
@@ -503,7 +505,7 @@
     "offerDeclined": "Cette offre a été refusée",
     "acceptOffer": "Accepter l'offre",
     "acceptTitle": "Confirmer la sélection de l'offre",
-    "acceptBody": "Vous êtes sur le point d'accepter cette offre. Les autres offres en attente seront refusées, l'identité du prêteur sera révélée et la facture de frais de plateforme sera générée immédiatement. Vous pouvez encore changer de prêteur jusqu'à 2 fois par mois civil.",
+    "acceptBody": "Vous êtes sur le point d’accepter cette offre. Les autres offres en attente seront refusées et l’identité du prêteur sera révélée. Vous pouvez encore changer de prêteur jusqu’à 2 fois par mois civil.",
     "cancel": "Annuler",
     "confirmSelection": "Confirmer la sélection",
     "accepting": "Acceptation…",
@@ -512,8 +514,9 @@
     "toastSwitched": "Acceptation annulée. Les offres sont de nouveau en révision.",
     "toastSwitchErr": "Impossible de changer.",
     "toastSurvey": "Merci — votre sondage a été soumis.",
-    "acceptedNoticeTitle": "Le prêteur a été avisé et la facture de frais de plateforme a été générée.",
-    "acceptedNoticeBody": "Si vous changez d'offre (max. 2 par mois civil), cette facture est supprimée et le portail du prêteur affiche l'offre comme refusée."
+    "acceptAcknowledgement": "Reconnaissance du courtier : en acceptant cette offre, vous reconnaissez que le montant de commission affiché correspond au montant qui vous est payable après déduction des frais de plateforme applicables. Le prêteur versera les frais de plateforme directement à {brand} en votre nom. Les frais de plateforme applicables sont de 3 points de base (pdb) pour les termes de 3 ans ou moins, 4 points de base (pdb) pour les termes de 4 ans, et 5 points de base (pdb) pour les termes de 5 ans ou plus. En poursuivant, vous autorisez cette entente de paiement.",
+    "switchCounter": "Changements de prêteur utilisés ce mois-ci : {used} sur {max}.",
+    "offerFinePrint": "Les offres des prêteurs visent à évaluer leur intérêt et ne constituent ni un engagement ferme ni une garantie de taux. Nous recommandons toujours une condition de financement lorsqu’un prêt hypothécaire est nécessaire pour acheter une propriété. Les taux, les modalités et les conditions de prêt peuvent changer à tout moment. Les offres affichées sur la plateforme ne seront pas mises à jour pour refléter les variations de taux futures. L’approbation finale demeure conditionnelle à la réception d’une demande complète, à la souscription, à l’examen de la propriété et au respect de toutes les exigences du prêteur."
   },
   "invoices": {
     "title": "Factures",
@@ -968,7 +971,8 @@
     "editDescription": "Modifiez votre offre en attente. Le courtier sera avisé du changement; votre identité reste cachée jusqu'à l'acceptation.",
     "editSaved": "Offre mise à jour. Le courtier a été avisé.",
     "saveEdit": "Enregistrer les modifications",
-    "savingEdit": "Enregistrement..."
+    "savingEdit": "Enregistrement...",
+    "offerDisclaimer": "Les offres représentent l’intérêt préliminaire d’un prêteur fondé sur les renseignements fournis et ne constituent ni une approbation hypothécaire, ni un engagement de prêt, ni une garantie de taux. L’approbation finale demeure conditionnelle à la réception d’une demande complète, à la souscription, à l’examen de la propriété et au respect de toutes les exigences du prêteur."
   },
   "survey": {
     "title": "Sondage de clôture — {deal}",
@@ -1115,7 +1119,6 @@
   },
   "createDeal": {
     "title": "Créer un nouveau dossier",
-    "subtitle": "Remplissez toutes les sections pour soumettre votre dossier hypothécaire au traitement.",
     "secClient": "Renseignements du client",
     "secDeal": "Renseignements du dossier",
     "secQualifying": "Renseignements d’admissibilité",
@@ -1155,7 +1158,7 @@
     "cashback": "Remise en argent",
     "back": "Retour",
     "nextQualifying": "Suivant : Renseignements d’admissibilité",
-    "creditScore": "Cote de crédit",
+    "creditScore": "Pointage de crédit principal",
     "creditIssues": "Problèmes de crédit",
     "selectIfApplicable": "Sélectionnez le cas échéant",
     "incomeType": "Type de revenu",
@@ -1271,7 +1274,7 @@
     "docRemove": "Retirer le document",
     "docsRequired": "Le formulaire de consentement et une pièce d’identité avec photo sont requis pour soumettre.",
     "docNameVerified": "Le nom correspond à l’emprunteur principal",
-    "docNameVariance": "Nom sur le document : {name} — variante de nom d’usage; les deux noms figureront sur la facture",
+    "docNameVariance": "Nom sur le document : {name} — variante de nom d’usage.",
     "docNameMismatch": "À noter : le nom sur ce document ne semble pas correspondre à l’emprunteur principal. Veuillez le vérifier. Ceci n’est qu’un avertissement — cela ne vous empêche pas de soumettre le dossier.",
     "creditIssuesMulti": "Problèmes de crédit — cochez tout ce qui s’applique",
     "downPaymentSourceMulti": "Source de la mise de fonds — cochez tout ce qui s’applique",
@@ -1295,7 +1298,8 @@
     "dealUpdated": "Dossier mis à jour.",
     "addressOrPrequal": "Ajoutez une adresse de propriété, ou marquez le dossier comme Préqualification à l’étape Renseignements du dossier.",
     "addressPrequalHint": "Laissez vide uniquement pour une préqualification — vous pourrez ajouter l’adresse plus tard avec « Convertir en dossier réel ».",
-    "prequalHint": "Aucune propriété ni date de clôture pour l’instant. Les prêteurs peuvent quand même soumettre une offre; vous ajouterez l’adresse et la date de clôture plus tard avec « Convertir en dossier réel »."
+    "prequalHint": "Aucune propriété ni date de clôture pour l’instant. Les prêteurs peuvent quand même soumettre une offre; vous ajouterez l’adresse et la date de clôture plus tard avec « Convertir en dossier réel ».",
+    "accuracyConfirmation": "Vous confirmez que les renseignements fournis sont exacts au meilleur de votre connaissance. Tout changement important dans la situation financière de l’emprunteur ou dans l’occasion hypothécaire doit être mis à jour rapidement, car il peut influencer l’intérêt des prêteurs."
   },
   "admin": {
     "loading": "Chargement…",
@@ -1591,7 +1595,11 @@
     "logoHiddenToast": "« {name} » est masqué de la page de connexion.",
     "logoDeletedToast": "Logo « {name} » supprimé.",
     "logoSaveErr": "Impossible d'enregistrer le logo.",
-    "logoDeleteErr": "Impossible de supprimer le logo."
+    "logoDeleteErr": "Impossible de supprimer le logo.",
+    "invMarkPaid": "Marquer comme payée",
+    "invMarkedPaid": "Facture marquée comme payée.",
+    "invMarkPaidErr": "Impossible de marquer la facture comme payée.",
+    "actions": "Actions"
   },
   "autoOffers": {
     "intro": "Offres standards permanentes. Lorsqu’un dossier soumis correspond entièrement à l’un de vos filtres enregistrés, l’offre ci-dessous est envoyée automatiquement en votre nom.",

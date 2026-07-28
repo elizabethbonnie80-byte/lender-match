@@ -210,7 +210,6 @@ export default function DealRoomPage() {
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">{t('title')}</h1>
-            <p className="text-muted-foreground">{t('subtitle')}</p>
           </div>
           <Link href="/create-deal" className="shrink-0">
             <Button className="gap-2">

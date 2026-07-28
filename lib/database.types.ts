@@ -1423,6 +1423,9 @@ export type Database = {
             | Database["public"]["Enums"]["down_payment_source"][]
             | null
           dwelling_type: Database["public"]["Enums"]["dwelling_type"] | null
+          dwelling_types_excluded:
+            | Database["public"]["Enums"]["dwelling_type"][]
+            | null
           exclude_bridge_loan: boolean | null
           exclude_cashback: boolean | null
           exclude_collateral_transfer: boolean | null
@@ -1496,6 +1499,9 @@ export type Database = {
             | Database["public"]["Enums"]["down_payment_source"][]
             | null
           dwelling_type?: Database["public"]["Enums"]["dwelling_type"] | null
+          dwelling_types_excluded?:
+            | Database["public"]["Enums"]["dwelling_type"][]
+            | null
           exclude_bridge_loan?: boolean | null
           exclude_cashback?: boolean | null
           exclude_collateral_transfer?: boolean | null
@@ -1569,6 +1575,9 @@ export type Database = {
             | Database["public"]["Enums"]["down_payment_source"][]
             | null
           dwelling_type?: Database["public"]["Enums"]["dwelling_type"] | null
+          dwelling_types_excluded?:
+            | Database["public"]["Enums"]["dwelling_type"][]
+            | null
           exclude_bridge_loan?: boolean | null
           exclude_cashback?: boolean | null
           exclude_collateral_transfer?: boolean | null
@@ -2122,6 +2131,7 @@ export type Database = {
           p_credit_score_min?: number
           p_down_payment_sources_excluded?: Database["public"]["Enums"]["down_payment_source"][]
           p_dwelling_type?: Database["public"]["Enums"]["dwelling_type"]
+          p_dwelling_types_excluded?: Database["public"]["Enums"]["dwelling_type"][]
           p_gds_max?: number
           p_income_types_excluded?: Database["public"]["Enums"]["income_type"][]
           p_insured?: boolean
@@ -2338,6 +2348,7 @@ export type Database = {
           p_credit_score_min?: number
           p_down_payment_sources_excluded?: Database["public"]["Enums"]["down_payment_source"][]
           p_dwelling_type?: Database["public"]["Enums"]["dwelling_type"]
+          p_dwelling_types_excluded?: Database["public"]["Enums"]["dwelling_type"][]
           p_gds_max?: number
           p_income_types_excluded?: Database["public"]["Enums"]["income_type"][]
           p_insured?: boolean

@@ -49,6 +49,8 @@ const ITEMS_PER_PAGE = FEED_ITEMS_PER_PAGE
 
 /** Client 2026-07-23 (A-7): the "N deals total · sorted by …" line is hidden for now, may come back. */
 const SHOW_DEAL_COUNT = false
+/** Client 2026-07-25 (B-11): "please hide this too … We may want it showing at some point but not now". */
+const SHOW_NEW_THIS_WEEK = false
 
 // New Deals floats COF-specified deals to the top, then sorts by soonest closing date. Defined at
 // module scope so its reference is stable (the feed hook memoizes on it). Copies before sorting so it
@@ -103,6 +105,10 @@ export default function NewDealsPage() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-1">{t('title')}</h1>
         </div>
+
+        {/* Client-supplied notice (2026-07-25, B-38): "somewhere that's visible upon loading the page
+            but not super conspicuous" */}
+        <p className="mb-4 text-xs leading-relaxed text-muted-foreground">{t('feedDisclaimer')}</p>
 
         {/* Search + filter bar */}
         <div className="bg-card border border-border rounded-lg p-4 mb-4 space-y-3">
@@ -233,7 +239,7 @@ export default function NewDealsPage() {
                 : t('statsTotal', { count: visibleDeals.length })}
             </p>
           )}
-          {newThisWeekCount > 0 && (
+          {SHOW_NEW_THIS_WEEK && newThisWeekCount > 0 && (
             <Badge className="text-xs bg-primary text-primary-foreground">
               {t('newThisWeek', { count: newThisWeekCount })}
             </Badge>

@@ -143,6 +143,9 @@ export default function MaturingDealsPage() {
             ))}
           </div>
         </div>
+        {/* Client-supplied notice (2026-07-25, B-38): "somewhere that's visible upon loading the page
+            but not super conspicuous" */}
+        <p className="mb-4 text-xs leading-relaxed text-muted-foreground">{t('feedDisclaimer')}</p>
 
         {/* Search + filter bar */}
         <div className="bg-card border border-border rounded-lg p-4 mb-4 space-y-3">

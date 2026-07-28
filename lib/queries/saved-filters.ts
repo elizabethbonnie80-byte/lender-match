@@ -40,6 +40,9 @@ export type FilterCriteria = {
   squareFootageMin: number | null
   acresMax: number | null
   /** Checked = this income type is NOT wanted (excluded), per the reference panel's copy. */
+  /** A-1 (2026-07-23): dwelling types the lender does NOT want. Replaces the single-value
+   *  `dwellingType` include in the UI; that field stays only for filters saved before the change. */
+  dwellingTypesExcluded: Enums["dwelling_type"][]
   incomeTypesExcluded: Enums["income_type"][]
   /** Checked = this residency status is NOT wanted (excluded). */
   residencyStatusesExcluded: Enums["residency_status"][]
@@ -103,6 +106,7 @@ export const EMPTY_FILTER_CRITERIA: FilterCriteria = {
   propertyValueMax: null,
   squareFootageMin: null,
   acresMax: null,
+  dwellingTypesExcluded: [],
   incomeTypesExcluded: [],
   residencyStatusesExcluded: [],
   excludeFthb: false,
@@ -160,6 +164,7 @@ export function countActiveFilters(f: FilterCriteria): number {
   if (f.propertyValueMin !== null || f.propertyValueMax !== null) n++
   if (f.squareFootageMin !== null) n++
   if (f.acresMax !== null) n++
+  if (f.dwellingTypesExcluded.length) n++
   if (f.incomeTypesExcluded.length) n++
   if (f.residencyStatusesExcluded.length) n++
   if (f.creditIssuesExcluded.length) n++
@@ -231,6 +236,7 @@ function summarize(f: SavedFilterInput): { count: number; preview: string } {
   if (f.assetsTotalMin !== null) parts.push(`Assets ≥ $${(f.assetsTotalMin / 1000).toFixed(0)}k`)
   if (f.requireNoExceptions) parts.push("No exceptions only")
   const excludedCount =
+    f.dwellingTypesExcluded.length +
     f.incomeTypesExcluded.length +
     f.residencyStatusesExcluded.length +
     f.creditIssuesExcluded.length +
@@ -275,6 +281,7 @@ function rowToInput(r: Row): SavedFilterInput {
     propertyValueMax: r.property_value_max === null ? null : Number(r.property_value_max),
     squareFootageMin: r.square_footage_min === null ? null : Number(r.square_footage_min),
     acresMax: r.acres_max === null ? null : Number(r.acres_max),
+    dwellingTypesExcluded: r.dwelling_types_excluded ?? [],
     incomeTypesExcluded: r.income_types ?? [],
     residencyStatusesExcluded: r.residency_statuses ?? [],
     excludeFthb: r.exclude_fthb ?? false,
@@ -338,6 +345,7 @@ function inputToColumns(input: SavedFilterInput) {
     property_value_max: input.propertyValueMax,
     square_footage_min: input.squareFootageMin,
     acres_max: input.acresMax,
+    dwelling_types_excluded: input.dwellingTypesExcluded.length ? input.dwellingTypesExcluded : null,
     income_types: input.incomeTypesExcluded.length ? input.incomeTypesExcluded : null,
     residency_statuses: input.residencyStatusesExcluded.length ? input.residencyStatusesExcluded : null,
     exclude_fthb: input.excludeFthb,

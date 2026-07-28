@@ -1,14 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AdminHeader } from '@/components/admin-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import { Receipt, Search, AlertCircle, Download, DollarSign, CheckCircle, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { listAllInvoices, type AdminInvoiceRow } from '@/lib/queries/admin'
+import { markInvoicePaid } from '@/lib/queries/offers'
+import { RowActions } from '@/components/row-actions'
 import { downloadCsv, todayStamp } from '@/lib/csv'
 import { useT, useLocale } from '@/components/i18n-provider'
 import type { Database } from '@/lib/database.types'
@@ -48,6 +50,11 @@ export default function AdminInvoicesPage() {
     cancelled: t('invCancelled'),
   }
 
+  const reload = useCallback(
+    () => listAllInvoices(supabase).then(setInvoices).catch(() => {}),
+    [supabase],
+  )
+
   useEffect(() => {
     let active = true
     listAllInvoices(supabase)
@@ -56,6 +63,24 @@ export default function AdminInvoicesPage() {
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [supabase, t])
+
+  // Client 2026-07-25 (B-2): "How does the analytics know in the Admin portal that an invoice is paid?
+  // There doesn't seem to be anywhere I can mark them as paid." The mark_invoice_paid RPC already
+  // accepts an admin (`inv.lender_id <> auth.uid() and not is_admin()`), so this needed no migration —
+  // only the action.
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const handleMarkPaid = async (id: string) => {
+    setBusyId(id)
+    try {
+      await markInvoicePaid(supabase, id)
+      await reload()
+      toast.success(t('invMarkedPaid'))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('invMarkPaidErr'))
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   const visible = invoices.filter((i) => {
     if (statusFilter !== 'all' && i.status !== statusFilter) return false
@@ -194,6 +219,7 @@ export default function AdminInvoicesPage() {
                     <th className="px-4 py-3 font-medium">{t('colStatus')}</th>
                     <th className="px-4 py-3 font-medium">{t('colIssue')}</th>
                     <th className="px-4 py-3 font-medium">{t('colDue')}</th>
+                    <th className="px-4 py-3 font-medium text-right">{t('colActions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -219,6 +245,19 @@ export default function AdminInvoicesPage() {
                         <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{i.issueDate}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={overdue ? 'text-red-600 font-medium' : 'text-muted-foreground'}>{i.dueDate}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          {i.status === 'pending' && (
+                            <RowActions
+                              label={t('actions')}
+                              actions={[{
+                                label: t('invMarkPaid'),
+                                icon: <CheckCircle className="h-4 w-4" />,
+                                onSelect: () => handleMarkPaid(i.id),
+                                disabled: busyId === i.id,
+                              }]}
+                            />
+                          )}
                         </td>
                       </tr>
                     )

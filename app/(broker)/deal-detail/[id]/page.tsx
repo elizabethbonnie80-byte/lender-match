@@ -15,6 +15,8 @@ import {
   acceptOffer,
   switchOffer,
   getAcceptedLender,
+  getSwitchCounter,
+  MAX_SWITCHES_PER_MONTH,
   type BrokerDealDetail,
   type DealOffer,
   type AcceptedLender,
@@ -27,6 +29,7 @@ import { LenderDealDetailSections, DealSection, DealField } from '@/components/l
 import { ClipboardList } from 'lucide-react'
 import { useEnums } from '@/lib/use-enums'
 import { useT, useLocale } from '@/components/i18n-provider'
+import { BRAND } from '@/lib/brand'
 
 // Raw offer_status enum → the capitalized key used in the shared `feed` catalog namespace.
 const OFFER_STATUS_KEY: Record<DealOffer['status'], string> = {
@@ -64,6 +67,7 @@ export default function DealDetailPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [switches, setSwitches] = useState({ used: 0, max: MAX_SWITCHES_PER_MONTH })
 
   // Confirm-accept modal
   const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null)
@@ -84,6 +88,7 @@ export default function DealDetailPage() {
       setLender(null)
     }
     setPendingSurvey(await getPendingSurveyForDeal(supabase, dealId))
+    setSwitches(await getSwitchCounter(supabase))
   }, [supabase, dealId])
 
   useEffect(() => {
@@ -292,13 +297,13 @@ export default function DealDetailPage() {
                         <p className="text-sm text-muted-foreground mb-6">{acceptedOffer.comments}</p>
                       )}
 
-                      {/* Round 3 one-step accept: the lender was notified and the platform-fee
-                          invoice generated on acceptance — the broker's only remaining action is
-                          Switch (max 2/month; blocked once the invoice is paid). */}
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                        <p className="text-sm font-semibold text-green-900">{t('acceptedNoticeTitle')}</p>
-                        <p className="text-xs text-green-800 mt-1">{t('acceptedNoticeBody')}</p>
-                      </div>
+                      {/* Client 2026-07-25: the post-accept green banner was removed (B-31) and
+                          replaced by the per-calendar-month switch counter Bubble had (B-32). */}
+                      {deal.status !== 'funded' && (
+                        <p className="text-xs text-muted-foreground mb-3 text-center">
+                          {t('switchCounter', { used: switches.used, max: switches.max })}
+                        </p>
+                      )}
 
                       {deal.status !== 'funded' && (
                         <Button onClick={doSwitch} disabled={busy} variant="outline" className="w-full">
@@ -318,6 +323,13 @@ export default function DealDetailPage() {
                     {offers.length > 0 && (deal.prequal || deal.prequalConvertedAt) && (
                       <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
                         <p className="text-xs leading-relaxed text-amber-900">{t('prequalOfferNotice')}</p>
+                      </div>
+                    )}
+
+                    {/* Client-supplied disclaimer for lender offers (2026-07-25, B-40) */}
+                    {offers.length > 0 && !deal.prequal && !deal.prequalConvertedAt && (
+                      <div className="mb-6 rounded-lg border border-border bg-muted/40 p-4">
+                        <p className="text-xs leading-relaxed text-muted-foreground">{t('offerFinePrint')}</p>
                       </div>
                     )}
 
@@ -441,6 +453,10 @@ export default function DealDetailPage() {
                   <h3 className="text-lg font-semibold text-foreground">{t('acceptTitle')}</h3>
                   <p className="text-sm text-muted-foreground mt-2">
                     {t('acceptBody')}
+                  </p>
+                  {/* Client-supplied Broker Acknowledgement (2026-07-25, B-26) */}
+                  <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+                    {t('acceptAcknowledgement', { brand: BRAND })}
                   </p>
                 </div>
               </div>

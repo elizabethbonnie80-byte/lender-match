@@ -107,6 +107,27 @@ async function main() {
     check("require_no_exceptions keeps the no-exceptions deal",
       nums(noExc).includes(markNum), `${noExc?.length ?? 0} rows`)
 
+    // ── Dwelling type as an EXCLUSION list (migration 56; client A-1) ──────────
+    const { data: markDwell } = await svc.from("deals").select("dwelling_type").eq("id", markRow.id).single()
+    if (markDwell?.dwelling_type) {
+      const { data: excluded, error: exErr } = await lender.rpc("open_deals_filtered", {
+        p_dwelling_types_excluded: [markDwell.dwelling_type],
+      })
+      check("excluding a dwelling type drops that deal",
+        !exErr && !nums(excluded).includes(markNum), exErr?.message ?? `${excluded?.length ?? 0} rows`)
+      const { data: other } = await lender.rpc("open_deals_filtered", {
+        p_dwelling_types_excluded: ["apartment_high_rise"],
+      })
+      check("excluding a DIFFERENT dwelling type keeps it", nums(other).includes(markNum))
+    }
+    // a deal with no dwelling type recorded is not one of the excluded types (null-safe, same rule as 54)
+    await svc.from("deals").update({ dwelling_type: null }).eq("id", markRow.id)
+    const { data: nullDwell } = await lender.rpc("open_deals_filtered", {
+      p_dwelling_types_excluded: ["detached", "apartment_high_rise"],
+    })
+    check("a deal with NO dwelling type survives an exclusion list", nums(nullDwell).includes(markNum))
+    await svc.from("deals").update({ dwelling_type: markDwell?.dwelling_type ?? null }).eq("id", markRow.id)
+
     // ── Null-safe MAX filters (migration 54; client A-15 + B-18/19/20) ──────────
     // `NULL <= 5` is NULL, not TRUE, so a max filter used to throw away every deal that simply had no
     // value for that field. A max is an exclusion tool: it must only drop deals that EXCEED it.

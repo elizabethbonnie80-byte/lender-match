@@ -611,7 +611,6 @@ export default function CreateDealPage() {
             <h1 className="text-3xl font-bold text-foreground mb-2">
               {editingSubmitted ? t("editTitle") : draftId ? t("resumeTitle") : t("title")}
             </h1>
-            <p className="text-muted-foreground">{t("subtitle")}</p>
           </div>
 
           {/* Section Navigation — full-width stepper (icons + connectors + labels) */}
@@ -971,21 +970,25 @@ export default function CreateDealPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {(
                       [
+                        // Client 2026-07-25 (B-8): "the 2 co-signer options and the guarantor to be
+                        // together. Perhaps on the very right?" They are the LAST three entries, so the
+                        // grid keeps them adjacent at any column count — pinning them to column 4 would
+                        // scatter them again at the md/sm breakpoints.
                         ["fthb", firstTimeBuyer, setFirstTimeBuyer, "firstTimeBuyer"],
                         ["collateralTransfer", collateralTransfer, setCollateralTransfer, "collateralTransfer"],
                         ["firstAndHeloc", firstAndHeloc, setFirstAndHeloc, "firstAndHeloc"],
-                        ["cosignorNotOccupying", cosignorNotOccupying, setCosignorNotOccupying, "cosignorNotOccupying"],
                         ["newToCanada", newToCanada, setNewToCanada, "newToCanada"],
                         ["cashback", cashback, setCashback, "cashback"],
                         ["heloc", heloc, setHeloc, "heloc"],
-                        ["guarantor", guarantor, setGuarantor, "guarantor"],
                         ["networthProgram", networthProgram, setNetworthProgram, "networthProgram"],
                         ["bridgeLoanNeeded", bridgeLoanNeeded, setBridgeLoanNeeded, "bridgeLoanNeeded"],
                         ["fixedSecond", fixedSecond, setFixedSecond, "fixedSecond"],
                         ["medicalPrograms", medicalPrograms, setMedicalPrograms, "medicalProfessional"],
                         ["purchasePlusImprovements", purchasePlusImprovements, setPurchasePlusImprovements, "purchasePlusImprovements"],
-                        ["cosignorOccupying", cosignorOccupying, setCosignorOccupying, "cosignorOccupying"],
                         ["reverseMortgage", reverseMortgage, setReverseMortgage, "reverseMortgage"],
+                        ["cosignorOccupying", cosignorOccupying, setCosignorOccupying, "cosignorOccupying"],
+                        ["cosignorNotOccupying", cosignorNotOccupying, setCosignorNotOccupying, "cosignorNotOccupying"],
+                        ["guarantor", guarantor, setGuarantor, "guarantor"],
                       ] as [string, boolean, (v: boolean) => void, string][]
                     ).map(([id, checked, set, labelKey]) => (
                       <div key={id} className="flex items-center gap-2">
@@ -1606,6 +1609,11 @@ export default function CreateDealPage() {
                     {t("noLenderExceptionsRequired")}
                   </Label>
                 </div>
+
+                {/* Client-supplied confirmation, bottom of the last page (2026-07-25, B-36) */}
+                <p className="text-xs leading-relaxed text-muted-foreground border-t border-border pt-4">
+                  {t("accuracyConfirmation")}
+                </p>
 
                 <div className="flex justify-between pt-4 border-t border-border">
                   <Button type="button" variant="outline" onClick={() => setActiveSection("qualifying")}>

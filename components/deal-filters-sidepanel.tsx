@@ -113,7 +113,10 @@ const DEAL_COL_TO_FLAG_KEY: Record<string, OthersFlagKey> = {
   well_water: 'excludeWellWater',
   septic: 'excludeSeptic',
   reverse_mortgage: 'excludeReverseMortgage',
-  married_or_common_law: 'excludeMarriedOrCommonLaw',
+  // Client 2026-07-25 (B-21): "We don't need this as a filter - please remove". Dropped from the
+  // OTHERS map only — married_or_common_law stays in DEAL_INFO_FLAG_TABLE so the deal detail keeps
+  // SHOWING it, and saved_filters.exclude_married_or_common_law stays in the schema so any filter a
+  // lender already saved with it set keeps behaving as they set it.
   spouse_not_on_application: 'excludeSpouseNotOnApplication',
   transunion_being_used: 'excludeTransunion',
 }
@@ -142,8 +145,14 @@ export function DealFiltersSidepanel({
   const patch = <K extends keyof FilterCriteria>(k: K, v: FilterCriteria[K]) =>
     setDraft((d) => ({ ...d, [k]: v }))
 
+  // Only flags that DEAL_COL_TO_FLAG_KEY maps to a filter field are offered here. A flag can be shown
+  // on a deal without being filterable — married_or_common_law is exactly that since B-21 — and without
+  // this guard it would still render a checkbox that silently does nothing.
   const othersFlags = useMemo(
-    () => [...enums.DEAL_INFO_FLAGS, ...enums.PROPERTY_FLAGS] as [string, string][],
+    () =>
+      ([...enums.DEAL_INFO_FLAGS, ...enums.PROPERTY_FLAGS] as [string, string][]).filter(
+        ([dealCol]) => dealCol in DEAL_COL_TO_FLAG_KEY,
+      ),
     [enums],
   )
 
@@ -210,8 +219,6 @@ export function DealFiltersSidepanel({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <EnumField label={t('fOccupancy')} anyLabel={anyLabel} options={enums.OCCUPANCY_OPTIONS}
                 value={draft.occupancy} onChange={(v) => patch('occupancy', v)} />
-              <EnumField label={t('fDwelling')} anyLabel={anyLabel} options={enums.DWELLING_TYPE_OPTIONS}
-                value={draft.dwellingType} onChange={(v) => patch('dwellingType', v)} />
             </div>
 
             <RangeField label={t('fAmortization')} min={draft.amortizationMin} max={draft.amortizationMax}
@@ -285,6 +292,12 @@ export function DealFiltersSidepanel({
               onChange={(v) => patch('squareFootageMin', v)} placeholder={t('min')} />
             <NumberField label={t('fAcres')} value={draft.acresMax}
               onChange={(v) => patch('acresMax', v)} placeholder={t('max')} />
+
+            {/* A-1 (2026-07-23): dwelling type moved from a single-value include to exclusion
+                checkboxes — "We need to be able to exclude certain types." */}
+            <SectionTitle hint={t('fDwellingHint')}>{t('fDwelling')}</SectionTitle>
+            <ExcludeCheckboxGrid options={enums.DWELLING_TYPE_OPTIONS} excluded={draft.dwellingTypesExcluded}
+              onChange={(v) => patch('dwellingTypesExcluded', v)} />
 
             <SectionTitle hint={t('fIncomeTypeHint')}>{t('fIncomeType')}</SectionTitle>
             <ExcludeCheckboxGrid options={enums.INCOME_TYPE_OPTIONS} excluded={draft.incomeTypesExcluded}

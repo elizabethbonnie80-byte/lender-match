@@ -69,12 +69,14 @@ type PendingInvoice = LenderInvoiceItem
 type PaidInvoice = LenderInvoiceItem
 type CancelledInvoice = LenderInvoiceItem
 
+// Client 2026-07-25 (B-27): "add 2 decimal points so it doesn't round up. This should say $187.50".
+// The DB already stores the cents (accept_offer does round(..., 2)) — only the display was truncating.
 function calcFee(loanAmount: number, bps: number) {
-  return Math.round((loanAmount * bps) / 10000)
+  return Math.round((loanAmount * bps) / 100) / 100
 }
 
 function fmtMoney(n: number, locale: string) {
-  return n.toLocaleString(locale, { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })
+  return n.toLocaleString(locale, { style: 'currency', currency: 'CAD', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function fmtDay(d: string, locale: string) {
@@ -338,7 +340,7 @@ export default function InvoicesPage() {
         {loadError && <p className="text-sm text-destructive">{t('loadErrorPrefix', { error: loadError })}</p>}
 
         {/* Summary cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div className="bg-card border border-border rounded-lg px-4 py-4 flex items-center gap-3">
             <div className="bg-yellow-100 rounded-lg p-2 shrink-0">
               <Clock className="h-5 w-5 text-yellow-600" />
@@ -346,15 +348,6 @@ export default function InvoicesPage() {
             <div>
               <p className="text-xs text-muted-foreground">{t('cardPending')}</p>
               <p className="text-lg font-bold text-foreground">{pending.length}</p>
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg px-4 py-4 flex items-center gap-3">
-            <div className="bg-primary/10 rounded-lg p-2 shrink-0">
-              <DollarSign className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t('cardAmountDue')}</p>
-              <p className="text-lg font-bold text-foreground">{fmt(pendingTotal)}</p>
             </div>
           </div>
           <div className="bg-card border border-border rounded-lg px-4 py-4 flex items-center gap-3">
@@ -366,15 +359,6 @@ export default function InvoicesPage() {
               <p className={`text-lg font-bold ${overdueCount > 0 ? 'text-red-600' : 'text-foreground'}`}>
                 {overdueCount}
               </p>
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg px-4 py-4 flex items-center gap-3">
-            <div className="bg-green-100 rounded-lg p-2 shrink-0">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t('cardPaid')}</p>
-              <p className="text-lg font-bold text-green-700">{paid.length}</p>
             </div>
           </div>
         </div>

@@ -36,12 +36,16 @@ async function main() {
   const { data: { user: lenderUser } } = await lender.auth.getUser()
   const { data: bp } = await broker.from("profiles").select("brokerage_id").eq("id", brokerUser.id).single()
 
-  // Platform bps by term (pure platform_bps_for): ≤3y → 3, =4y → 4, else/open → 5 (OQ#30 parity).
+  // Platform bps by term (pure platform_bps_for): ≤3y → 3, =4y → 4, else → 5.
+  // OPEN is 3, not 5: it has no product_years so it used to fall through to the else branch (Bubble
+  // parity, recorded as OQ#30 "pending"). The client settled it on 2026-07-25 (B-22) — an open term is
+  // billed at the ≤3-year rate. Migration 55. This assertion is the guard against it silently
+  // reverting, since the value feeds real invoice amounts.
   // The 3-bps branch is also proven end-to-end below (real accept_offer → invoice.platform_bps).
   for (const [product, expected] of [
-    ["3_year_fixed", 3], ["2_year_fixed", 3], ["6_month_convertible", 3],
+    ["3_year_fixed", 3], ["2_year_fixed", 3], ["6_month_convertible", 3], ["open", 3],
     ["4_year_fixed", 4],
-    ["5_year_fixed", 5], ["7_year_fixed", 5], ["10_year_fixed", 5], ["open", 5],
+    ["5_year_fixed", 5], ["7_year_fixed", 5], ["10_year_fixed", 5],
   ]) {
     const { data: b } = await lender.rpc("platform_bps_for", { p: product })
     check(`platform_bps(${product}) = ${expected}`, b === expected, String(b))

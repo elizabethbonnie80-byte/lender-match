@@ -222,6 +222,11 @@ export function MakeOfferDialog({
           {isEdit && <DialogDescription>{t("editDescription")}</DialogDescription>}
         </DialogHeader>
 
+        {/* Client-supplied disclaimer shown when a lender sends an offer (2026-07-25, B-37) */}
+        {!isEdit && (
+          <p className="text-xs leading-relaxed text-muted-foreground">{t("offerDisclaimer")}</p>
+        )}
+
         {/* Round 3 Phase 3: nothing is different for a LENDER bidding on a prequal (client 2026-07-27
             — "There is nothing different for a lender when they're sending an offer on a prequal").
             The pre-qualification disclaimer is shown to the BROKER when they view the offers, on
