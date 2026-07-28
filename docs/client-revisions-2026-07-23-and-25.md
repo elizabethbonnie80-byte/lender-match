@@ -418,7 +418,11 @@ These change money or gating and need care:
 
 ## Status — updated 2026-07-27
 
-**Everything bounded is implemented and verified locally on `dev`. Nothing is deployed yet.**
+**Everything bounded is implemented and LIVE on BOTH staging and prod (2026-07-27, `a32689e`).**
+Migrations 53–56 applied to each (56/56, advisors 0 ERROR). Verified on staging in the browser: the
+four feed RPCs still render (migration 53 drops and recreates them), the newly surfaced fields show
+real values, and an Open-term offer deducts **3 bps** — 50 → 47 — matching the client's 25 July
+instruction and the client-side `platformBpsFor` mirror.
 
 | | Count |
 | --- | --- |

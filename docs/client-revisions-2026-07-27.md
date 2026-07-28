@@ -143,4 +143,8 @@ proven by a test, because the migration applies cleanly either way.
 
 ## Status
 
-Implemented and verified locally on `dev`. **Not yet deployed** to staging or prod.
+**DONE and live on BOTH staging and prod (2026-07-27, `a32689e`).** Migration 52 applied to each
+(56/56, advisors 0 ERROR), with the reworked `purge-documents` edge function deployed alongside it —
+the function now calls `documents_to_purge()`, so shipping it against an unmigrated DB would break the
+daily purge. Verified on each environment that `documents_to_purge()` carries no PUBLIC grant
+(`proacl = {postgres=X/postgres,service_role=X/postgres}`) — see Security invariants #6.

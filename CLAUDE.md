@@ -113,9 +113,10 @@ active work queue.**
 1. **2026-07-20** (12 items) → [`docs/client-revisions-2026-07-20.md`](./docs/client-revisions-2026-07-20.md)
    — **DONE and live on staging + prod.**
 2. **2026-07-27** (2 answers) → [`docs/client-revisions-2026-07-27.md`](./docs/client-revisions-2026-07-27.md)
-   — prequal lender-only expiry + document retention (migration 52). **Done locally, NOT deployed.**
+   — prequal lender-only expiry + document retention (migration 52). **DONE and live on staging + prod
+   (2026-07-27).**
 3. **2026-07-23 + 2026-07-25** (~71 items) → [`docs/client-revisions-2026-07-23-and-25.md`](./docs/client-revisions-2026-07-23-and-25.md)
-   — **all 54 bounded items are DONE locally (migrations 53–56), NOT deployed.** 3 more turned out to
+   — **all 54 bounded items are DONE and live on staging + prod (2026-07-27, migrations 53–56).** 3 more turned out to
    need no code (A-13/A-17/B-1 — see the doc). 8 await client answers, 5 are out of Round 3 scope and
    need quoting.
 
@@ -390,10 +391,11 @@ source of truth for visibility. (b) **document retention** moved into `documents
 `closing_date < cutoff` predicate never matched it and its PDFs would have been kept forever], with a hard
 240-day-after-upload ceiling. ⚠️ **`revoke execute … from public`** is load-bearing there — see Security
 invariants #6).
-**Hosted status: migrations 36–51 are applied to BOTH staging AND prod**
-(36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; **45–51 on 2026-07-22** — 51/51 on each,
-advisors 0 ERROR, browser-QA'd). **52 is LOCAL ONLY so far** (with the reworked `purge-documents` edge fn —
-both need deploying together, since the function now calls `documents_to_purge()`). That deploy also shipped `match-document-name` + `purge-documents` (new)
+**Hosted status: migrations 36–56 are applied to BOTH staging AND prod**
+(36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; **52–56 on 2026-07-27**
+— 56/56 on each, advisors 0 ERROR, browser-QA'd). The 52–56 deploy shipped the reworked `purge-documents`
+edge fn alongside them, because the function now calls `documents_to_purge()` and would fail against an
+unmigrated DB. The earlier 45–51 deploy shipped `match-document-name` + `purge-documents` (new)
 and redeployed `notify-email` + `invoice-pdf`; **both** environments now have the `APP_URL` secret (the
 auto-offer digest's edit link) and the `purge_documents_url` Vault secret (the retention cron reads
 GUC → Vault like the email trigger, so it no-ops until that exists).
@@ -524,7 +526,7 @@ silently]; **Edit Offer** on Submitted Offers for pending offers [shared `MakeOf
 `ll_last_offer`, comments always cleared]; the Round 3 Create Deal fields replicated in the **Filters
 sidepanel** [credit-issue/down-payment exclusions, 4 new "Others" flags, liquid/total asset minimums, max
 door titles, "no exceptions only"] — a chip and the panel still share `saved_filter_matches`) · **Round 3
-Phase 3, items 1–3** (LOCAL ONLY so far — see `docs/round3-progress.md`): **deal documents** (consent PDF +
+Phase 3, items 1–3** (live on staging + prod since 2026-07-22 — see `docs/round3-progress.md`): **deal documents** (consent PDF +
 photo ID uploaded on the Create Deal Property step via `lib/queries/deal-documents.ts` → private
 `deal-documents` bucket; Submit gated on both, 120-day retention purge); **AI name-match** (the
 `match-document-name` edge fn reads the document name with Claude vision and badges the doc
