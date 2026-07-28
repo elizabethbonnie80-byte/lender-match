@@ -21,7 +21,7 @@ import {
   type DealOffer,
   type AcceptedLender,
 } from '@/lib/queries/offers'
-import type { LenderDealListItem } from '@/lib/queries/deals'
+import { platformBpsFor, type LenderDealListItem } from '@/lib/queries/deals'
 import { offerStatusStyle } from '@/lib/status-styles'
 import { getPendingSurveyForDeal, type PendingSurvey } from '@/lib/queries/surveys'
 import { SurveyDialog } from '@/components/survey-dialog'
@@ -59,6 +59,11 @@ export default function DealDetailPage() {
   const { LABELS, DEAL_STATUS_LABEL } = useEnums()
   const dateLocale = useLocale() === 'fr' ? 'fr-CA' : 'en-US'
   const fmt = (d: string | null) => fmtDate(d, dateLocale)
+
+  // Client 2026-07-25 (B-24): "it's showing the full commission to the broker, not the commission they
+  // will receive … the lender offered 110 but the platform charged 5 so 105 should be showing."
+  // Display only — the stored offer stays gross because the invoice is computed from it.
+  const netBps = (o: DealOffer) => o.commissionBps - platformBpsFor(o.mortgageProduct)
 
   const [deal, setDeal] = useState<BrokerDealDetail | null>(null)
   const [fullDeal, setFullDeal] = useState<LenderDealListItem | null>(null)
@@ -277,7 +282,7 @@ export default function DealDetailPage() {
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('commission')}</p>
-                          <p className="text-xl font-bold text-foreground">{t('bps', { n: acceptedOffer.commissionBps })}</p>
+                          <p className="text-xl font-bold text-foreground">{t('bps', { n: netBps(acceptedOffer) })}</p>
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('processing')}</p>
@@ -382,7 +387,7 @@ export default function DealDetailPage() {
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('commission')}</p>
-                                <p className="font-semibold text-foreground">{t('bps', { n: offer.commissionBps })}</p>
+                                <p className="font-semibold text-foreground">{t('bps', { n: netBps(offer) })}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('processing')}</p>

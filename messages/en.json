@@ -488,7 +488,7 @@
     "revealing": "Revealing…",
     "rate": "Rate",
     "rateLock": "Rate Lock",
-    "commission": "Commission",
+    "commission": "Commission (net to you)",
     "processing": "Processing",
     "lenderFeePct": "Lender Fee %",
     "days": "{n}d",

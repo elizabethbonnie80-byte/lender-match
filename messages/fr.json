@@ -488,7 +488,7 @@
     "revealing": "Dévoilement…",
     "rate": "Taux",
     "rateLock": "Blocage du taux",
-    "commission": "Commission",
+    "commission": "Commission (net pour vous)",
     "processing": "Traitement",
     "lenderFeePct": "% de frais du prêteur",
     "days": "{n} j",

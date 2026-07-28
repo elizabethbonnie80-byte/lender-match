@@ -115,8 +115,9 @@ active work queue.**
 2. **2026-07-27** (2 answers) → [`docs/client-revisions-2026-07-27.md`](./docs/client-revisions-2026-07-27.md)
    — prequal lender-only expiry + document retention (migration 52). **Done locally, NOT deployed.**
 3. **2026-07-23 + 2026-07-25** (~71 items) → [`docs/client-revisions-2026-07-23-and-25.md`](./docs/client-revisions-2026-07-23-and-25.md)
-   — **the big one, nothing implemented yet.** Batch A (lender side, 30) executes first, then Batch B
-   (41, spanning lender/broker/admin/Create Deal).
+   — **all 54 bounded items are DONE locally (migrations 53–56), NOT deployed.** 3 more turned out to
+   need no code (A-13/A-17/B-1 — see the doc). 8 await client answers, 5 are out of Round 3 scope and
+   need quoting.
 
 ⚠️ **Two traps recorded in that doc, worth knowing before you open it:**
 - **`docs/Revisions_23_Jul_2026.pdf` is NOT a reliable source.** It is a Gmail print whose long lines are
@@ -365,6 +366,18 @@ bucket; ACTIVE rows are **anon-readable** because the sign-in page is unauthenti
 `farm` and `recreational` are **retired, NOT dropped** — Postgres can't remove an enum value in place and
 a historical deal could still carry one, so they keep their labels in `lib/enums.ts` and are filtered out
 of every picker by `RETIRED_DWELLING_TYPES`; same "retire, never delete" rule as brokerages/institutions) ·
+`53_lender_visible_deal_fields` (**28 `deals` columns that never reached the four feed RPCs** — occupancy,
+the property characteristics, the program/product flags, assets, door titles, TransUnion and three Round 3
+borrower flags. Migration 29 built the "full deal record" shape and missed them, and everything added later
+missed it too. Occupancy was the sharpest: a saved-filter AND scored match criterion the lender could not
+read. ⚠️ `broker_id`/`brokerage_id` are deliberately excluded — `brokerages` is anon-readable, so a lender
+holding `brokerage_id` could de-anonymize the deal) · `54_null_safe_max_filters` (**every MAX criterion is
+now null-tolerant**: `NULL <= 5` is NULL, not TRUE, so a max filter silently discarded every deal whose
+field the broker left empty. All 9 maximums fixed; MIN criteria deliberately untouched) ·
+`55_open_term_three_bps` (**settles OQ#30**: an OPEN term deducts 3 bps, not 5 — it has no `product_years`
+so it fell through to `else 5`. ⚠️ changes invoice amounts; the client-side preview mirror in
+`platformBpsFor` must stay in step) · `56_dwelling_type_exclusions` (dwelling type becomes an EXCLUSION
+array like income/residency; the old single-value column is kept so pre-existing saved filters keep working) ·
 `52_prequal_lender_window_and_doc_retention` (**client answers 2026-07-27** — the two questions Phase 3
 left open, see `docs/client-revisions-2026-07-27.md`: (a) **a prequal expires for LENDERS only** — it never
 reaches status `expired` (that is broker-visible, and archiving would bury it), so the 15-day cutoff is a
