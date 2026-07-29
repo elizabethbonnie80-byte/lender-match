@@ -5,6 +5,7 @@ import { getLocale } from '@/lib/i18n/server'
 import { getMessages } from '@/lib/i18n/messages'
 import { I18nProvider } from '@/components/i18n-provider'
 import { SiteFooter } from '@/components/site-footer'
+import { LegalReagreementGate } from '@/components/legal-reagreement-gate'
 import { BRAND } from '@/lib/brand'
 import './globals.css'
 
@@ -42,6 +43,8 @@ export default async function RootLayout({
         <I18nProvider locale={locale} messages={messages}>
           <div className="flex-1">{children}</div>
           <SiteFooter className="mt-0" />
+          {/* A-3: inert unless the signed-in user is behind on a published legal document. */}
+          <LegalReagreementGate />
         </I18nProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

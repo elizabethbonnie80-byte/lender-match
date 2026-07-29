@@ -42,6 +42,8 @@ const SMOKES = [
   "smoke-logos.mjs",
   "smoke-surveys.mjs",
   "smoke-penalty.mjs",
+  "smoke-invoice-archive.mjs",
+  "smoke-legal-reagreement.mjs",
   "smoke-password-reset.mjs",
   "smoke-invoice-pdf.mjs", // needs `supabase functions serve`
 ]

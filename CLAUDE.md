@@ -120,8 +120,10 @@ active work queue.**
    need no code (A-13/A-17/B-1 — see the doc). The 8 open questions and the 5 "out of scope" items were
    answered on 2026-07-28 — see below.
 4. **2026-07-28** (the client's answers to those 13) → [`docs/client-revisions-2026-07-28.md`](./docs/client-revisions-2026-07-28.md)
-   — **8 items implemented locally (migrations 57–58), NOT deployed.** Read that doc before touching the
-   footer, the offer turn-time labels, auto-offers, the closing survey or the anti-contact threshold.
+   — **ALL 10 items implemented locally (migrations 57–61), NOT deployed. Nothing is blocked on the
+   client any more.** Read that doc before touching the footer, the offer turn-time labels, auto-offers,
+   the closing survey, the anti-contact threshold, the rating penalty, invoice retention or the legal
+   documents.
    ⚠️ It also settles two disputes in the client's favour with measured evidence: the **AI name detector
    was gated by a 20-character floor inherited from Bubble** (so bare names were never scanned — the
    client's "it only catches 'my name is'" was the symptom, not the cause), and the **turn-time penalty
@@ -407,8 +409,21 @@ identifying each other and there is no counterparty here, same reasoning as `not
 `58_auto_offer_min_closing_days` (**B-33**: `auto_offers.min_closing_days`, default 30, per lender; gates
 `send_auto_offers`. ⚠️ A deal with **no** closing date — a prequal — is deliberately NOT constrained: it
 cannot be "too soon", and dropping nulls is the exact bug migration 54 had to undo. Lives on `auto_offers`
-rather than `saved_filters` because it is a property of the standing offer, not of how the lender browses).
-**Hosted status: migrations 36–56 are applied to BOTH staging AND prod** (57–58 are LOCAL ONLY)
+rather than `saved_filters` because it is a property of the standing offer, not of how the lender browses) ·
+`59_penalty_on_turn_times` (**B-4**: the rating penalty now keys off the two turn-time survey answers —
+4+ "no" on EITHER within the lender's last **10** rated surveys — replacing `avg(satisfaction) < 3 over 5`.
+The EFFECT is untouched [`lender_can_see_deal` + the admin-configurable 45d/14d windows]. ⚠️ The two counts
+are INDEPENDENT: 3+3 does not penalize. The window counts only surveys that HAVE turn-time answers, since a
+not-closed survey nulls them) · `60_invoice_archive_retention` (**A-25**: `invoices.archived_at`; paid →
+archived at 1 year → deleted at 7 [`invoices_to_purge()` + the new `purge-invoices` edge fn, because the
+PDF bytes live in Storage]. Archiving is a FLAG, not a move — `/admin/invoices` filters Current/Archived/Both.
+⚠️ The 1-year archive point is OUR reading of an ambiguous sentence; both thresholds are single literals.
+`invoices_to_purge()` is `revoke … from public` — invariant #6) · `61_legal_reagreement` (**A-3**:
+append-only `legal_acceptances` keyed to the document ROW [version strings are admin-typed and can collide]
++ `pending_legal_documents()`/`accept_published_legal_documents()`; NO update/delete policy for anyone.
+`handle_new_user` also logs the sign-up acceptance so a new user is never asked to re-accept what they just
+ticked, and the migration backfills existing users timestamped from `profiles.created_at`, not `now()`).
+**Hosted status: migrations 36–56 are applied to BOTH staging AND prod** (57–61 are LOCAL ONLY)
 (36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; **52–56 on 2026-07-27**
 — 56/56 on each, advisors 0 ERROR, browser-QA'd). The 52–56 deploy shipped the reworked `purge-documents`
 edge fn alongside them, because the function now calls `documents_to_purge()` and would fail against an

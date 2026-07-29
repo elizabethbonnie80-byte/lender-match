@@ -932,6 +932,19 @@
     "ctaSubtitle": "Our support team is available Monday to Friday 9:00 AM - 5:00 PM MST.",
     "ctaButton": "Contact Support"
   },
+  "legalGate": {
+    "title": "Please review our updated policies",
+    "intro": "{brand} has published a new version of the documents below. Please read them and confirm to continue.",
+    "docTerms": "Terms of Service",
+    "docPrivacy": "Privacy Policy",
+    "versionLabel": "version {version}",
+    "read": "Read",
+    "confirmLabel": "I have read and agree to the documents listed above.",
+    "accept": "Agree and continue",
+    "submitting": "Saving…",
+    "signOut": "Sign out instead",
+    "errorGeneric": "Could not record your agreement. Please try again."
+  },
   "footer": {
     "rights": "©{holder} {year}. Patent Pending.",
     "privacy": "Privacy Policy",
@@ -1501,6 +1514,9 @@
     "docCheckMismatch": "Mismatch",
     "searchDeals": "Search by deal #, broker, or brokerage…",
     "allStatuses": "All statuses",
+    "invCurrentOnly": "Current only",
+    "invArchivedOnly": "Archived only",
+    "invIncludeArchived": "Current + archived",
     "allProvinces": "All provinces",
     "dealsLoading": "Loading deals…",
     "dealsLoadErr": "Could not load deals",

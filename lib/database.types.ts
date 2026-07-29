@@ -875,6 +875,7 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
+          archived_at: string | null
           broker_name: string
           cancelled_at: string | null
           cancelled_reason: string | null
@@ -899,6 +900,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          archived_at?: string | null
           broker_name: string
           cancelled_at?: string | null
           cancelled_reason?: string | null
@@ -923,6 +925,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          archived_at?: string | null
           broker_name?: string
           cancelled_at?: string | null
           cancelled_reason?: string | null
@@ -965,6 +968,48 @@ export type Database = {
             columns: ["offer_id"]
             isOneToOne: false
             referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_acceptances: {
+        Row: {
+          accepted_at: string
+          doc_type: Database["public"]["Enums"]["legal_doc_type"]
+          doc_version: string
+          id: string
+          legal_document_id: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          doc_type: Database["public"]["Enums"]["legal_doc_type"]
+          doc_version: string
+          id?: string
+          legal_document_id: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          doc_type?: Database["public"]["Enums"]["legal_doc_type"]
+          doc_version?: string
+          id?: string
+          legal_document_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_acceptances_legal_document_id_fkey"
+            columns: ["legal_document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_acceptances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1790,6 +1835,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      accept_published_legal_documents: { Args: never; Returns: number }
       accepted_lender_for_deal: {
         Args: { p_deal_id: string }
         Returns: {
@@ -1821,6 +1867,7 @@ export type Database = {
         Args: { p_invoice_id: string; p_reason: string }
         Returns: {
           amount: number
+          archived_at: string | null
           broker_name: string
           cancelled_at: string | null
           cancelled_reason: string | null
@@ -2032,11 +2079,20 @@ export type Database = {
       i_am_broker_admin: { Args: never; Returns: boolean }
       i_am_penalized_lender: { Args: never; Returns: boolean }
       i_offered_on: { Args: { p_deal_id: string }; Returns: boolean }
+      invoices_to_purge: {
+        Args: never
+        Returns: {
+          id: string
+          pdf_path: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       job_apply_rating_penalties: { Args: never; Returns: number }
       job_archive_expired_deals: { Args: never; Returns: number }
+      job_archive_paid_invoices: { Args: never; Returns: number }
       job_auto_offer_digest: { Args: never; Returns: undefined }
       job_expire_old_deals: { Args: never; Returns: number }
+      job_purge_archived_invoices: { Args: never; Returns: undefined }
       job_purge_expired_documents: { Args: never; Returns: undefined }
       job_reset_monthly_switches: { Args: never; Returns: number }
       job_trigger_closing_surveys: { Args: never; Returns: number }
@@ -2090,6 +2146,7 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: {
           amount: number
+          archived_at: string | null
           broker_name: string
           cancelled_at: string | null
           cancelled_reason: string | null
@@ -2521,6 +2578,14 @@ export type Database = {
           well_water: boolean
         }[]
       }
+      pending_legal_documents: {
+        Args: never
+        Returns: {
+          doc_type: Database["public"]["Enums"]["legal_doc_type"]
+          id: string
+          version: string
+        }[]
+      }
       platform_bps_for: {
         Args: { p: Database["public"]["Enums"]["mortgage_product"] }
         Returns: number
@@ -2702,6 +2767,7 @@ export type Database = {
         }
         Returns: {
           amount: number
+          archived_at: string | null
           broker_name: string
           cancelled_at: string | null
           cancelled_reason: string | null

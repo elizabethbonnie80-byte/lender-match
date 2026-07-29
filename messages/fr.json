@@ -932,6 +932,19 @@
     "ctaSubtitle": "Notre équipe de soutien est disponible du lundi au vendredi, de 9 h à 17 h (HNR).",
     "ctaButton": "Contacter le soutien"
   },
+  "legalGate": {
+    "title": "Veuillez consulter nos politiques mises à jour",
+    "intro": "{brand} a publié une nouvelle version des documents ci-dessous. Veuillez les lire et confirmer pour continuer.",
+    "docTerms": "Conditions d’utilisation",
+    "docPrivacy": "Politique de confidentialité",
+    "versionLabel": "version {version}",
+    "read": "Lire",
+    "confirmLabel": "J’ai lu et j’accepte les documents ci-dessus.",
+    "accept": "Accepter et continuer",
+    "submitting": "Enregistrement…",
+    "signOut": "Se déconnecter plutôt",
+    "errorGeneric": "Impossible d’enregistrer votre acceptation. Veuillez réessayer."
+  },
   "footer": {
     "rights": "©{holder} {year}. Brevet en instance.",
     "privacy": "Politique de confidentialité",
@@ -1501,6 +1514,9 @@
     "docCheckMismatch": "Non concordant",
     "searchDeals": "Rechercher par n° de dossier, courtier ou cabinet…",
     "allStatuses": "Tous les statuts",
+    "invCurrentOnly": "Courantes seulement",
+    "invArchivedOnly": "Archivées seulement",
+    "invIncludeArchived": "Courantes + archivées",
     "allProvinces": "Toutes les provinces",
     "dealsLoading": "Chargement des dossiers…",
     "dealsLoadErr": "Impossible de charger les dossiers",

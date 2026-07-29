@@ -161,26 +161,81 @@ change, and **OQ#18 is not reopened** after all — the previous doc had flagged
 
 ---
 
-## 5. Deferred to the next pass
+## 5. The three follow-up answers — all now implemented
 
-**Blocked on her answers:**
+She answered the three open questions the same day. Verbatim, with what each produced:
 
-1. **B-4 threshold.** `surveys.commitment_on_time` and `doc_review_on_time` are **yes/no booleans, not
-   scores**, so "low ratings for turn time" has no numeric meaning yet. Need the exact rule — e.g.
-   *penalise when 2 or more of the last 5 completed surveys answered "no" to either turn-time question.*
-   Everything else for B-4 is ready: the 45d/14d effect and the admin lift/apply screen already exist, so
-   this is a rewrite of one CTE in `job_apply_rating_penalties`.
-2. **A-25 semantics.** She said invoices "can be deleted after 1 calendar year". Confirm **delete vs
-   archive**: deleting is irreversible, and Canadian record-keeping practice retains accounting records
-   longer than a year. If she wants them merely out of the way, hiding them from the default view is
-   reversible and cheaper. Not a legal opinion — just which behaviour she means.
-3. **B-39 placement.** Inline banner (live, and now carrying her final text) or pop-up (asked for on
-   07-25)? She supplied only copy when asked.
+### B-4 threshold
 
-**Not blocked, deliberately deferred:**
+> "Yes, please key the penalty off the turn-time answers. So please include both of the 2 turn-time
+> questions, and if either one of those two questions gets 4 no's within the last 10 surveys, the penalty
+> would apply."
 
-4. **A-3 — TOS/Privacy re-agreement.** In scope (§2), but scheduled with the three above so it lands in
-   one pass rather than on its own.
+Migration **59** rewrites `job_apply_rating_penalties` accordingly. The 45d/14d effect and the admin
+lift/apply screen were already built, so only the trigger moved. Two things her wording does not settle,
+decided and commented in the migration:
+
+- **Which surveys count as "the last 10".** The turn-time questions only exist on a survey where the deal
+  closed with the lender, so a not-closed survey carries no signal — counting it would let a lender dilute
+  the sample. The window is the last 10 surveys that HAVE turn-time answers.
+- **No minimum sample.** The old rule needed one (an average over 1 survey is noise); an absolute count of
+  4 cannot trigger on fewer than 4, so the floor is implicit.
+
+The two counts are **independent**: 3 late commitments + 3 late doc reviews is 6 bad answers and does NOT
+penalize, because neither question reaches 4. That is what "either one of those two questions" means, and
+the smoke asserts it.
+
+### A-25 retention
+
+> "If we can archive the invoices without causing any issues with the website … then we would like to
+> archive the paid invoices for 7yrs if possible. After that, they can be deleted. Otherwise we will need
+> to find a separate method … Will it work to archive them for this long? How would we access them?"
+
+Migration **60** + the `purge-invoices` edge function:
+
+```
+paid  ──1 year──▶  archived  ──7 years from paid──▶  deleted (row + Storage PDF)
+```
+
+⚠️ **Ambiguity resolved conservatively and flagged back to her.** "Archive the paid invoices for 7yrs"
+never says *when* an invoice enters the archive. We took 1 year (from her earlier message) rather than
+"immediately on payment", because it keeps recently paid invoices where the admin already sees them.
+Both thresholds are single literals, so switching is a one-line change.
+
+Archiving is a **flag, not a move** — no second table, nothing rewritten. `/admin/invoices` gains a
+Current / Archived / Both filter, defaulting to Current. Lenders are unaffected either way: revision
+A-24/B-28 already limited their list to Pending + Overdue.
+
+**Her storage question, measured rather than estimated:** one invoice is ~650 bytes of row plus ~15.5 KB
+of generated PDF. At 5,000 invoices a year — far above anything realistic early on — 7 years is ~24 MB of
+database and ~550 MB of Storage, and the PDFs never touch query speed because they are not in the
+database. Archived rows are excluded from the default list by an indexed predicate. So: yes, comfortably.
+
+### B-39 placement
+
+> "The pre-qualification disclaimer is fine to remain as a notice above the offers. We just want to ensure
+> the disclaimer is seen before the offers are viewed."
+
+**No code change** — that is where it already is, rendered once above the offers list. Confirmed on screen.
+
+## 5b. A-3 — TOS / Privacy re-agreement (built in this pass)
+
+Migration **61** + `components/legal-reagreement-gate.tsx`.
+
+`legal_documents` already versioned the docs; what was missing was any record of which version a user
+accepted. `legal_acceptances` is an **append-only** log keyed to the document ROW rather than the version
+string (versions are admin-typed free text and could collide). No UPDATE or DELETE policy exists for
+anyone — an editable consent record is worth nothing.
+
+- `pending_legal_documents()` → what the caller still owes; `accept_published_legal_documents()` → accept
+  all of it in one idempotent call, keeping the FIRST timestamp.
+- The prompt is a **non-dismissable** overlay (Escape and outside-click are suppressed, no close button),
+  mounted once in the root layout. Documents open in a new tab so they can actually be read, and "Sign
+  out instead" means nobody is trapped.
+- Auth routes are skipped so the modal never lands on top of an OTP screen.
+- `handle_new_user` now logs the sign-up acceptance, so a brand-new user is never asked to re-accept the
+  terms they just ticked. Migration-time backfill does the same for existing users, timestamped from the
+  profile's creation date rather than `now()`.
 
 ## 6. Out of Round 3 scope — to quote
 
@@ -189,14 +244,18 @@ change, and **OQ#18 is not reopened** after all — the previous doc had flagged
 | **B-30** | Admin-editable invoice template | The only one she agrees is new |
 
 Down from 5 to 1: B-16, B-4 and B-3 are absorbed as fixes/small changes, B-17 shrank to an admin-only
-screen, and A-3 is in scope but deferred.
+screen, and A-3 was kept in scope and built.
+
+**Nothing is now blocked on the client.** Every item from this batch is implemented.
 
 ---
 
 ## 7. What shipped in this pass
 
-Migrations **57** (`survey_comments`) and **58** (`auto_offer_min_closing_days`). 58/58 replay clean from
-scratch; gate green (0 type/lint errors, EN/FR parity 1625/1625, 19/19 unit tests, 23/23 smokes).
+Migrations **57** (`survey_comments`), **58** (`auto_offer_min_closing_days`), **59**
+(`penalty_on_turn_times`), **60** (`invoice_archive_retention`) and **61** (`legal_reagreement`), plus the
+new `purge-invoices` edge function. 61/61 replay clean from scratch; gate green (0 type/lint errors, EN/FR
+parity, 19/19 unit tests, **25/25 smokes** — two of them new).
 
 | ID | Change | Verified |
 |---|---|---|
@@ -210,6 +269,10 @@ scratch; gate green (0 type/lint errors, EN/FR parity 1625/1625, 19/19 unit test
 | **B-17** | New admin-only `/admin/documents`: every uploaded consent form and photo ID, with the borrower name, the AI name-check badge, search, type filter, CSV, and a signed-URL **View**. No migration — `deal_documents` RLS and the bucket policies already granted admin and denied lenders | On screen with all three badge states; asserted the signed URL serves the PDF (HTTP 200, `application/pdf`) and that a lender reads **0 rows** and cannot sign a URL |
 | **B-29** | No change — see §4 | — |
 | **A-13** | Closed by her own retest | — |
+| **B-4** | Penalty keys off the two turn-time answers: 4+ "no" on EITHER within the last 10 rated surveys (migration 59) | Smoke covers both questions independently, the 3+3 case that must NOT penalize, the 10-survey window boundary, and that a not-closed survey is skipped |
+| **A-25** | Paid invoices archived 1 year after payment, deleted at 7 years (migration 60 + `purge-invoices`). Admin filter Current / Archived / Both | Smoke covers every boundary, idempotency, that pending/cancelled are never archived, and that `invoices_to_purge()` is unreachable with a broker or lender token |
+| **B-39** | No code change — already a notice above the offers | Confirmed on screen |
+| **A-3** | Non-dismissable re-agreement prompt + append-only acceptance log (migration 61) | Smoke covers publish → pending → accept → clear, per-user isolation, forgery, and that the log cannot be amended or erased; the modal verified on screen incl. Escape / outside-click |
 
 ### B-16, measured
 
@@ -227,3 +290,24 @@ So the model never needed "my name is" — it never *ran* on short text. Also ch
 **18/18 ordinary short messages still get through** (`ok`, `thanks`, `Approved`, `Toronto`, `45 bps`,
 `Not for us, sorry`, …), so lowering the floor did not turn the chat into a minefield. The floor is kept
 at 4 only to skip acknowledgements, which carry no identity.
+
+---
+
+## 8. Status
+
+| | Count |
+|---|---|
+| Implemented | 10 |
+| No code needed (B-29, A-13, B-39) | 3 |
+| Blocked on the client | **0** |
+| Out of scope, to quote (B-30) | 1 |
+
+**Not deployed yet** — held deliberately so the whole batch reaches staging and prod together rather than
+in pieces.
+
+### Two things to raise in the reply
+
+1. **The A-25 archive point** (1 year after payment, vs immediately on payment) is our reading of an
+   ambiguous sentence, not her instruction. One-line change either way.
+2. **The auto-offer prequal exemption** (B-33): a deal with no closing date is not held back by the
+   minimum. Deliberate, but she should know.

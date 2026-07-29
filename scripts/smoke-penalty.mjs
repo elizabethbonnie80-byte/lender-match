@@ -159,35 +159,78 @@ async function main() {
   check("penalty lifted: near-closing deal visible again", has(feed, NEAR))
   check("penalty lifted: near-COF deal visible again", has(feed, COF))
 
-  // --- Rating penalty COMPUTATION (job_apply_rating_penalties, OQ#25) ---
-  // Wires the surveys to the flag: avg satisfaction < 3 over the lender's last 5 COMPLETED surveys sets
-  // penalty_active; ≥ 3 clears it. Five dedicated deals + surveys with completed_at = now make these the
-  // lender's five most-recent surveys regardless of any seeded history, so the average is deterministic.
+  // --- Rating penalty COMPUTATION (job_apply_rating_penalties) ---
+  // Client 2026-07-28 (B-4), verbatim: "include both of the 2 turn-time questions, and if either one of
+  // those two questions gets 4 no's within the last 10 surveys, the penalty would apply." This replaced
+  // the original avg(satisfaction) < 3 over 5 rule (migration 59).
+  //
+  // 14 dedicated deals: the newest 10 are the window, the oldest 4 exist only to prove they fall OUT of
+  // it. completed_at is set explicitly so the ordering is deterministic against any seeded history.
+  const SURV_N = 14
   const survDeals = []
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= SURV_N; i++) {
     const { data: dRow, error: sdErr } = await admin.from("deals")
       .insert({ ...base, deal_number: `${PREFIX}SURV-${i}`, status: "confirmed", closing_date: dateIn(-5) })
       .select("id").single()
     if (sdErr) throw new Error(`survey deal ${i}: ${sdErr.message}`)
     survDeals.push(dRow.id)
   }
-  const setSurveys = (sats) => admin.from("surveys").upsert(
+
+  /**
+   * Write one survey per deal. `commitments` / `docReviews` are arrays of booleans, newest FIRST — index
+   * 0 becomes the most recent survey, so index >= 10 is outside the window the rule looks at.
+   */
+  const setTurnTimes = (commitments, docReviews) => admin.from("surveys").upsert(
     survDeals.map((id, idx) => ({
       deal_id: id, broker_id: brokerId, lender_id: lenderId, closed_with_lender: true,
-      satisfaction: sats[idx], is_completed: true, completed_at: new Date().toISOString(),
+      commitment_on_time: commitments[idx] ?? true,
+      doc_review_on_time: docReviews[idx] ?? true,
+      satisfaction: 4, // deliberately GOOD: proves the trigger no longer reads satisfaction at all
+      is_completed: true,
+      completed_at: new Date(Date.now() - idx * 3600_000).toISOString(),
     })), { onConflict: "deal_id" })
   const penaltyOf = async () =>
     (await admin.from("profiles").select("penalty_active").eq("id", lenderId).single()).data?.penalty_active
+  const nos = (count) => Array.from({ length: SURV_N }, (_, i) => i >= count) // first `count` are false
 
   await admin.from("profiles").update({ penalty_active: false }).eq("id", lenderId)
-  const { error: sErr } = await setSurveys([1, 2, 2, 3, 3]) // avg 2.2 < 3
-  check("survey insert ok", !sErr, sErr?.message)
-  await admin.rpc("job_apply_rating_penalties")
-  check("computation: avg 2.2 over 5 surveys → job SETS penalty_active", (await penaltyOf()) === true)
 
-  await setSurveys([3, 3, 3, 3, 3]) // avg exactly 3.0 → not < 3
+  // 4 late commitments in the window → penalty, even with satisfaction 4/5 throughout.
+  const { error: sErr } = await setTurnTimes(nos(4), nos(0))
+  check("turn-time survey insert ok", !sErr, sErr?.message)
   await admin.rpc("job_apply_rating_penalties")
-  check("computation boundary: avg exactly 3.0 → job CLEARS penalty_active", (await penaltyOf()) === false)
+  check("computation: 4 late commitments in the last 10 → penalty SET", (await penaltyOf()) === true)
+
+  // 3 late commitments → below the threshold.
+  await setTurnTimes(nos(3), nos(0))
+  await admin.rpc("job_apply_rating_penalties")
+  check("computation boundary: 3 late commitments → penalty CLEARED", (await penaltyOf()) === false)
+
+  // The other question triggers on its own.
+  await setTurnTimes(nos(0), nos(4))
+  await admin.rpc("job_apply_rating_penalties")
+  check("computation: 4 late doc reviews in the last 10 → penalty SET", (await penaltyOf()) === true)
+
+  // The two counts are INDEPENDENT: 3 of each is 6 late answers but neither question reaches 4. This is
+  // the case the client's wording ("either one of those two questions gets 4 no's") settles.
+  await setTurnTimes(nos(3), nos(3))
+  await admin.rpc("job_apply_rating_penalties")
+  check("computation: 3 + 3 across both questions → NOT penalized", (await penaltyOf()) === false)
+
+  // The window really is 10: put the 4 late commitments on the OLDEST four surveys (indices 10-13).
+  const oldestFourLate = Array.from({ length: SURV_N }, (_, i) => i < 10)
+  await setTurnTimes(oldestFourLate, nos(0))
+  await admin.rpc("job_apply_rating_penalties")
+  check("computation: 4 late answers OUTSIDE the last 10 → NOT penalized", (await penaltyOf()) === false)
+
+  // A not-closed survey carries no turn-time answers and must not consume a slot in the window.
+  await setTurnTimes(nos(4), nos(0))
+  await admin.from("surveys")
+    .update({ closed_with_lender: false, commitment_on_time: null, doc_review_on_time: null, satisfaction: null })
+    .eq("deal_id", survDeals[0])
+  await admin.rpc("job_apply_rating_penalties")
+  check("computation: a not-closed survey is skipped, so only 3 late remain → NOT penalized",
+    (await penaltyOf()) === false)
 
   await cleanup()
   await admin.from("profiles").update({ penalty_active: false }).eq("id", lenderId)

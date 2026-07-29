@@ -43,6 +43,8 @@ export default function AdminInvoicesPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  // Defaults to 'current': the point of archiving is that old paid invoices stop cluttering this list.
+  const [archiveFilter, setArchiveFilter] = useState('current')
 
   const STATUS_LABEL: Record<InvoiceStatus, string> = {
     pending: t('invPending'),
@@ -83,6 +85,8 @@ export default function AdminInvoicesPage() {
   }
 
   const visible = invoices.filter((i) => {
+    if (archiveFilter === 'current' && i.archivedAt) return false
+    if (archiveFilter === 'archived' && !i.archivedAt) return false
     if (statusFilter !== 'all' && i.status !== statusFilter) return false
     if (search.trim()) {
       const q = search.trim().toLowerCase()
@@ -112,6 +116,7 @@ export default function AdminInvoicesPage() {
       { header: 'Issue Date', value: (i) => i.issueDate },
       { header: 'Due Date', value: (i) => i.dueDate },
       { header: 'Paid Date', value: (i) => i.paidDate ?? '' },
+      { header: 'Archived', value: (i) => (i.archivedAt ? i.archivedAt.slice(0, 10) : '') },
     ])
 
   return (
@@ -181,6 +186,16 @@ export default function AdminInvoicesPage() {
               <SelectItem value="pending">{STATUS_LABEL.pending}</SelectItem>
               <SelectItem value="paid">{STATUS_LABEL.paid}</SelectItem>
               <SelectItem value="cancelled">{STATUS_LABEL.cancelled}</SelectItem>
+            </SelectContent>
+          </Select>
+          {/* Client 2026-07-28 (A-25): archived invoices are out of the default list but never gone —
+              this is how they get to them. */}
+          <Select value={archiveFilter} onValueChange={setArchiveFilter}>
+            <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="current">{t('invCurrentOnly')}</SelectItem>
+              <SelectItem value="archived">{t('invArchivedOnly')}</SelectItem>
+              <SelectItem value="all">{t('invIncludeArchived')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
