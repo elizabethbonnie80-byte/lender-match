@@ -114,6 +114,30 @@ async function main() {
   const { error: brokerErr } = await broker.rpc("invoices_to_purge")
   check("a broker cannot call invoices_to_purge", !!brokerErr, brokerErr?.message ?? "IT RETURNED DATA — leak")
 
+  // ── Every cron job is service-role only (migration 62) ──────────────────────
+  // Same invariant, wider blast radius: these are all SECURITY DEFINER with no internal guard, so a
+  // missing `revoke ... from public` lets any signed-in user run a scheduled maintenance action early —
+  // including the two destructive purges. Asserted here rather than in a file of its own because this is
+  // already the invariant-#6 smoke and two of the jobs belong to this feature.
+  //
+  // If a new job_* function is added, add it to this list AND to its migration's revoke.
+  const JOBS = [
+    "job_expire_old_deals", "job_archive_expired_deals", "job_trigger_closing_surveys",
+    "job_reset_monthly_switches", "job_apply_rating_penalties", "job_auto_offer_digest",
+    "job_purge_expired_documents", "job_archive_paid_invoices", "job_purge_archived_invoices",
+  ]
+  const callable = []
+  for (const job of JOBS) {
+    const { error } = await lender.rpc(job)
+    if (!error) callable.push(job)
+  }
+  check("no cron job is callable by a lender", callable.length === 0,
+    callable.length ? `CALLABLE: ${callable.join(", ")}` : `all ${JOBS.length} blocked`)
+
+  // The service role must keep them — the smokes drive several directly.
+  const { error: svcJobErr } = await svc.rpc("job_archive_paid_invoices")
+  check("the service role can still run a cron job", !svcJobErr, svcJobErr?.message)
+
   // ── The archived flag is a filter, not a disappearance ──────────────────────
   const { data: adminSees } = await (await signIn("admin@loanlink.test"))
     .from("invoices").select("id, archived_at").eq("id", old13m.id).maybeSingle()
