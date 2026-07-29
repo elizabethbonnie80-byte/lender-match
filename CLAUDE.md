@@ -120,10 +120,10 @@ active work queue.**
    need no code (A-13/A-17/B-1 — see the doc). The 8 open questions and the 5 "out of scope" items were
    answered on 2026-07-28 — see below.
 4. **2026-07-28** (the client's answers to those 13) → [`docs/client-revisions-2026-07-28.md`](./docs/client-revisions-2026-07-28.md)
-   — **ALL 10 items implemented locally (migrations 57–61), NOT deployed. Nothing is blocked on the
-   client any more.** Read that doc before touching the footer, the offer turn-time labels, auto-offers,
-   the closing survey, the anti-contact threshold, the rating penalty, invoice retention or the legal
-   documents.
+   — **ALL 10 items DONE and live on staging + prod (2026-07-29, migrations 57–62). Nothing is blocked on
+   the client; only B-30 is left to quote.** Read that doc before touching the footer, the offer turn-time
+   labels, auto-offers, the closing survey, the anti-contact threshold, the rating penalty, invoice
+   retention or the legal documents.
    ⚠️ It also settles two disputes in the client's favour with measured evidence: the **AI name detector
    was gated by a 20-character floor inherited from Bubble** (so bare names were never scanned — the
    client's "it only catches 'my name is'" was the symptom, not the cause), and the **turn-time penalty
@@ -422,10 +422,19 @@ PDF bytes live in Storage]. Archiving is a FLAG, not a move — `/admin/invoices
 append-only `legal_acceptances` keyed to the document ROW [version strings are admin-typed and can collide]
 + `pending_legal_documents()`/`accept_published_legal_documents()`; NO update/delete policy for anyone.
 `handle_new_user` also logs the sign-up acceptance so a new user is never asked to re-accept what they just
-ticked, and the migration backfills existing users timestamped from `profiles.created_at`, not `now()`).
-**Hosted status: migrations 36–56 are applied to BOTH staging AND prod** (57–61 are LOCAL ONLY)
-(36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; **52–56 on 2026-07-27**
-— 56/56 on each, advisors 0 ERROR, browser-QA'd). The 52–56 deploy shipped the reworked `purge-documents`
+ticked, and the migration backfills existing users timestamped from `profiles.created_at`, not `now()`) ·
+`62_lock_down_cron_jobs` (**security fix**: every `job_*` function was PUBLIC-executable — see Security
+invariants #6 for the full note, the audit-query trap and why `job_cache_invalidate` is exempt).
+**Hosted status: migrations 36–62 are applied to BOTH staging AND prod**
+(36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; 52–56 on 2026-07-27;
+**57–62 on 2026-07-29** — 62/62 on each, advisors 0 ERROR, browser-QA'd on staging). The 57–62 deploy also
+shipped the new `purge-invoices` edge fn + the redeployed `anti-contact` (its AI threshold changed), and
+created the `purge_invoices_url` Vault secret on both. ⚠️ **Prod has NO published `legal_documents`** (2 rows,
+neither published), so `/legal/terms` and `/legal/privacy` render "Not available yet" — which the restored
+footer now links to from every page. Two consequences: publish them from `/admin/legal`, and know that the
+first publish makes the A-3 re-agreement prompt appear for every existing user (by design). Doing it while
+prod holds one account is free; after real signups it is a broadcast.
+The 52–56 deploy shipped the reworked `purge-documents`
 edge fn alongside them, because the function now calls `documents_to_purge()` and would fail against an
 unmigrated DB. The earlier 45–51 deploy shipped `match-document-name` + `purge-documents` (new)
 and redeployed `notify-email` + `invoice-pdf`; **both** environments now have the `APP_URL` secret (the
@@ -580,10 +589,22 @@ nothing when the list is empty — managed at **`/admin/logos`**: upload/rename/
 was wired in Round 3 Phase 1 (see below). (The **notification email channel** is now wired — see the
 Wired list — pending only a verified Resend sending domain + hosted deploy config for real delivery.)
 
+· **client 2026-07-28 batch** (migrations 57–62): **`/admin/documents`** (read-only admin viewer for the
+consent PDF + photo ID — borrower name, AI name-check badge, search, type filter, CSV, signed-URL View;
+needed no migration, `deal_documents` RLS already granted admin and denied lenders) · **legal re-agreement
+gate** (`components/legal-reagreement-gate.tsx` + `lib/queries/legal-acceptance.ts` — a NON-dismissable
+overlay mounted once in the root layout, inert unless the signed-in user is behind on a published legal
+document; Escape/outside-click suppressed on purpose, docs open in a new tab, "Sign out instead" so nobody
+is trapped, auth routes skipped so it never covers an OTP screen) · **restored `SiteFooter`** ·
+**invoice archive filter** on `/admin/invoices` (Current / Archived / Both, defaulting to Current) ·
+**survey comments** (broker textarea → the existing admin Survey Report + its CSV).
+
 **Removed (client request):** the lender **Expired Deals** page + its nav link + `listExpiredDeals` (lenders
 can't act on expired deals, so the archive view was dropped — deals still expire/archive server-side via cron);
-and the shared **site footer** across the whole app + the `SiteFooter` component (part of the contact-page
-mockup / cleaner app chrome — legal docs stay reachable from the sign-up ToS links).
+and the shared **site footer** — ⚠️ **the footer is BACK** (client 2026-07-28, A-2): `SiteFooter` was
+rebuilt and is now mounted **once in `app/layout.tsx`**, not pasted per page as the deleted version was.
+`COPYRIGHT_HOLDER` changed from the founders' names to the company, and there is no "Regulatory
+Disclosures" link (it pointed at `#`). Don't re-delete it.
 
 **Edge-function secrets (local):** custom secrets (`ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `NOTIFY_FROM`,
 optional `APP_URL` — set it hosted so the daily auto-offer digest email can link to Submitted Offers)
@@ -697,6 +718,20 @@ on several sets — any data migration must map **by display label** using the t
    both roles get `permission denied`) and check `pg_proc.proacl` — a leading `=X/postgres` entry IS the
    PUBLIC grant. Most admin-only RPCs here instead gate *inside* the body with `is_admin()`, which is
    immune to this; prefer that when the caller is a user rather than the cron/service role.
+   ⚠️ **It bit the whole `job_*` family too** (migration 62, 2026-07-29): every pg_cron function is
+   `security definer` with no internal guard, and 8 of 9 were callable by any signed-in user — able to
+   expire deals, send digest notifications or dispatch the destructive purges early. Pre-existing since
+   migration 04. **A new `job_*` function must be revoked from `public` in the migration that creates it**,
+   and added to the loop in `smoke-invoice-archive` that fails if any is callable by a lender.
+   Two things worth knowing when you check this:
+   - `proacl::text like '%=X/postgres%'` is a **false positive** — it also matches `service_role=X/postgres`
+     as a substring. The PUBLIC grant is the array element that *starts* with `=`, so unnest and test
+     `acl::text like '=%'`.
+   - `job_cache_invalidate` legitimately keeps the PUBLIC grant: it returns `trigger`, and a trigger
+     function cannot be invoked as an RPC. Exclude `prorettype = 'trigger'::regtype` when auditing.
+   Also recorded: `job_reset_monthly_switches` was already safe, and NOT because of its grant — the
+   `profiles_privilege_guard` trigger refuses changes to `offer_switches_this_month` unless `is_admin()`.
+   Defence-in-depth held; it was the only thing holding.
 
 ## Core business rules (exact — regression-test against `docs/extracted/test-vectors.md`)
 
@@ -781,9 +816,13 @@ on several sets — any data migration must map **by display label** using the t
 | `archive_expired_deals` | daily 02:10 | expired 30+ days → archived |
 | `trigger_closing_surveys` | daily 08:00 | confirmed deals with closing_date ≤ today and no survey → survey + notification |
 | `reset_monthly_switches` | monthly 1st 00:01 | reset `offer_switches_this_month` |
-| `apply_rating_penalties` | weekly Mon 03:00 | recompute `penalty_active` per lender |
+| `apply_rating_penalties` | weekly Mon 03:00 | recompute `penalty_active` per lender — **4+ "no" on EITHER turn-time question across the last 10 rated surveys** (client 2026-07-28, migration 59; was avg satisfaction < 3 over 5) |
 | `purge_expired_documents` | daily 02:30 | documents past retention per `documents_to_purge()` (closing+120, or upload+120 with no closing date, ceiling upload+240) → `purge-documents` edge fn deletes bytes + rows |
 | `auto_offer_digest` | daily 07:00 | one `auto_offer_sent` notification per lender summarising the last 24 h of auto-offers (→ confirmation email w/ edit link) |
+| `archive_paid_invoices` | monthly 1st 03:00 | paid 1+ year ago → `invoices.archived_at` (client 2026-07-28, A-25). Monthly, not daily: the threshold moves in years |
+| `purge_archived_invoices` | monthly 1st 03:30 | archived + paid 7+ years ago → `purge-invoices` edge fn deletes the row **and** the Storage PDF. Needs the `purge_invoices_url` Vault secret, else it no-ops |
+
+⚠️ Every `job_*` function is revoked from `public` (migration 62) — see Security invariants #6 before adding one.
 
 ## Conventions
 
@@ -881,8 +920,10 @@ on several sets — any data migration must map **by display label** using the t
 - **Brand**: the brand name/logo/support-email/domain are centralized in **`lib/brand.ts`** (`BRAND`,
   `COPYRIGHT_HOLDER`, `SUPPORT_EMAIL`, `DOMAIN`) — NOT hard-coded and NOT in the i18n catalogs (a proper noun is
   identical per locale). Reference `BRAND` in components; for translated copy that embeds it, use a
-  `{brand}` placeholder + interpolation (see `footer.rights`). The shared `AuthHeader` uses it (the app-wide
-  `SiteFooter` was removed — client mockup).
+  `{brand}` placeholder + interpolation (see `footer.rights`). The shared `AuthHeader` and `SiteFooter` both
+  use it. ⚠️ `COPYRIGHT_HOLDER` is the **company** ("LenderMatch™ Inc.", with the ™) since client A-2 on
+  2026-07-28 — distinct from `LEGAL_ENTITY` ("LenderMatch Inc.", no ™), which the contract clause spells
+  that way. Both are correct; don't unify them.
   The **Round 3 rebrand (Loan Link → LenderMatch™) is DONE** (Phase 2, 2026-07-17): `BRAND` = "LenderMatch™"
   and `DOMAIN` = "lendermatch.ca". The client supplied the logo, so every header renders the shared
   **`BrandMark`** (`components/brand-mark.tsx` = `public/lendermatch-logo.png` node icon + the `BRAND` text —

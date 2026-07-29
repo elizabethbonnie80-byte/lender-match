@@ -302,12 +302,65 @@ at 4 only to skip acknowledgements, which carry no identity.
 | Blocked on the client | **0** |
 | Out of scope, to quote (B-30) | 1 |
 
-**Not deployed yet** — held deliberately so the whole batch reaches staging and prod together rather than
-in pieces.
+**DONE and live on BOTH staging and prod — 2026-07-29, `76fe794`, migrations 57–62.** 62/62 on each,
+advisors 0 ERROR. The deploy also shipped the new `purge-invoices` edge function, redeployed `anti-contact`
+(its AI threshold changed) and created the `purge_invoices_url` Vault secret on both projects. The client
+reply went out the same day.
 
-### Two things to raise in the reply
+### Verified on staging in the browser
+
+- **B-16** — a bare 16-character name is blocked (*"can't contain a person's name"*) against the **deployed**
+  function; a normal 36-character message still sends. Both directions, on hosted.
+- **A-9 / B-25** — broker deal-detail reads `120d / 3d / 2d`, matching the three database columns exactly;
+  no "Processing" anywhere. Offer dialog and auto-offers both say "Commitment Period".
+- **B-3** — comments box in both survey branches → submitted → stored → visible in the admin Survey Report.
+- **B-33** — "Minimum days to closing" = 30 with the prequal note; the migration's default backfilled the
+  auto-offer that already existed.
+- **A-2** — `©LenderMatch™ Inc. 2026. Patent Pending.` + the three links; the Terms link resolves.
+- **A-3** — the prompt appeared on a freshly published version, then was reverted **without accepting**, so
+  staging carries zero junk acceptance rows.
+- **B-17** — 12 of the client's **own** uploaded documents with real name-check results, including a
+  Mismatch (consent named "Susan Mah Tester.pdf", the model read "Peter Jackson"). All 12 have real bytes.
+- **A-25** — filter defaults to Current only; Archived only correctly shows `0 of 15` (nothing is a year old).
+- **B-4 on real data** — Neil Osei (TD) has 3 late commitments and **4** late doc reviews, so the new rule
+  penalizes him on the doc-review question alone: the exact "either one of those two questions" case, from
+  live survey data. `job_apply_rating_penalties()` returned **0 rows changed**, i.e. moving off the old
+  satisfaction rule flips nobody.
+
+Not checked on staging, deliberately: **B-39's new sentences** (no prequal with offers exists there —
+verified locally) and the document **View** button (opens a tab outside the driven browser; the signed-URL
+path was proven locally and the Storage bytes confirmed by query here).
+
+Nothing was verified logged-in on **prod**: it holds one account, the client's, and creating data there to
+test would cost more than the coverage is worth. Staging runs the same commit and the same 62 migrations.
+
+### ⚠️ Prod has no published legal documents
+
+Two `legal_documents` rows exist; neither is published. Everything behaves correctly, but:
+
+- `/legal/terms` and `/legal/privacy` show "Not available yet" — and the restored footer now links to both
+  from **every** page, so what used to be reachable only from the sign-up checkbox is now everywhere.
+- The A-3 backfill recorded 0 acceptances, correctly — there was nothing to accept.
+- **The first publish will show the re-agreement prompt to every existing user.** By design, and free right
+  now while prod holds one account. After real signups it becomes a broadcast.
+
+Ask them to publish both from `/admin/legal` — the content is already there, it just needs publishing.
+
+### Found during the deploy, fixed in the same pass
+
+Reading the advisors after 57–61 surfaced that **every `job_*` cron function was callable by any signed-in
+user** — `security definer`, no internal guard, never revoked from PUBLIC. 8 of 9 were reachable.
+Pre-existing since migration 04; the two invoice jobs added in 60 inherited the pattern. Migration **62**
+locks all nine, and `smoke-invoice-archive` now fails if any becomes callable again. The details — including
+the `proacl` LIKE trap and why `job_cache_invalidate` is exempt — are in CLAUDE.md Security invariants #6.
+
+### Two things flagged in the reply
 
 1. **The A-25 archive point** (1 year after payment, vs immediately on payment) is our reading of an
    ambiguous sentence, not her instruction. One-line change either way.
 2. **The auto-offer prequal exemption** (B-33): a deal with no closing date is not held back by the
    minimum. Deliberate, but she should know.
+
+We also left her an opening to change the B-4 rule: 3 late commitments + 3 late doc reviews not penalizing
+is counter-intuitive, and it is better she decides now than discovers it in production. If she asks for a
+combined total instead, that is a scope change — small, but a change.
