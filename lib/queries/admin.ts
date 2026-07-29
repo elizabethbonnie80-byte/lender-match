@@ -498,6 +498,8 @@ export type SurveyReportRow = {
   fundedOnTime: boolean | null
   satisfaction: number | null
   notClosedReason: string | null
+  /** Broker's free-text note (client 2026-07-28, B-3) — admin-only, never surfaced to the lender. */
+  comments: string | null
   completedAt: string | null
 }
 
@@ -512,7 +514,7 @@ export async function listSurveyReport(supabase: DB): Promise<SurveyReportRow[]>
   const { data, error } = await supabase
     .from("surveys")
     .select(
-      "id, closed_with_lender, commitment_on_time, doc_review_on_time, funded_on_time, satisfaction, not_closed_reason, completed_at, deals(deal_number), lender_institutions!surveys_lender_institution_id_fkey(name), broker:profiles!surveys_broker_id_fkey(first_name, last_name), lender:profiles!surveys_lender_id_fkey(first_name, last_name)",
+      "id, closed_with_lender, commitment_on_time, doc_review_on_time, funded_on_time, satisfaction, not_closed_reason, comments, completed_at, deals(deal_number), lender_institutions!surveys_lender_institution_id_fkey(name), broker:profiles!surveys_broker_id_fkey(first_name, last_name), lender:profiles!surveys_lender_id_fkey(first_name, last_name)",
     )
     .eq("is_completed", true)
     .order("completed_at", { ascending: false })
@@ -532,7 +534,63 @@ export async function listSurveyReport(supabase: DB): Promise<SurveyReportRow[]>
       fundedOnTime: s.funded_on_time,
       satisfaction: s.satisfaction,
       notClosedReason: s.not_closed_reason,
+      comments: s.comments,
       completedAt: s.completed_at,
+    }
+  })
+}
+
+// ── Deal documents (admin viewer) ──────────────────────────────────────────────
+
+/**
+ * Client 2026-07-28 (B-17): *"where can we view them in case we need to?"* → *"We don't want lenders to
+ * have access to it - just in the admin portal in case we need to check them, or pull them for a lender
+ * regarding their invoice."*
+ *
+ * Until now the documents were only visible during Create Deal, so nothing showed them after submission.
+ * No migration was needed: `deal_documents` RLS already grants owner / brokerage-admin / platform admin
+ * and never the lender, and the `deal-documents` bucket policies match. This is the read side only.
+ */
+export type AdminDealDocumentRow = {
+  id: string
+  dealId: string
+  dealNumber: string | null
+  kind: "consent" | "photo_id"
+  storagePath: string
+  fileName: string | null
+  /** Borrower name on the deal, to check the document against. Admin-readable per invariant #1. */
+  borrowerName: string | null
+  /** AI name-match result — null when the document was never checked (the check is fail-open). */
+  extractedName: string | null
+  nameMatches: boolean | null
+  nameVariance: boolean | null
+  uploadedAt: string
+}
+
+export async function listAllDealDocuments(supabase: DB): Promise<AdminDealDocumentRow[]> {
+  const { data, error } = await supabase
+    .from("deal_documents")
+    .select(
+      "id, deal_id, kind, storage_path, file_name, extracted_name, name_matches, name_variance, created_at, deals(deal_number, deal_identities(borrower_first_name, borrower_last_name))",
+    )
+    .order("created_at", { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((d) => {
+    const deal = Array.isArray(d.deals) ? d.deals[0] : d.deals
+    const ident = Array.isArray(deal?.deal_identities) ? deal?.deal_identities[0] : deal?.deal_identities
+    const borrower = ident ? `${ident.borrower_first_name ?? ""} ${ident.borrower_last_name ?? ""}`.trim() : ""
+    return {
+      id: d.id,
+      dealId: d.deal_id,
+      dealNumber: deal?.deal_number ?? null,
+      kind: d.kind as "consent" | "photo_id",
+      storagePath: d.storage_path,
+      fileName: d.file_name,
+      borrowerName: borrower || null,
+      extractedName: d.extracted_name,
+      nameMatches: d.name_matches,
+      nameVariance: d.name_variance,
+      uploadedAt: d.created_at,
     }
   })
 }

@@ -4,8 +4,9 @@
 // info. Enforcement is layered:
 //   • DB (migration 12): scan_contact_info + scan_and_log (regex) + block-before-persist triggers.
 //   • This function: orchestrates the DETERMINISTIC layer (reuses scan_and_log so the regex result and
-//     its admin_alert stay identical to the DB) and then applies the Claude second layer ONLY when the
-//     text is regex-clean AND long enough (> 20 chars) — matching the spec (OQ#24/#43).
+//     its admin_alert stay identical to the DB) and then applies the Claude second layer whenever the
+//     text is regex-clean and longer than MIN_AI_LEN (see the note there — it was 20, from Bubble,
+//     which silently exempted bare names; the client reported exactly that case on 2026-07-28).
 //
 // The frontend should call this function instead of the scan_and_log RPC once it is deployed WITH the
 // ANTHROPIC_API_KEY secret set. Until then the client calls scan_and_log directly (regex only) and the
@@ -20,7 +21,17 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const MODEL = "claude-haiku-4-5-20251001" // cheap, fast — this is a binary classification
-const MIN_AI_LEN = 20
+// Client 2026-07-28 (B-16): "the AI only catches it if it says 'My name is'" — not the real cause. The
+// model catches free-standing third-party names fine ("Please reach out to Rick McDonald about this
+// file" → blocked); what it never saw was SHORT text. This gate was 20, inherited from Bubble
+// (docs/extracted/flows.md:220), and a bare name is under it: "Rick McDonald" is 13 characters, so the
+// exact case they reported returned clean without a model call.
+//
+// Now only long enough to skip acknowledgements ("ok", "thanks", "got it", "sounds good"), which carry
+// no identity and are the only reason a floor exists at all. A name is at least a few characters, so
+// this reaches every case they asked for. The cost is one Haiku call on short messages — the model is
+// capped at 128 output tokens and the regex layer still short-circuits before it.
+const MIN_AI_LEN = 4
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",

@@ -96,17 +96,20 @@ async function main() {
     p_doc_review_on_time: false,
     p_funded_on_time: true,
     p_satisfaction: 4,
+    p_comments: "Doc review dragged on but the lender was responsive.",
   })
   check("broker submits the survey", !sErr, sErr?.message)
   const { data: done } = await svc.from("surveys").select("*").eq("id", survey.id).single()
   check("survey is completed with the answers", done?.is_completed === true && done?.satisfaction === 4 && done?.closed_with_lender === true && done?.doc_review_on_time === false && !!done?.completed_at)
+  // Client 2026-07-28 (B-3): free-text comments, admin-only.
+  check("comments are stored on the closed path", done?.comments === "Doc review dragged on but the lender was responsive.", done?.comments)
 
   // 6. It can't be submitted twice.
   const { error: dErr } = await broker.rpc("submit_survey", { p_survey_id: survey.id, p_closed_with_lender: true, p_satisfaction: 1 })
   check("a completed survey cannot be resubmitted", !!dErr, dErr ? "(blocked)" : "resubmit unexpectedly succeeded")
 
   // 7. Q0 = false path (reset, then answer "did not close"): only the reason is recorded.
-  await svc.from("surveys").update({ is_completed: false, satisfaction: null, closed_with_lender: null, completed_at: null }).eq("id", survey.id)
+  await svc.from("surveys").update({ is_completed: false, satisfaction: null, closed_with_lender: null, completed_at: null, comments: null }).eq("id", survey.id)
   const { error: nErr } = await broker.rpc("submit_survey", {
     p_survey_id: survey.id,
     p_closed_with_lender: false,
@@ -115,6 +118,15 @@ async function main() {
   check("broker submits the not-closed path", !nErr, nErr?.message)
   const { data: notClosed } = await svc.from("surveys").select("*").eq("id", survey.id).single()
   check("not-closed survey records only the reason", notClosed?.closed_with_lender === false && notClosed?.satisfaction === null && notClosed?.not_closed_reason === "Borrower went with another lender.")
+  // Omitting p_comments must leave it null, not empty string — the report renders a dash on null.
+  check("omitted comments stay null", notClosed?.comments === null, String(notClosed?.comments))
+
+  // 8. Comments are admin-readable and never lender-readable (the lender is the one being rated).
+  const { data: adminSees } = await (await clientFor("admin@loanlink.test"))
+    .from("surveys").select("comments").eq("id", survey.id).maybeSingle()
+  check("an admin can read survey comments", adminSees !== null, adminSees === null ? "no row" : "row visible")
+  const { data: lenderSees } = await lender.from("surveys").select("comments").eq("id", survey.id)
+  check("a lender cannot read the survey row", (lenderSees ?? []).length === 0, `${lenderSees?.length ?? 0} row(s)`)
 
   console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : failures + " CHECK(S) FAILED"}`)
   process.exit(failures === 0 ? 0 : 1)

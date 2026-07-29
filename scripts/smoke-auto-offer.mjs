@@ -38,13 +38,18 @@ async function main() {
   const { data: parked } = await svc.from("auto_offers")
     .update({ is_active: false }).eq("lender_id", lenderId).eq("is_active", true).select("id")
 
+  /** ISO date n days from today, for the min_closing_days gate. */
+  const daysOut = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10)
+
   /** A draft that satisfies the auto-offer gate by default (no notes, exceptions box checked). */
   async function makeDraft(overrides = {}) {
     const { data: d, error } = await broker.from("deals").insert({
       broker_id: brokerId, brokerage_id: bp.brokerage_id, status: "draft",
       loan_amount: 400000, property_value: 500000, ltv: 80,
       mortgage_product: "5_year_fixed", province: "ontario",
-      transaction_type: "prime", closing_date: "2026-12-01",
+      // Relative, not a fixed date: the min_closing_days gate (B-33) compares against current_date, so a
+      // hardcoded 2026-12-01 would start failing the happy path once that date is inside the window.
+      transaction_type: "prime", closing_date: daysOut(90),
       no_lender_exceptions_required: true,
       ...overrides,
     }).select("id").single()
@@ -157,7 +162,36 @@ async function main() {
     check("lender got one digest notification", (digest ?? []).length === 1, `${digest?.length ?? 0}`)
     check("digest names the deals it sent on", /DEAL-2026-/.test(digest?.[0]?.body ?? ""), digest?.[0]?.body)
 
-    // ── 9. RLS: an auto-offer is private to its lender ──
+    // ── 9. min_closing_days (client 2026-07-28, B-33): enough lead time before closing ──
+    // The default is 30, so assert the boundary in BOTH directions rather than trusting the fixture's
+    // closing date to happen to be far enough out.
+    const { data: aoDefault } = await svc.from("auto_offers").select("min_closing_days").eq("id", autoOfferId).single()
+    check("min_closing_days defaults to 30", aoDefault?.min_closing_days === 30, String(aoDefault?.min_closing_days))
+
+    const dSoon = await makeDraft({ closing_date: daysOut(10) })
+    await submit(dSoon)
+    check("no auto-offer when closing is inside the minimum", (await autoOffersOn(dSoon)).length === 0)
+
+    const dFar = await makeDraft({ closing_date: daysOut(31) })
+    await submit(dFar)
+    check("auto-offer sent when closing is beyond the minimum", (await autoOffersOn(dFar)).length === 1)
+
+    // A prequal has no closing date at all, so it cannot be "too soon" — it must NOT be swallowed by the
+    // gate (this is the null-drops-the-row bug migration 54 had to undo for the max filters).
+    const dPrequal = await makeDraft({ closing_date: null, prequal: true })
+    await svc.from("deal_identities").update({ property_address: null }).eq("deal_id", dPrequal)
+    const { error: pe } = await submit(dPrequal)
+    check("prequal with no closing date submits", !pe, pe?.message)
+    check("auto-offer still sent on a prequal (no closing date)", (await autoOffersOn(dPrequal)).length === 1)
+
+    // A lender who needs more lead time sets their own minimum.
+    await svc.from("auto_offers").update({ min_closing_days: 60 }).eq("id", autoOfferId)
+    const dOwnMin = await makeDraft({ closing_date: daysOut(45) })
+    await submit(dOwnMin)
+    check("a lender's own higher minimum is respected", (await autoOffersOn(dOwnMin)).length === 0)
+    await svc.from("auto_offers").update({ min_closing_days: 30 }).eq("id", autoOfferId)
+
+    // ── 10. RLS: an auto-offer is private to its lender ──
     const { data: seenByBroker } = await broker.from("auto_offers").select("id").eq("id", autoOfferId)
     check("a broker cannot read a lender's auto-offers", (seenByBroker ?? []).length === 0)
     const admin = await signIn("admin@loanlink.test")

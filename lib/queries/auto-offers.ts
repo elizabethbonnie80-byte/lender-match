@@ -27,6 +27,11 @@ export type AutoOfferInput = {
   isActive: boolean
   /** Optional: stop auto-sending after this date (inclusive). */
   endDate: string | null
+  /**
+   * Client 2026-07-28 (B-33): only auto-offer when the closing date is at least this many days out.
+   * Defaults to 30. A deal with no closing date (a prequal) is not constrained by it.
+   */
+  minClosingDays: number
 }
 
 export type AutoOfferRow = AutoOfferInput & {
@@ -49,6 +54,7 @@ export const EMPTY_AUTO_OFFER: AutoOfferInput = {
   lenderFeePct: null,
   isActive: true,
   endDate: null,
+  minClosingDays: 30,
 }
 
 function rowToInput(r: Row): AutoOfferInput {
@@ -64,6 +70,7 @@ function rowToInput(r: Row): AutoOfferInput {
     lenderFeePct: r.lender_fee_pct === null ? null : Number(r.lender_fee_pct),
     isActive: r.is_active,
     endDate: r.end_date,
+    minClosingDays: r.min_closing_days,
   }
 }
 
@@ -80,6 +87,7 @@ function inputToColumns(input: AutoOfferInput) {
     lender_fee_pct: input.lenderFeePct,
     is_active: input.isActive,
     end_date: input.endDate,
+    min_closing_days: input.minClosingDays,
   }
 }
 

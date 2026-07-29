@@ -17,6 +17,11 @@ export const BRAND = "LenderMatch™"
  * contract text stays verbatim while the brand stays centralized here.
  */
 export const LEGAL_ENTITY = "LenderMatch Inc."
-export const COPYRIGHT_HOLDER = "Elizabeth Iginla and Bonnie Casault" // footer © line (the founders)
+/**
+ * Footer © line. Was the two founders by name; the client changed it to the company on 2026-07-28
+ * (A-2): *"We'd like it to read: ©LenderMatch™ Inc. (and the current year). Patent Pending."* Note the
+ * ™ IS wanted here, unlike LEGAL_ENTITY above, which the contract clause spells without it.
+ */
+export const COPYRIGHT_HOLDER = "LenderMatch™ Inc."
 export const SUPPORT_EMAIL = "support@lendermatch.ca"
 export const DOMAIN = "lendermatch.ca"

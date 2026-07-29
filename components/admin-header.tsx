@@ -33,6 +33,8 @@ const NAV: NavEntry[] = [
       { key: 'invoices', href: '/admin/invoices' },
       { key: 'surveys', href: '/admin/survey-report' },
       { key: 'penalties', href: '/admin/penalties' },
+      // Client 2026-07-28 (B-17): admin-only viewer for the consent PDF + photo ID.
+      { key: 'documents', href: '/admin/documents' },
     ],
   },
   {

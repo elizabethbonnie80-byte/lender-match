@@ -314,6 +314,14 @@ export function AutoOfferManager() {
                     onChange={(e) => patch({ endDate: e.target.value || null })} />
                   <p className="text-xs text-muted-foreground">{t('endDateHint')}</p>
                 </div>
+                {/* Client 2026-07-28 (B-33): each lender sets their own lead time, default 30 days. */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="ao-minclose" className="text-xs">{t('minClosingDays')}</Label>
+                  <Input id="ao-minclose" type="number" min={0} value={editing.minClosingDays}
+                    className="bg-muted/50 h-9"
+                    onChange={(e) => patch({ minClosingDays: Math.max(0, Number(e.target.value) || 0) })} />
+                  <p className="text-xs text-muted-foreground">{t('minClosingDaysHint')}</p>
+                </div>
               </div>
 
               {/* Same platform-bps deduction preview the Make Offer dialog shows. */}

@@ -69,6 +69,7 @@ export function SurveyDialog({
   const [funded, setFunded] = useState<boolean | null>(null)
   const [satisfaction, setSatisfaction] = useState(0)
   const [reason, setReason] = useState("")
+  const [comments, setComments] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [showErrors, setShowErrors] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -98,9 +99,14 @@ export function SurveyDialog({
           docReviewOnTime: docReview!,
           fundedOnTime: funded!,
           satisfaction,
+          comments: comments.trim(),
         })
       } else {
-        await submitSurvey(supabase, survey.id, { closedWithLender: false, notClosedReason: reason.trim() })
+        await submitSurvey(supabase, survey.id, {
+          closedWithLender: false,
+          notClosedReason: reason.trim(),
+          comments: comments.trim(),
+        })
       }
       onSubmitted()
     } catch (err) {
@@ -177,6 +183,21 @@ export function SurveyDialog({
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
                 placeholder={t("reasonPlaceholder")}
+              />
+            </div>
+          )}
+
+          {/* Client 2026-07-28 (B-3): free-text comments, read by the platform admin only — never by
+              the lender being rated. Optional in both branches. */}
+          {closedWith !== null && (
+            <div className="space-y-2">
+              <Label htmlFor="survey-comments">{t("qComments")}</Label>
+              <Textarea
+                id="survey-comments"
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                rows={3}
+                placeholder={t("commentsPlaceholder")}
               />
             </div>
           )}

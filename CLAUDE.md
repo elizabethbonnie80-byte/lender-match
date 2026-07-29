@@ -117,8 +117,17 @@ active work queue.**
    (2026-07-27).**
 3. **2026-07-23 + 2026-07-25** (~71 items) → [`docs/client-revisions-2026-07-23-and-25.md`](./docs/client-revisions-2026-07-23-and-25.md)
    — **all 54 bounded items are DONE and live on staging + prod (2026-07-27, migrations 53–56).** 3 more turned out to
-   need no code (A-13/A-17/B-1 — see the doc). 8 await client answers, 5 are out of Round 3 scope and
-   need quoting.
+   need no code (A-13/A-17/B-1 — see the doc). The 8 open questions and the 5 "out of scope" items were
+   answered on 2026-07-28 — see below.
+4. **2026-07-28** (the client's answers to those 13) → [`docs/client-revisions-2026-07-28.md`](./docs/client-revisions-2026-07-28.md)
+   — **8 items implemented locally (migrations 57–58), NOT deployed.** Read that doc before touching the
+   footer, the offer turn-time labels, auto-offers, the closing survey or the anti-contact threshold.
+   ⚠️ It also settles two disputes in the client's favour with measured evidence: the **AI name detector
+   was gated by a 20-character floor inherited from Bubble** (so bare names were never scanned — the
+   client's "it only catches 'my name is'" was the symptom, not the cause), and the **turn-time penalty
+   trigger** was keyed off overall satisfaction when their May 4 spec said turn time. 4 items are deferred
+   to one later pass (3 blocked on her answers + the ToS re-agreement), and **only B-30 (admin-editable
+   invoice templates) is out of scope** — down from 5.
 
 ⚠️ **Two traps recorded in that doc, worth knowing before you open it:**
 - **`docs/Revisions_23_Jul_2026.pdf` is NOT a reliable source.** It is a Gmail print whose long lines are
@@ -391,7 +400,15 @@ source of truth for visibility. (b) **document retention** moved into `documents
 `closing_date < cutoff` predicate never matched it and its PDFs would have been kept forever], with a hard
 240-day-after-upload ceiling. ⚠️ **`revoke execute … from public`** is load-bearing there — see Security
 invariants #6).
-**Hosted status: migrations 36–56 are applied to BOTH staging AND prod**
+· `57_survey_comments` (**client 2026-07-28 B-3**: `surveys.comments` + a trailing `p_comments` on
+`submit_survey` [the old 7-arg overload is dropped so the call stays unambiguous]. Broker → platform admin
+only, so it is deliberately NOT anti-contact scanned — that guard exists to stop broker and lender
+identifying each other and there is no counterparty here, same reasoning as `not_closed_reason`) ·
+`58_auto_offer_min_closing_days` (**B-33**: `auto_offers.min_closing_days`, default 30, per lender; gates
+`send_auto_offers`. ⚠️ A deal with **no** closing date — a prequal — is deliberately NOT constrained: it
+cannot be "too soon", and dropping nulls is the exact bug migration 54 had to undo. Lives on `auto_offers`
+rather than `saved_filters` because it is a property of the standing offer, not of how the lender browses).
+**Hosted status: migrations 36–56 are applied to BOTH staging AND prod** (57–58 are LOCAL ONLY)
 (36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; **52–56 on 2026-07-27**
 — 56/56 on each, advisors 0 ERROR, browser-QA'd). The 52–56 deploy shipped the reworked `purge-documents`
 edge fn alongside them, because the function now calls `documents_to_purge()` and would fail against an

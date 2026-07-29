@@ -152,6 +152,7 @@ export type Database = {
           last_sent_at: string | null
           lender_fee_pct: number | null
           lender_id: string
+          min_closing_days: number
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
           name: string
           rate: number
@@ -171,6 +172,7 @@ export type Database = {
           last_sent_at?: string | null
           lender_fee_pct?: number | null
           lender_id: string
+          min_closing_days?: number
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
           name: string
           rate: number
@@ -190,6 +192,7 @@ export type Database = {
           last_sent_at?: string | null
           lender_fee_pct?: number | null
           lender_id?: string
+          min_closing_days?: number
           mortgage_product?: Database["public"]["Enums"]["mortgage_product"]
           name?: string
           rate?: number
@@ -1653,6 +1656,7 @@ export type Database = {
           broker_id: string
           brokerage_id: string | null
           closed_with_lender: boolean | null
+          comments: string | null
           commitment_on_time: boolean | null
           completed_at: string | null
           created_at: string
@@ -1671,6 +1675,7 @@ export type Database = {
           broker_id: string
           brokerage_id?: string | null
           closed_with_lender?: boolean | null
+          comments?: string | null
           commitment_on_time?: boolean | null
           completed_at?: string | null
           created_at?: string
@@ -1689,6 +1694,7 @@ export type Database = {
           broker_id?: string
           brokerage_id?: string | null
           closed_with_lender?: boolean | null
+          comments?: string | null
           commitment_on_time?: boolean | null
           completed_at?: string | null
           created_at?: string
@@ -2676,6 +2682,7 @@ export type Database = {
       submit_survey: {
         Args: {
           p_closed_with_lender: boolean
+          p_comments?: string
           p_commitment_on_time?: boolean
           p_doc_review_on_time?: boolean
           p_funded_on_time?: boolean

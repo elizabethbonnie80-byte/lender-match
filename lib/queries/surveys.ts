@@ -63,18 +63,21 @@ export async function getPendingSurveyForDeal(supabase: DB, dealId: string): Pro
   return data ? mapRow(data) : null
 }
 
+/** Optional free-text note for the platform admin (client 2026-07-28, B-3) — never shown to the lender. */
+type SurveyComments = { comments?: string }
+
 export type SurveyAnswers =
-  | {
+  | ({
       closedWithLender: true
       commitmentOnTime: boolean
       docReviewOnTime: boolean
       fundedOnTime: boolean
       satisfaction: number // 1–5
-    }
-  | {
+    } & SurveyComments)
+  | ({
       closedWithLender: false
       notClosedReason: string
-    }
+    } & SurveyComments)
 
 /** Submit the closing survey via the security-definer RPC (Q0 gates the rest; atomic). */
 export async function submitSurvey(supabase: DB, surveyId: string, answers: SurveyAnswers) {
@@ -88,11 +91,13 @@ export async function submitSurvey(supabase: DB, surveyId: string, answers: Surv
           p_doc_review_on_time: answers.docReviewOnTime,
           p_funded_on_time: answers.fundedOnTime,
           p_satisfaction: answers.satisfaction,
+          p_comments: answers.comments || undefined,
         }
       : {
           p_survey_id: surveyId,
           p_closed_with_lender: false,
           p_not_closed_reason: answers.notClosedReason,
+          p_comments: answers.comments || undefined,
         },
   )
   if (error) throw new Error(error.message)

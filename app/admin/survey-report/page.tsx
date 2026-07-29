@@ -65,6 +65,7 @@ export default function AdminSurveyReportPage() {
       { header: 'Funded on time', value: (r) => ynEn(r.fundedOnTime) },
       { header: 'Satisfaction', value: (r) => r.satisfaction ?? '' },
       { header: 'Reason (if not closed)', value: (r) => r.notClosedReason ?? '' },
+      { header: 'Comments', value: (r) => r.comments ?? '' },
       { header: 'Completed', value: (r) => r.completedAt?.slice(0, 10) ?? '' },
     ])
 
@@ -154,6 +155,7 @@ export default function AdminSurveyReportPage() {
                     <th className="px-4 py-3 font-medium">{t('colDocReview')}</th>
                     <th className="px-4 py-3 font-medium">{t('colFunded')}</th>
                     <th className="px-4 py-3 font-medium">{t('colSatisfaction')}</th>
+                    <th className="px-4 py-3 font-medium">{t('colComments')}</th>
                     <th className="px-4 py-3 font-medium">{t('colCompleted')}</th>
                   </tr>
                 </thead>
@@ -191,6 +193,15 @@ export default function AdminSurveyReportPage() {
                           </span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      {/* Client 2026-07-28 (B-3): the broker's free-text note. Wraps rather than
+                          truncating — the point of the column is to be readable. */}
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {r.comments ? (
+                          <span className="block max-w-[280px] whitespace-normal">{r.comments}</span>
+                        ) : (
+                          '—'
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{r.completedAt?.slice(0, 10) ?? '—'}</td>

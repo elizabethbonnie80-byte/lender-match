@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { getLocale } from '@/lib/i18n/server'
 import { getMessages } from '@/lib/i18n/messages'
 import { I18nProvider } from '@/components/i18n-provider'
+import { SiteFooter } from '@/components/site-footer'
 import { BRAND } from '@/lib/brand'
 import './globals.css'
 
@@ -34,9 +35,13 @@ export default async function RootLayout({
   const messages = getMessages(locale)
   return (
     <html lang={locale}>
-      <body className="font-sans antialiased">
+      {/* Column layout so the footer sits at the bottom of short pages instead of mid-screen.
+          Client 2026-07-28 (A-2): the footer is back, and "consistent throughout the site" — so it is
+          mounted here once rather than pasted into each page as it was before. */}
+      <body className="font-sans antialiased min-h-screen flex flex-col">
         <I18nProvider locale={locale} messages={messages}>
-          {children}
+          <div className="flex-1">{children}</div>
+          <SiteFooter className="mt-0" />
         </I18nProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

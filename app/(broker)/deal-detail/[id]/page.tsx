@@ -2,7 +2,7 @@
 
 import { PortalHeader } from '@/components/portal-header'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Check, X, AlertCircle, Lock } from 'lucide-react'
+import { ArrowLeft, Check, X, AlertCircle, CalendarClock } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
@@ -284,8 +284,17 @@ export default function DealDetailPage() {
                           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('commission')}</p>
                           <p className="text-xl font-bold text-foreground">{t('bps', { n: netBps(acceptedOffer) })}</p>
                         </div>
+                        {/* Client 2026-07-28 (A-9/B-25): the two turn times are separate from the
+                            commitment period and must show the lender's own figures, not one
+                            "processing" number — which only ever rendered the doc-review value. */}
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('processing')}</p>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('commitmentTurnTime')}</p>
+                          <p className="text-xl font-bold text-foreground">
+                            {t('days', { n: acceptedOffer.commitmentTurnTimeDays ?? '—' })}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('docReviewTurnTime')}</p>
                           <p className="text-xl font-bold text-foreground">
                             {t('days', { n: acceptedOffer.docReviewTurnTimeDays ?? '—' })}
                           </p>
@@ -381,7 +390,9 @@ export default function DealDetailPage() {
                               <div>
                                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('rateLock')}</p>
                                 <p className="font-semibold text-foreground flex items-center gap-1">
-                                  <Lock className="h-3 w-3" />
+                                  {/* Not a padlock any more: the client's point in A-9 was that
+                                      "Rate Lock" misdescribes this field. */}
+                                  <CalendarClock className="h-3 w-3" />
                                   {t('days', { n: offer.rateLockDays })}
                                 </p>
                               </div>
@@ -390,7 +401,13 @@ export default function DealDetailPage() {
                                 <p className="font-semibold text-foreground">{t('bps', { n: netBps(offer) })}</p>
                               </div>
                               <div>
-                                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('processing')}</p>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('commitmentTurnTime')}</p>
+                                <p className="font-semibold text-foreground">
+                                  {t('processingDays', { n: offer.commitmentTurnTimeDays ?? '—' })}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('docReviewTurnTime')}</p>
                                 <p className="font-semibold text-foreground">
                                   {t('processingDays', { n: offer.docReviewTurnTimeDays ?? '—' })}
                                 </p>
