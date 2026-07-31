@@ -158,6 +158,11 @@ active work queue.** The first four are live on prod; the fifth is built but und
    (`components/unread-banner.tsx`) — the app already mounts one non-dismissable modal (the A-3 legal
    gate) and a second per login trains people to close dialogs unread. Reasoning is in the control doc;
    don't silently convert it to a modal.
+   ⚠️ **E-8 shipped a warning the platform cannot enforce**: the anti-contact notice now says further
+   attempts "may result in suspension of your account", and **there is no account-suspension mechanism**.
+   Told to the client, and now the SECOND item awaiting a quote next to B-30 — scope is in §E-8 of the
+   control doc, including the part only she can decide (what happens to a suspended user's live deals and
+   offers, which changes counterparties' screens, not just theirs).
    ⚠️ **E-11 added `profiles.auto_offers_enabled` (migration 64) — a lender-level MASTER switch that is
    NOT the same bit as `auto_offers.is_active`.** Master off = nothing sends at all; master on = the
    per-row rules decide. They stay separate because collapsing them loses which auto-offers the lender had

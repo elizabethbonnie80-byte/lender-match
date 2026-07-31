@@ -265,10 +265,20 @@ She asked for messages. Applied to **every counterparty-facing surface** — the
 offer comments and the four deal notes — because they are the same rule and the same risk, and a warning
 that appears on one screen but not the next reads as a bug.
 
-⚠️ **Told her plainly: there is no account-suspension mechanism built today.** The sentence says "may",
-so it is honest as a deterrent, but if she wants it to be enforceable that is a separate feature (admin
-suspend/reinstate, a blocked-sign-in state, and a decision about what happens to that user's live deals
-and offers). Not quoted, not assumed.
+⚠️ **There is no account-suspension mechanism built today.** The sentence says "may", so it is honest as
+a deterrent — but the platform cannot currently do what the warning threatens.
+
+**Making it enforceable is now a SECOND item to quote, alongside B-30** (told to the client 2026-07-31).
+Scope, so the estimate is not guessed later:
+- an admin control to suspend / reinstate an account, presumably off `/admin/brokers` and the lender list;
+- a suspended state that actually blocks sign-in (a `profiles` flag plus a check in the role redirect and
+  the lender layout gate — an RLS-level lockout is the safer version and is more work);
+- a decision on what happens to that user's **live deals and offers** at the moment of suspension: a
+  suspended lender's pending offers either stay biddable or get withdrawn, and a suspended broker's open
+  deals either stay in the lender feeds or leave them. This is the part that needs her answer, not ours —
+  it changes counterparties' screens, not just the suspended user's.
+
+Not built, not assumed, and deliberately not bundled into this batch.
 
 ---
 
@@ -427,6 +437,9 @@ branching.
 
 Nine of these are absorbed polish. **E-5** and **E-11** are the two with real engineering; E-5 also
 fixes a latent null-handling bug that predates the request, and E-7 fixes a second one (the capped
-unread count) that nobody had reported. **B-30** (admin-editable invoice templates) is still the only
-item awaiting a separate quote, and E-9 + E-10 touch the same invoice surface — worth grouping if B-30
-goes ahead.
+unread count) that nobody had reported.
+
+**Two items now await a separate quote**, offered to the client together on 2026-07-31:
+1. **B-30** — admin-editable invoice templates (carried over from the 07-28 batch). E-9 + E-10 touch the
+   same invoice surface, so worth grouping.
+2. **Account suspension** (from E-8) — the warning shipped, the capability did not. Scope in §E-8.
