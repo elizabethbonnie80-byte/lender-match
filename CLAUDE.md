@@ -131,8 +131,8 @@ active work queue.** The first four are live on prod; the fifth is built but und
    to one later pass (3 blocked on her answers + the ToS re-agreement), and **only B-30 (admin-editable
    invoice templates) is out of scope** — down from 5.
 5. **2026-07-30** (Elizabeth's review pass: 10 items in one email + 1 sent separately) →
-   [`docs/client-revisions-2026-07-30.md`](./docs/client-revisions-2026-07-30.md) — **ALL 11 DONE locally
-   (migrations 63–64) and NOT yet deployed.** Read it before touching the lender filter hints, the legal
+   [`docs/client-revisions-2026-07-30.md`](./docs/client-revisions-2026-07-30.md) — **ALL 11 DONE and
+   LIVE on staging + prod (2026-07-31, `1ffe36d`, migrations 63–64).** Read it before touching the legal
    pages, the anti-contact notices, the invoice PDF header, Create Deal's Transaction Type, the
    notification bell/nav badges, or the auto-offer engine.
    ⚠️ **E-5 made `deals.transaction_type` OPTIONAL, and the interesting part is not the form.** The column
@@ -473,13 +473,11 @@ the per-row `auto_offers.is_active`, deliberately: master off = nothing sends; m
 rules decide. Collapsing them would lose which offers the lender had paused. ⚠️ The TRUE default is not
 cosmetic — false would have stopped every pre-existing auto-offer silently. No RLS change needed: the
 `profiles_privilege_guard` trigger is a DENY-list and this column is not on it).
-⚠️ **Migrations 63–64 are LOCAL ONLY — not on staging, not on prod** (client batch 2026-07-30,
-undeployed). The deploy also needs the **`invoice-pdf` edge function redeployed** on both, since E-9
-changed its header.
-
-**Hosted status: migrations 36–62 are applied to BOTH staging AND prod**
+**Hosted status: migrations 36–64 are applied to BOTH staging AND prod**
 (36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; 52–56 on 2026-07-27;
-**57–62 on 2026-07-29** — 62/62 on each, advisors 0 ERROR, browser-QA'd on staging). The 57–62 deploy also
+57–62 on 2026-07-29; **63–64 on 2026-07-31** — 64/64 on each, advisors 0 ERROR, browser- and
+smoke-QA'd on staging). The 63–64 deploy **redeployed `invoice-pdf`** on both (E-9 changed its header;
+that function does not ship with the Vercel build). The 57–62 deploy
 shipped the new `purge-invoices` edge fn + the redeployed `anti-contact` (its AI threshold changed), and
 created the `purge_invoices_url` Vault secret on both. ⚠️ **Prod has NO published `legal_documents`** (2 rows,
 neither published), so `/legal/terms` and `/legal/privacy` render "Not available yet" — which the restored

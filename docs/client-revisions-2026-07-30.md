@@ -336,6 +336,34 @@ above the per-type notification toggles in exactly this shape.
 
 ---
 
+## Deploy — LIVE on staging + prod (2026-07-31, `1ffe36d`)
+
+**64/64 migrations on both, advisors 0 ERROR on both.** The deploy also **redeployed the `invoice-pdf`
+edge function** on both environments — E-9 changed its header and that function does not ship with the
+Vercel build.
+
+Verified against the hosted staging DB, not just locally:
+
+- `smoke-optional-transaction-type` **15/15** and `smoke-auto-offer` **33/33** run against staging,
+  plus `smoke-invoice-pdf` / `smoke-notifications` / `smoke-messages` green. The PDF smoke exercised the
+  freshly deployed function (15,458 bytes, `pdf_path` stamped).
+- The bell read **22** and the staging DB had exactly 22 unread for that lender — the E-7 fix, on real
+  data, above the old 20 cap.
+- **All four existing staging lenders came out of migration 64 with `auto_offers_enabled = true`**, so
+  nothing pre-existing was silently switched off. That was the whole risk of that column.
+- The strip's master switch toggled and persisted (`false` → `true`) against the hosted DB.
+- ⚠️ On staging the per-row `is_active` was **already** false before the toggle, so that DB read is NOT
+  evidence for master/per-row independence. The local smoke is what proves it.
+
+**Not exercised on staging:** E-4 (the staging New Deals feed is empty), E-6 (long wizard) and E-8
+(needs a live anti-contact block). All three verified locally; E-6 and E-8 are pure catalog edits.
+
+⚠️ **Prod still has NO published `legal_documents`** — two rows, version 2026-07-18, both unpublished.
+So `/legal/terms` and `/legal/privacy` render "Not available yet", and the footer links to them from
+every page. Publishing is two clicks in `/admin/legal` and **the first publish fires the A-3
+re-agreement prompt for every existing user** — free while prod holds one account, a broadcast after
+real signups. Unchanged from the 57–62 deploy; still on the client.
+
 ## Verification (local, 2026-07-31)
 
 `pnpm check` green — 0 type/lint errors, EN/FR parity with every static `t()` key resolving, 19/19 unit
