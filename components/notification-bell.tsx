@@ -27,13 +27,16 @@ import {
  * refresh — replacing Bubble's page-load re-fetch. `role` picks the "view all" destination and the
  * per-item click target (see `notificationHref`).
  */
-export function NotificationBell({ role }: { role: NotificationRole }) {
+export function NotificationBell({ role, unreadCount }: { role: NotificationRole; unreadCount: number }) {
   const t = useT("notificationCenter")
   const locale = useLocale()
   const router = useRouter()
   const [items, setItems] = useState<NotificationItem[]>([])
   const [open, setOpen] = useState(false)
-  const unread = items.filter((n) => !n.isRead).length
+  // E-7: the badge is an EXACT server count supplied by the header's useUnread(). It used to be
+  // `items.filter(n => !n.isRead).length` — i.e. unread within the newest 20 rows this popover had
+  // loaded — so anyone past 20 unread was quietly told they had fewer than they did.
+  const unread = unreadCount
   const viewAllHref = role === "lender" ? "/lender/notifications" : role === "admin" ? "/admin/notifications" : "/notifications"
 
   const refresh = useCallback(async () => {
@@ -96,10 +99,13 @@ export function NotificationBell({ role }: { role: NotificationRole }) {
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) void refresh() }}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" title={t("title")} className="relative">
-          <Bell className="h-4 w-4" />
+        {/* E-7: deliberately larger than its neighbouring icon buttons — the client's complaint was
+            that the bell is easy to ignore. The badge gets a ring in the header's own colour so it
+            reads as a raised pip rather than part of the icon. */}
+        <Button variant="ghost" size="icon" title={t("title")} className="relative h-10 w-10">
+          <Bell className="h-5 w-5" />
           {unread > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[1.05rem] h-[1.05rem] px-1 rounded-full bg-destructive text-white text-[0.65rem] font-semibold flex items-center justify-center">
+            <span className="absolute -top-0.5 -right-0.5 min-w-[1.2rem] h-[1.2rem] px-1 rounded-full bg-destructive text-white text-[0.7rem] font-bold flex items-center justify-center ring-2 ring-card">
               {unread > 99 ? "99+" : unread}
             </span>
           )}

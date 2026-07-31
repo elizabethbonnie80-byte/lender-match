@@ -34,6 +34,7 @@ import { listBrokerDeals, deleteDeal, convertPrequalToLive, type BrokerDealListI
 import { dealStatusStyle } from '@/lib/status-styles'
 import { listPendingSurveys, type PendingSurvey } from '@/lib/queries/surveys'
 import { SurveyDialog } from '@/components/survey-dialog'
+import { UnreadBanner } from '@/components/unread-banner'
 import { useEnums } from '@/lib/use-enums'
 import { useT } from '@/components/i18n-provider'
 import type { Database } from '@/lib/database.types'
@@ -218,6 +219,9 @@ export default function DealRoomPage() {
             </Button>
           </Link>
         </div>
+
+        {/* E-7: the unread prompt on arrival, in place of the modal the client asked for. */}
+        <UnreadBanner role="broker" />
 
         {/* Pending closing surveys */}
         {pendingSurveys.length > 0 && (

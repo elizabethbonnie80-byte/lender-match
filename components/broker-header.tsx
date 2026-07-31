@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { LogOut, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationBell } from '@/components/notification-bell'
+import { NavUnreadDot } from '@/components/nav-unread-dot'
+import { useUnread } from '@/hooks/use-unread'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { useT } from '@/components/i18n-provider'
 import { BrandMark } from '@/components/brand-mark'
@@ -23,6 +25,14 @@ export function BrokerHeader() {
   const tc = useT('common')
   const pathname = usePathname()
   const router = useRouter()
+  const unread = useUnread('broker')
+
+  // E-7: Deal Room is the broker's deal surface (new offer / expiring / expired / survey due);
+  // Messages uses the real thread unread rather than notifications, so it clears on reading.
+  const navUnread: Partial<Record<(typeof NAV)[number]['key'], number>> = {
+    dealRoom: unread.deals,
+    messages: unread.messages,
+  }
 
   const signOut = async () => {
     await createClient().auth.signOut()
@@ -45,13 +55,14 @@ export function BrokerHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
+                className={`relative px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
                   pathname === item.href
                     ? 'bg-primary/10 text-primary font-medium'
                     : 'text-foreground hover:text-primary hover:bg-muted'
                 }`}
               >
                 {t(item.key)}
+                <NavUnreadDot count={navUnread[item.key] ?? 0} />
               </Link>
             ))}
           </nav>
@@ -61,7 +72,7 @@ export function BrokerHeader() {
             <LocaleSwitcher />
 
             {/* Notifications */}
-            <NotificationBell role="broker" />
+            <NotificationBell role="broker" unreadCount={unread.total} />
 
             {/* Settings */}
             <Link href="/settings">

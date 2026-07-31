@@ -83,9 +83,11 @@ async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   page.drawImage(logoPng, { x: L, y: y - 7, width: logoSize, height: logoSize })
   text(BRAND, textX, y, 22, bold, brand)
   text("Platform Fee Invoice", 612 - L - font.widthOfTextAtSize("Platform Fee Invoice", 12), y + 4, 12, bold, muted)
-  y -= 16
-  text("Anonymous mortgage marketplace", textX, y, 9, font, muted)
-  y -= 30
+  // E-9 (client 2026-07-30): "Please remove 'Anonymous mortgage marketplace' from Invoices." The 9pt
+  // tagline used to sit here, on its own line under the wordmark. Dropping it also drops that line's
+  // 16pt, so the rule below moves up to keep the header from ending in a band of empty space — it still
+  // clears the 30pt logo (drawn from y-7) by a comfortable margin.
+  y -= 34
   page.drawLine({ start: { x: L, y }, end: { x: 612 - L, y }, thickness: 1, color: rgb(0.9, 0.91, 0.93) })
   y -= 28
 

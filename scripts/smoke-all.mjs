@@ -32,6 +32,7 @@ const SMOKES = [
   "smoke-expired.mjs",
   "smoke-open-filter.mjs",
   "smoke-open-filtered.mjs",
+  "smoke-optional-transaction-type.mjs",
   "smoke-maturing.mjs",
   "smoke-decline.mjs",
   "smoke-blocking.mjs",

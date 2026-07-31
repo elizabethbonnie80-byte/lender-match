@@ -254,7 +254,18 @@ export default function LenderSettingsPage() {
           <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
 
-        {/* ── 1. Brokerage Blocking (wired) ── */}
+        {/* ── 1. Auto-Offers (Round 3 Phase 3 — standing offers sent on a full filter match) ──
+            E-11 (client 2026-07-30): moved here from 4th of 6. It used to sit below the entire Saved
+            Filters list, which is the longest block on this page, so a lender who never scrolled past
+            their filters never discovered the feature at all — "it's a bit hard to find or even know it
+            exists". The `id` is the anchor the New Deals strip's Manage button links to. */}
+        <div id="auto-offers" className="scroll-mt-20">
+          <Section icon={<Zap className="h-4 w-4" />} title={t('secAutoOffers')}>
+            <AutoOfferManager />
+          </Section>
+        </div>
+
+        {/* ── 2. Brokerage Blocking (wired) ── */}
         <BlockManager
           t={t}
           title={t('secBrokerageBlocking')}
@@ -267,7 +278,7 @@ export default function LenderSettingsPage() {
           onUnblock={onUnblock}
         />
 
-        {/* ── 2. Decline Confirmation ── */}
+        {/* ── 3. Decline Confirmation ── */}
         <Section icon={<AlertCircle className="h-4 w-4" />} title={t('secOfferDecline')}>
           <Flash msg={declineFlash} />
           <div className="space-y-1">
@@ -304,7 +315,7 @@ export default function LenderSettingsPage() {
           </div>
         </Section>
 
-        {/* ── 3. Saved Filters ── */}
+        {/* ── 4. Saved Filters ── */}
         <Section icon={<SlidersHorizontal className="h-4 w-4" />} title={t('secSavedFilters')}>
           <div className="flex items-start justify-between gap-4 mb-5">
             <p className="text-sm text-muted-foreground">
@@ -363,11 +374,6 @@ export default function LenderSettingsPage() {
               ))}
             </div>
           )}
-        </Section>
-
-        {/* ── 4. Auto-Offers (Round 3 Phase 3 — standing offers sent on a full filter match) ── */}
-        <Section icon={<Zap className="h-4 w-4" />} title={t('secAutoOffers')}>
-          <AutoOfferManager />
         </Section>
 
         {/* ── 5. Account (wired): profile · email · password ── */}

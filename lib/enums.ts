@@ -203,8 +203,10 @@ const DEAL_INFO_FLAG_TABLE: [DealCol, Bi][] = [
   ["first_and_heloc", ["1st and HELOC", "1re et marge hypothécaire"]],
   ["heloc", ["HELOC", "Marge hypothécaire (HELOC)"]],
   ["fixed_second", ["Fixed 2nd", "2e fixe"]],
-  ["cosignor_occupying", ["Co-signor Occupying", "Cosignataire occupant"]],
-  ["cosignor_not_occupying", ["Co-signor Not Occupying", "Cosignataire non occupant"]],
+  // E-6 (client 2026-07-30): "co-signor" → "Co-signer". LABELS only — the `cosignor_*` keys are DB
+  // column names and also travel as literals in the `p_others_excluded` RPC protocol, so they stay.
+  ["cosignor_occupying", ["Co-signer Occupying", "Cosignataire occupant"]],
+  ["cosignor_not_occupying", ["Co-signer Not Occupying", "Cosignataire non occupant"]],
   ["guarantor", ["Guarantor", "Garant"]],
   // Round 3 Create Deal flags, replicated as lender filter criteria (migration 43).
   ["reverse_mortgage", ["Reverse Mortgage", "Hypothèque inversée"]],

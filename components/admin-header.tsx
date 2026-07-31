@@ -12,6 +12,7 @@ import {
 import { LogOut, ChevronDown, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationBell } from '@/components/notification-bell'
+import { useUnread } from '@/hooks/use-unread'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { useT } from '@/components/i18n-provider'
 import { BrandMark } from '@/components/brand-mark'
@@ -65,6 +66,8 @@ export function AdminHeader() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  // No nav dots here — the admin nav has neither a messages nor a deal surface (E-7).
+  const unread = useUnread('admin')
 
   const signOut = async () => {
     await supabase.auth.signOut()
@@ -116,7 +119,7 @@ export function AdminHeader() {
 
           <div className="flex items-center gap-1 ml-auto shrink-0">
             <LocaleSwitcher triggerClassName="w-28 h-8 text-xs" />
-            <NotificationBell role="admin" />
+            <NotificationBell role="admin" unreadCount={unread.total} />
             <Link href="/admin/settings">
               <Button variant="ghost" size="icon" title={tc('settings')}>
                 <Settings className="h-4 w-4" />

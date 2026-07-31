@@ -1,5 +1,6 @@
 'use client'
 
+import type { KeyboardEvent } from 'react'
 import Link from 'next/link'
 import { LenderHeader } from '@/components/lender-header'
 import { listMaturingDeals, listMaturingDealsFiltered, type MaturingDealListItem, type MaturingMatch } from '@/lib/queries/deals'
@@ -28,6 +29,8 @@ import {
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   CheckCircle,
   AlertTriangle,
   MessageSquare,
@@ -90,6 +93,7 @@ export default function MaturingDealsPage() {
     dbFilters, activeFilterId, toggleSavedFilter,
     selectedIds, setSelectedIds, toggleSelect, toggleSelectAll,
     pendingDeals, allSelected, someSelected, bulkSelected, lenderStatus,
+    collapsedIds, toggleCollapsed,
     currentPage, setCurrentPage, totalPages, startIndex,
     offerTarget, setOfferTarget, handleMakeOffer, onOfferSent, offerPrefillProduct,
     declineTarget, setDeclineTarget, confirmDecline,
@@ -299,6 +303,9 @@ export default function MaturingDealsPage() {
               const isActioned = status !== 'pending'
               const isChecked = selectedIds.has(deal.id)
               const days = daysUntil(deal.closingDate)
+              // E-4: only an offer-sent card folds — the pending one is the deal being read.
+              const canCollapse = status === 'offer-sent'
+              const isCollapsed = canCollapse && collapsedIds.has(deal.id)
 
               return (
                 <div
@@ -307,11 +314,28 @@ export default function MaturingDealsPage() {
                     isActioned ? 'opacity-40' : ''
                   }`}
                 >
-                  {/* Card header — match color lives here only, not on the whole card */}
+                  {/* Card header — match color lives here only, not on the whole card.
+                      Doubles as the expand/collapse control once an offer is sent (E-4). */}
                   <div
-                    className={`flex items-center justify-between gap-3 px-6 py-4 border-b border-border flex-wrap ${
-                      isActioned ? 'bg-muted' : cardStyle(deal.match)
+                    className={`flex items-center justify-between gap-3 px-6 py-4 flex-wrap ${
+                      isCollapsed ? '' : 'border-b border-border'
+                    } ${isActioned ? 'bg-muted' : cardStyle(deal.match)} ${
+                      canCollapse ? 'cursor-pointer select-none' : ''
                     }`}
+                    {...(canCollapse
+                      ? {
+                          role: 'button',
+                          tabIndex: 0,
+                          'aria-expanded': !isCollapsed,
+                          onClick: () => toggleCollapsed(deal.id),
+                          onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              toggleCollapsed(deal.id)
+                            }
+                          },
+                        }
+                      : {})}
                   >
                     <div className="flex items-center gap-3 flex-wrap">
                       <Checkbox
@@ -345,6 +369,11 @@ export default function MaturingDealsPage() {
                     {status === 'offer-sent' ? (
                       <span className="flex items-center gap-1 text-xs text-green-700 font-medium whitespace-nowrap">
                         <CheckCircle className="h-3.5 w-3.5" /> {t('offerSent')}
+                        {isCollapsed ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronUp className="h-4 w-4" />
+                        )}
                       </span>
                     ) : status === 'declined' ? (
                       <span className="text-xs text-muted-foreground">{t('declined')}</span>
@@ -377,7 +406,7 @@ export default function MaturingDealsPage() {
                   </div>
 
                   {/* Missing-criteria hint (only when partially matched) */}
-                  {deal.match && deal.match.missing.length > 0 && (
+                  {!isCollapsed && deal.match && deal.match.missing.length > 0 && (
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-6 py-2 bg-muted/40 border-b border-border">
                       {deal.match.missing.map((m) => (
                         <span key={m} className="text-[11px] text-gray-600 flex items-center gap-1">
@@ -389,9 +418,11 @@ export default function MaturingDealsPage() {
                   )}
 
                   {/* Card body — property / deal / qualifying information */}
-                  <div className="p-6">
-                    <LenderDealDetailSections deal={deal} />
-                  </div>
+                  {!isCollapsed && (
+                    <div className="p-6">
+                      <LenderDealDetailSections deal={deal} />
+                    </div>
+                  )}
                 </div>
               )
             })}

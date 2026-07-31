@@ -1,5 +1,6 @@
 'use client'
 
+import type { KeyboardEvent } from 'react'
 import Link from 'next/link'
 import { LenderHeader } from '@/components/lender-header'
 import { listOpenDealsForLender, listOpenDealsFiltered, type LenderDealListItem } from '@/lib/queries/deals'
@@ -8,6 +9,8 @@ import { isNewDeal } from '@/lib/age-windows'
 import { MakeOfferDialog } from '@/components/make-offer-dialog'
 import { DealFiltersSidepanel } from '@/components/deal-filters-sidepanel'
 import { LenderDealDetailSections } from '@/components/lender-deal-sections'
+import { UnreadBanner } from '@/components/unread-banner'
+import { AutoOfferStrip } from '@/components/auto-offer-strip'
 import { FieldError } from '@/components/field-error'
 import { useT } from '@/components/i18n-provider'
 import { Button } from '@/components/ui/button'
@@ -38,6 +41,8 @@ import {
   Star,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Building2,
   Loader2,
   AlertCircle,
@@ -79,6 +84,7 @@ export default function NewDealsPage() {
     dbFilters, activeFilterId, toggleSavedFilter,
     selectedIds, setSelectedIds, toggleSelect, toggleSelectAll,
     pendingDeals, allSelected, someSelected, bulkSelected, lenderStatus,
+    collapsedIds, toggleCollapsed,
     currentPage, setCurrentPage, totalPages, startIndex,
     offerTarget, setOfferTarget, handleMakeOffer, onOfferSent, offerPrefillProduct,
     declineTarget, setDeclineTarget, confirmDecline,
@@ -105,6 +111,11 @@ export default function NewDealsPage() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-1">{t('title')}</h1>
         </div>
+
+        {/* E-7: the unread prompt on arrival, in place of the modal the client asked for.
+            E-11: the auto-offer status strip — the feature was buried 4 sections down in Settings. */}
+        <UnreadBanner role="lender" />
+        <AutoOfferStrip />
 
         {/* Client-supplied notice (2026-07-25, B-38): "somewhere that's visible upon loading the page
             but not super conspicuous" */}
@@ -271,6 +282,9 @@ export default function NewDealsPage() {
               const isPending = status === 'pending'
               const isChecked = selectedIds.has(deal.id)
               const dealIsNew = isNewDeal(deal.submittedAt)
+              // E-4: only an offer-sent card folds — the pending one is the deal being read.
+              const canCollapse = status === 'offer-sent'
+              const isCollapsed = canCollapse && collapsedIds.has(deal.id)
 
               return (
                 <div
@@ -279,8 +293,26 @@ export default function NewDealsPage() {
                     status === 'declined' ? 'opacity-40' : ''
                   }`}
                 >
-                  {/* Card header */}
-                  <div className="flex items-center justify-between gap-3 px-6 py-4 bg-muted border-b border-border flex-wrap">
+                  {/* Card header — doubles as the expand/collapse control once an offer is sent (E-4) */}
+                  <div
+                    className={`flex items-center justify-between gap-3 px-6 py-4 bg-muted flex-wrap ${
+                      isCollapsed ? '' : 'border-b border-border'
+                    } ${canCollapse ? 'cursor-pointer select-none' : ''}`}
+                    {...(canCollapse
+                      ? {
+                          role: 'button',
+                          tabIndex: 0,
+                          'aria-expanded': !isCollapsed,
+                          onClick: () => toggleCollapsed(deal.id),
+                          onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              toggleCollapsed(deal.id)
+                            }
+                          },
+                        }
+                      : {})}
+                  >
                     <div className="flex items-center gap-3">
                       <Checkbox
                         checked={isChecked}
@@ -309,6 +341,11 @@ export default function NewDealsPage() {
                     {status === 'offer-sent' ? (
                       <span className="flex items-center gap-1 text-xs text-green-700 font-medium whitespace-nowrap">
                         <CheckCircle className="h-3.5 w-3.5" /> {t('offerSent')}
+                        {isCollapsed ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronUp className="h-4 w-4" />
+                        )}
                       </span>
                     ) : status === 'declined' ? (
                       <span className="text-xs text-muted-foreground">{t('declined')}</span>
@@ -341,9 +378,11 @@ export default function NewDealsPage() {
                   </div>
 
                   {/* Card body — property / deal / qualifying information */}
-                  <div className="p-6">
-                    <LenderDealDetailSections deal={deal} />
-                  </div>
+                  {!isCollapsed && (
+                    <div className="p-6">
+                      <LenderDealDetailSections deal={deal} />
+                    </div>
+                  )}
                 </div>
               )
             })}

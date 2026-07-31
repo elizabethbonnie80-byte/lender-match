@@ -53,6 +53,13 @@ import {
 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
+/**
+ * Sentinel for "no transaction type" (E-5). A Radix SelectItem may not carry an empty value, so the
+ * blank state needs a stand-in; it is mapped back to "" on the way into the form state and never
+ * reaches the database. Same trick as the `any` option in components/filter-fields.tsx.
+ */
+const TRANSACTION_TYPE_NONE = "none"
+
 /** Small (i) info button that pops up client-provided help copy — used for GDS/TDS + the 4 notes. */
 function InfoHint({ title, text, ariaLabel }: { title: string; text: string; ariaLabel: string }) {
   return (
@@ -396,7 +403,10 @@ export default function CreateDealPage() {
   function sectionComplete(section: Section): boolean {
     switch (section) {
       case "client":
-        return !!clientFirstName.trim() && !!clientLastName.trim() && !!occupancyType && !!transactionPurpose && !!transactionType
+        // E-5 (client 2026-07-30): transactionType is deliberately NOT required — a broker who is unsure
+        // which lender type fits should be able to submit without guessing, and the deal then reaches
+        // all three (migration 63).
+        return !!clientFirstName.trim() && !!clientLastName.trim() && !!occupancyType && !!transactionPurpose
       case "deal":
         // Round 3 Phase 3: a prequal has no closing date yet — it gets one at "Move to Live Deal".
         return (!!closingDate || preQualification) && !!mortgageProduct && !!mortgagePosition && !!loanAmount.trim() && !!ltv.trim()
@@ -721,19 +731,30 @@ export default function CreateDealPage() {
                     </Select>
                     <FieldError show={invalid("client", transactionPurpose)} />
                   </div>
+                  {/* E-5 (client 2026-07-30): optional, with a visible note rather than an InfoHint —
+                      the whole point is that an unsure broker sees it without having to open anything.
+                      "Not specified" is a sentinel because a shadcn SelectItem cannot hold an empty
+                      value, and without it the field would be write-once: pick Prime on a draft and
+                      there would be no way back to blank. */}
                   <div className="space-y-2">
-                    <Label htmlFor="transactionType">{t("transactionType")}<Req /></Label>
-                    <Select value={transactionType} onValueChange={(v) => setTransactionType(v as Enums["transaction_type"])}>
-                      <SelectTrigger id="transactionType" className={`w-full bg-muted/50 ${errCls(invalid("client", transactionType))}`}>
-                        <SelectValue placeholder={t("selectType")} />
+                    <Label htmlFor="transactionType">{t("transactionType")}</Label>
+                    <Select
+                      value={transactionType || TRANSACTION_TYPE_NONE}
+                      onValueChange={(v) =>
+                        setTransactionType(v === TRANSACTION_TYPE_NONE ? "" : (v as Enums["transaction_type"]))
+                      }
+                    >
+                      <SelectTrigger id="transactionType" className="w-full bg-muted/50">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={TRANSACTION_TYPE_NONE}>{t("transactionTypeNone")}</SelectItem>
                         {TRANSACTION_TYPE_OPTIONS.map((o) => (
                           <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <FieldError show={invalid("client", transactionType)} />
+                    <p className="text-xs text-muted-foreground">{t("transactionTypeHint")}</p>
                   </div>
                 </div>
 

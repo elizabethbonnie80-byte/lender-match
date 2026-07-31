@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { LogOut, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationBell } from '@/components/notification-bell'
+import { NavUnreadDot } from '@/components/nav-unread-dot'
+import { useUnread } from '@/hooks/use-unread'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { useT } from '@/components/i18n-provider'
 import { BrandMark } from '@/components/brand-mark'
@@ -25,6 +27,14 @@ export function LenderHeader() {
   const tc = useT('common')
   const pathname = usePathname()
   const router = useRouter()
+  const unread = useUnread('lender')
+
+  // E-7: which nav items carry an unread dot. Submitted Offers is the lender's deal surface (offer
+  // accepted / switched / auto-offer digest / prequal converted); Messages uses the real thread unread.
+  const navUnread: Partial<Record<(typeof NAV)[number]['key'], number>> = {
+    submittedOffers: unread.deals,
+    messages: unread.messages,
+  }
 
   const signOut = async () => {
     await createClient().auth.signOut()
@@ -45,20 +55,21 @@ export function LenderHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
+                className={`relative px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
                   pathname === item.href
                     ? 'bg-primary/10 text-primary font-medium'
                     : 'text-foreground hover:text-primary hover:bg-muted'
                 }`}
               >
                 {t(item.key)}
+                <NavUnreadDot count={navUnread[item.key] ?? 0} />
               </Link>
             ))}
           </nav>
 
           <div className="flex items-center gap-2 ml-auto shrink-0">
             <LocaleSwitcher triggerClassName="w-28 h-8 text-xs" />
-            <NotificationBell role="lender" />
+            <NotificationBell role="lender" unreadCount={unread.total} />
             <Link href="/lender/settings">
               <Button variant="ghost" size="icon" title={tc('settings')}>
                 <Settings className="h-4 w-4" />

@@ -107,8 +107,8 @@ belongs to the Phase 3 prequal flow, other dev).
 
 ## Client revision batches after Round 3 (read before touching the lender or broker portals)
 
-Three feedback rounds have landed since Phase 3 shipped. Each has its own control doc; **they are the
-active work queue.**
+Five feedback rounds have landed since Phase 3 shipped. Each has its own control doc; **they are the
+active work queue.** The first four are live on prod; the fifth is built but undeployed.
 
 1. **2026-07-20** (12 items) → [`docs/client-revisions-2026-07-20.md`](./docs/client-revisions-2026-07-20.md)
    — **DONE and live on staging + prod.**
@@ -130,6 +130,39 @@ active work queue.**
    trigger** was keyed off overall satisfaction when their May 4 spec said turn time. 4 items are deferred
    to one later pass (3 blocked on her answers + the ToS re-agreement), and **only B-30 (admin-editable
    invoice templates) is out of scope** — down from 5.
+5. **2026-07-30** (Elizabeth's review pass: 10 items in one email + 1 sent separately) →
+   [`docs/client-revisions-2026-07-30.md`](./docs/client-revisions-2026-07-30.md) — **ALL 11 DONE locally
+   (migrations 63–64) and NOT yet deployed.** Read it before touching the lender filter hints, the legal
+   pages, the anti-contact notices, the invoice PDF header, Create Deal's Transaction Type, the
+   notification bell/nav badges, or the auto-offer engine.
+   ⚠️ **E-5 made `deals.transaction_type` OPTIONAL, and the interesting part is not the form.** The column
+   was already nullable; two read-side predicates assumed it never was. `saved_filter_matches` compared a
+   NULL with `=` (NULL inside an AND chain reads as FALSE → the deal vanished from every lender who had
+   set a type), and `match_percentage` gated the criterion on the FILTER's value alone, so an untyped deal
+   was charged the **heaviest weight in the engine (18 pts)** as a miss — capping it near 82%, flagging a
+   red "Transaction Type" chip and sinking it to the bottom of Maturing, which orders by pct. Shipping
+   only the form change would have left the deals of exactly the brokers she wanted to help visible but
+   last and flagged. **A newly-optional deal field has to be checked against BOTH functions, not just the
+   form** — `saved_filter_matches` for visibility, `match_percentage` for rank.
+   Also settled there: E-2's back link was `href="/sign-up"` hardcoded, and E-3 unified the terms document
+   to **"Terms & Conditions"** in all five places it is named (it was "Terms of Service" in three).
+   ⚠️ **E-7 fixed a second latent bug nobody reported: the bell's unread badge counted only within the
+   newest 20 notifications** (it derived `unread` from the capped `listNotifications`), so anyone past 20
+   was told they had fewer than they did. `unreadNotificationCount()` had been sitting there unused.
+   Unread state now lives in ONE place, **`hooks/use-unread.ts`**, feeding the bell, the nav dots and the
+   banner. The two nav dots read from **different sources on purpose** — the deal dot (Deal Room / Submitted
+   Offers) counts unread NOTIFICATIONS of that surface's types (`DEAL_SURFACE_TYPES`), the Messages dot
+   counts unread MESSAGES from `my_chat_threads` so it self-clears via `mark_chat_read` instead of
+   outliving the conversation. Don't "unify" them.
+   The client asked for a **modal popup on login; we deliberately shipped a dismissible banner instead**
+   (`components/unread-banner.tsx`) — the app already mounts one non-dismissable modal (the A-3 legal
+   gate) and a second per login trains people to close dialogs unread. Reasoning is in the control doc;
+   don't silently convert it to a modal.
+   ⚠️ **E-11 added `profiles.auto_offers_enabled` (migration 64) — a lender-level MASTER switch that is
+   NOT the same bit as `auto_offers.is_active`.** Master off = nothing sends at all; master on = the
+   per-row rules decide. They stay separate because collapsing them loses which auto-offers the lender had
+   deliberately paused. **Default TRUE is load-bearing** — a false default would have silently stopped
+   every pre-existing auto-offer on deploy day, which is why `smoke-auto-offer` asserts the default.
 
 ⚠️ **Two traps recorded in that doc, worth knowing before you open it:**
 - **`docs/Revisions_23_Jul_2026.pdf` is NOT a reliable source.** It is a Gmail print whose long lines are
@@ -424,7 +457,26 @@ append-only `legal_acceptances` keyed to the document ROW [version strings are a
 `handle_new_user` also logs the sign-up acceptance so a new user is never asked to re-accept what they just
 ticked, and the migration backfills existing users timestamped from `profiles.created_at`, not `now()`) ·
 `62_lock_down_cron_jobs` (**security fix**: every `job_*` function was PUBLIC-executable — see Security
-invariants #6 for the full note, the audit-query trap and why `job_cache_invalidate` is exempt).
+invariants #6 for the full note, the audit-query trap and why `job_cache_invalidate` is exempt) ·
+`63_optional_transaction_type` (**client 2026-07-30, E-5**: Transaction Type becomes optional on Create
+Deal, and an untyped deal must reach lenders of all three types. The COLUMN was already nullable — this
+fixes the two read-side predicates that assumed it never was. `saved_filter_matches` gains
+`or d.transaction_type is null` (a NULL compared with `=` yields NULL, which an AND chain treats as FALSE
+— the migration-54 bug class), and `match_percentage` now requires the DEAL's value too, so the criterion
+**drops out of the denominator** instead of scoring 0 of its 18 points. ⚠️ That second one is the trap:
+without it the deal is visible but permanently ~82%, badged with a red "Transaction Type" miss, and last
+on every Maturing feed. Deliberately scoped to transaction_type — the other criteria's deal-side fields
+are still required on the form) ·
+`64_auto_offers_master_switch` (**client 2026-07-30, E-11**: `profiles.auto_offers_enabled` **default
+true**, gating `send_auto_offers` — the lender-level master the New Deals strip toggles. Distinct from
+the per-row `auto_offers.is_active`, deliberately: master off = nothing sends; master on = the per-row
+rules decide. Collapsing them would lose which offers the lender had paused. ⚠️ The TRUE default is not
+cosmetic — false would have stopped every pre-existing auto-offer silently. No RLS change needed: the
+`profiles_privilege_guard` trigger is a DENY-list and this column is not on it).
+⚠️ **Migrations 63–64 are LOCAL ONLY — not on staging, not on prod** (client batch 2026-07-30,
+undeployed). The deploy also needs the **`invoice-pdf` edge function redeployed** on both, since E-9
+changed its header.
+
 **Hosted status: migrations 36–62 are applied to BOTH staging AND prod**
 (36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; 52–56 on 2026-07-27;
 **57–62 on 2026-07-29** — 62/62 on each, advisors 0 ERROR, browser-QA'd on staging). The 57–62 deploy also
@@ -750,6 +802,10 @@ on several sets — any data migration must map **by display label** using the t
   lists failing criteria when 70≤pct<100. Checkbox criteria filter the list but do NOT score.
   (Bubble bugs #10/#11 — credit-score fail missing from the badge, purpose compared against
   transaction type — fix per spec, noted in the SQL implementation.)
+  ⚠️ **A criterion the DEAL leaves empty must drop out of the denominator, not score zero** (migration 63,
+  E-5). Only transaction type can be empty today, but the shape recurs: gating the criterion on the
+  filter's value alone charges the full weight as a miss, which both caps the score and emits a red miss
+  chip. Deal-side null → skip the criterion entirely.
 - **List age windows** (from `created_at`, day-rounded): **New 0–1d / Maturing 2–14d / Expired 15+**
   (Round 3 Phase 1, supersedes OQ#18). The values live in `lib/age-windows.ts` + the maturing SQL
   window (migration 37) — do not scatter.
@@ -858,11 +914,16 @@ on several sets — any data migration must map **by display label** using the t
   (`smoke-delete-draft` — delete until accepted incl. offer cascade, edit-submitted until first offer,
   owner-only, cascade), the Round 3 Phase 3 **auto-offer engine** (`smoke-auto-offer` — the positive send
   plus EVERY negative gate: a filled note, the unchecked no-exceptions box, a filter miss, inactive/past
-  end date, blocked brokerage, one-offer-per-lender, the digest job, and auto-offer RLS), the Phase 3
+  end date, blocked brokerage, one-offer-per-lender, the digest job, auto-offer RLS, and the E-11
+  **master switch** [the TRUE default, master-off blocking an otherwise-active offer, master-off NOT
+  touching the per-row `is_active`, and resuming with nothing re-enabled by hand]), the Phase 3
   **prequal → live deal** flow (`smoke-prequal` — the address-or-prequal submit gate, bidding on a prequal,
   the accept-before-conversion refusal, every conversion guard, offers carrying over + the lender
   notification, and no marketplace re-entry),
-  the Round 3 **filter criteria** (`smoke-open-filtered`), **decline** off the feeds
+  the Round 3 **filter criteria** (`smoke-open-filtered`), the **optional transaction type**
+  (`smoke-optional-transaction-type` — an untyped deal reaches a lender filtering on a type, through both
+  the saved-filter chip and the ad-hoc panel, AND scores 100% rather than losing the 18-point weight;
+  every assertion has a typed control so "matches everything" fails too), **decline** off the feeds
   (`smoke-decline`), **bilateral blocking**
   (`smoke-blocking` — security invariant #2), anti-contact, notifications, messaging, saved-filter feeds,
   sign-up, admin, FAQs, the **login-page logos** (`smoke-logos` — the anon-reads-active-only /
@@ -887,6 +948,14 @@ on several sets — any data migration must map **by display label** using the t
   bar with white text. Anything that sets its own colour (a red label, a green icon, muted placeholder
   text) has to be re-stated for the hover state or it ends up coloured-on-blue and unreadable — that bit
   `RowActions` and `SelectTrigger` (fixed 2026-07-22). Check hover, not just the resting state.
+  ⚠️ **Unread state lives in ONE place, `hooks/use-unread.ts`** (E-7, 2026-07-30) — the bell badge, the nav
+  dots and the landing banner all read from it, Realtime-subscribed. **Never re-derive an unread count from
+  `listNotifications`**: that call is capped at 20 rows, and deriving from it was exactly the bug E-7 fixed
+  (a user with 30 unread was shown fewer). Companion pieces: **`NavUnreadDot`** (`components/nav-unread-dot.tsx`
+  — the pip; its parent `<Link>` must be `relative`) and **`UnreadBanner`** (`components/unread-banner.tsx`).
+  ⚠️ **A `<Button>` wrapped in a `<Link>` nests a `<button>` inside an `<a>` and the inner button eats the
+  click** — the nav's icon buttons get away with it, but it silently broke the auto-offer strip's Manage
+  button in QA. Use `<Button asChild><Link …></Button>` so the button renders AS the anchor.
   **`useLenderDealFeed`** (`hooks/use-lender-deal-feed.ts`) holds ALL the shared New Deals + Maturing feed
   logic (fetch/filters/saved-filter chips/selection/bulk actions/pagination/decline/message) — the two pages
   keep only their distinct cards ("new this week" badge vs match-% legend/badge); **`filter-fields.tsx`**

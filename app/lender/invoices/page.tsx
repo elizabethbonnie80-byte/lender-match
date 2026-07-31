@@ -43,7 +43,7 @@ import {
   CheckCircle,
   XCircle,
   Pencil,
-  Download,
+  Eye,
   FileText,
   DollarSign,
   AlertCircle,
@@ -467,6 +467,18 @@ export default function InvoicesPage() {
                                 <RowActions
                                   label={t('colActions')}
                                   actions={[
+                                    // E-9/E-10 (client 2026-07-30): this action opens the invoice in a
+                                    // new tab — it never downloaded — so it is "View", not "PDF", it
+                                    // leads the list, and the icon is an eye rather than a download
+                                    // arrow that promised a file.
+                                    {
+                                      label: t('actionView'),
+                                      icon: (
+                                        <Eye className={`h-4 w-4 ${pdfBusyId === inv.id ? 'animate-pulse' : ''}`} />
+                                      ),
+                                      onSelect: () => handleDownloadPdf(inv.id),
+                                      disabled: pdfBusyId === inv.id,
+                                    },
                                     {
                                       label: t('actionPaid'),
                                       icon: <CheckCircle className="h-4 w-4 text-green-600" />,
@@ -476,14 +488,6 @@ export default function InvoicesPage() {
                                       label: t('actionChanges'),
                                       icon: <Pencil className="h-4 w-4" />,
                                       onSelect: () => setChangingId(inv.id),
-                                    },
-                                    {
-                                      label: t('actionPdf'),
-                                      icon: (
-                                        <Download className={`h-4 w-4 ${pdfBusyId === inv.id ? 'animate-pulse' : ''}`} />
-                                      ),
-                                      onSelect: () => handleDownloadPdf(inv.id),
-                                      disabled: pdfBusyId === inv.id,
                                     },
                                     {
                                       label: t('actionCancel'),
@@ -561,11 +565,11 @@ export default function InvoicesPage() {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              title={t('downloadPdf')}
+                              title={t('actionView')}
                               disabled={pdfBusyId === inv.id}
                               onClick={() => handleDownloadPdf(inv.id)}
                             >
-                              <Download className={`h-3.5 w-3.5 ${pdfBusyId === inv.id ? 'animate-pulse' : ''}`} />
+                              <Eye className={`h-3.5 w-3.5 ${pdfBusyId === inv.id ? 'animate-pulse' : ''}`} />
                             </Button>
                           </td>
                         </tr>

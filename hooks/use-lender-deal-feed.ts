@@ -205,9 +205,32 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
     setOfferTarget(ids)
   }
 
+  /**
+   * E-4 (client 2026-07-30): "When a lender submits an offer on a deal, is it possible to collapse the
+   * deal details so that it's easier to see the next deal that needs an offer?"
+   *
+   * A card carries all three detail sections (~43 fields), so a lender working down the list had to
+   * scroll past a deal they had just handled to reach the next one. Offering now folds the card to its
+   * header; clicking the header brings it back.
+   *
+   * Only offer-sent cards are collapsible — a pending card must stay open, since that is the one being
+   * read. Membership is keyed by deal id and simply ignored for ids no longer in the feed, which matters
+   * because migration 34 drops the deal from the feed on the next server fetch anyway: this state is
+   * for the run of offers in front of the lender right now, not something to persist.
+   */
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+  const toggleCollapsed = (id: string) =>
+    setCollapsedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
   // Called by <MakeOfferDialog> after make_offer succeeds for every target deal.
   const onOfferSent = (ids: string[], message: string) => {
     applyLenderStatus(ids, 'offer-sent')
+    setCollapsedIds((prev) => new Set([...prev, ...ids]))
     flash(message)
     setOfferTarget(null)
   }
@@ -323,7 +346,7 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
     // selection
     selectedIds, setSelectedIds, toggleSelect, toggleSelectAll,
     pendingDeals, allSelected, someSelected, bulkSelected,
-    lenderStatus,
+    lenderStatus, collapsedIds, toggleCollapsed,
     // pagination
     currentPage, setCurrentPage, totalPages, startIndex,
     // dialogs + actions

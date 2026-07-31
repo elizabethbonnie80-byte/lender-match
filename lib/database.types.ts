@@ -1348,6 +1348,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auto_offers_enabled: boolean
           brokerage_id: string | null
           confirm_delete_until: string | null
           created_at: string
@@ -1379,6 +1380,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_offers_enabled?: boolean
           brokerage_id?: string | null
           confirm_delete_until?: string | null
           created_at?: string
@@ -1410,6 +1412,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_offers_enabled?: boolean
           brokerage_id?: string | null
           confirm_delete_until?: string | null
           created_at?: string

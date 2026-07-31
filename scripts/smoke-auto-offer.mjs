@@ -136,6 +136,33 @@ async function main() {
     check("no auto-offer past the optional end date", (await autoOffersOn(d6)).length === 0)
     await svc.from("auto_offers").update({ end_date: null }).eq("id", autoOfferId)
 
+    // ── 5b. The lender-level MASTER switch (E-11, migration 64) ──
+    // Independent of the per-row is_active above: master off must stop a fully active auto-offer, and
+    // turning it back on must resume WITHOUT the lender having to re-enable anything. That second half
+    // is the whole reason this is a separate column rather than a bulk flip of is_active.
+    const { data: defaultOn } = await svc.from("profiles").select("auto_offers_enabled").eq("id", lenderId).single()
+    check("auto_offers_enabled defaults to true", defaultOn?.auto_offers_enabled === true,
+      String(defaultOn?.auto_offers_enabled) + "  ← a false default would silently stop every existing auto-offer")
+
+    await lender.from("profiles").update({ auto_offers_enabled: false }).eq("id", lenderId)
+    const { data: afterSelfUpdate } = await svc.from("profiles").select("auto_offers_enabled").eq("id", lenderId).single()
+    // RLS with no matching policy is a silent no-op, so assert the VALUE, not the absence of an error.
+    check("the lender can turn their own master switch off", afterSelfUpdate?.auto_offers_enabled === false,
+      String(afterSelfUpdate?.auto_offers_enabled))
+
+    const dMasterOff = await makeDraft()
+    await submit(dMasterOff)
+    check("no auto-offer while the master switch is off", (await autoOffersOn(dMasterOff)).length === 0)
+
+    const { data: stillActive } = await svc.from("auto_offers").select("is_active").eq("id", autoOfferId).single()
+    check("master off does NOT touch the per-offer is_active", stillActive?.is_active === true,
+      "per-offer pause state must survive a master toggle")
+
+    await lender.from("profiles").update({ auto_offers_enabled: true }).eq("id", lenderId)
+    const dMasterOn = await makeDraft()
+    await submit(dMasterOn)
+    check("auto-offer resumes when the master switch goes back on", (await autoOffersOn(dMasterOn)).length === 1)
+
     // ── 6. Blocked brokerage (lender blocked the broker's brokerage) ──
     await svc.from("lender_blocked_brokerages").insert({ lender_id: lenderId, brokerage_id: bp.brokerage_id })
     const d7 = await makeDraft()

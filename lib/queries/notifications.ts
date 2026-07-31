@@ -81,14 +81,36 @@ export async function listNotifications(supabase: DB, limit = 20, offset = 0): P
   }))
 }
 
-/** Count of the current user's unread notifications. */
-export async function unreadNotificationCount(supabase: DB): Promise<number> {
-  const { count, error } = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("is_read", false)
+/**
+ * Count of the current user's unread notifications — an EXACT server-side count, optionally narrowed
+ * to a set of types.
+ *
+ * ⚠️ Do not go back to deriving this from `listNotifications`. That was the E-7 bug (client 2026-07-30):
+ * the bell counted unread inside the newest 20 rows it had fetched, so a user with 30 unread was shown
+ * a smaller number — on the very badge that is supposed to tell them how much they have missed.
+ */
+export async function unreadNotificationCount(supabase: DB, types?: readonly NotificationType[]): Promise<number> {
+  let q = supabase.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false)
+  if (types && types.length > 0) q = q.in("type", [...types])
+  const { count, error } = await q
   if (error) throw new Error(error.message)
   return count ?? 0
+}
+
+/**
+ * Which notification types belong to each role's "deal" nav item, for the unread dot (E-7).
+ *
+ * The client asked for a dot on Deal Room and Messages "when there are new notifications". Deal Room
+ * (broker) and Submitted Offers (lender) are the two surfaces where a deal's own activity lands.
+ * `message_received` is deliberately absent: the Messages dot uses the real per-thread unread count
+ * instead, which self-clears when the thread is opened.
+ *
+ * Admin has no deal surface in its nav, hence the empty list.
+ */
+export const DEAL_SURFACE_TYPES: Record<NotificationRole, readonly NotificationType[]> = {
+  broker: ["new_offer", "deal_expiring", "deal_expired", "survey_pending"],
+  lender: ["offer_accepted", "offer_switched", "auto_offer_sent", "prequal_converted", "filter_match"],
+  admin: [],
 }
 
 /** Mark one notification read (RLS: notifications_mark_read, recipient only). */
