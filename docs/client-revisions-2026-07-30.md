@@ -368,6 +368,17 @@ Verified against the hosted staging DB, not just locally:
 **Not exercised on staging:** E-4 (the staging New Deals feed is empty), E-6 (long wizard) and E-8
 (needs a live anti-contact block). All three verified locally; E-6 and E-8 are pure catalog edits.
 
+**Two follow-ups this deploy surfaced but did not cause — neither is code from this batch:**
+
+1. **`best_match_for` and `send_auto_offers` are `security definer` and PUBLIC-executable.** Same family
+   as migration 62, outside the `job_*` set. `best_match_for` is the one that matters: it takes the lender
+   id as a parameter rather than reading `auth.uid()`, so any signed-in user can read another lender's
+   match percentages. Left out of this deploy on purpose — pre-existing, and not something to mix into a
+   client-facing release. Full note in CLAUDE.md, Security invariants #6.
+2. **The staging DB password leaked into a session log.** `scripts/.env.cloud` holds unquoted values with
+   shell metacharacters, so `source`-ing it fails to parse *and* echoes the password. Rotate it and quote
+   the file; the safe read pattern is now in `DEPLOY_RUNBOOK.md` §3.
+
 ⚠️ **Prod still has NO published `legal_documents`** — two rows, version 2026-07-18, both unpublished.
 So `/legal/terms` and `/legal/privacy` render "Not available yet", and the footer links to them from
 every page. Publishing is two clicks in `/admin/legal` and **the first publish fires the A-3

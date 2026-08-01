@@ -46,6 +46,20 @@ main     →  Vercel Production  →  Supabase prod    (bcedtccidfehdbthmhss)
   `SUPABASE_DATABASE_PRODUCTION_PASSWORD`, `SUPABASE_DATABASE_STAGING_PASSWORD`, `SUPABASE_STAGING_SECRET_KEY`
   (add `SUPABASE_PRODUCTION_SECRET_KEY` for prod). ⚠️ Its `SUPABASE_URL`/`ANON_KEY`/`SERVICE_ROLE_KEY` may be
   STALE (they still pointed at the old dev project) — **always use per-project values, don't trust these.**
+
+  ⚠️ **Do NOT `source` / `. scripts/.env.cloud`.** The values are unquoted and the DB passwords contain
+  shell metacharacters (`$`, `?`, `>`), so bash fails to parse the line **and echoes the password into the
+  terminal on the way out** — which is how the staging password leaked into a session log on 2026-07-31
+  (rotate it, and quote the values in the file). Parse the file instead and hand the value to the child
+  process through its environment, never through the command line:
+  ```js
+  // read KEY=value line-by-line, then:
+  spawnSync('npx', ['supabase', ...args], { stdio: 'inherit', shell: true,
+    env: { ...process.env, SUPABASE_DB_PASSWORD: password } })
+  ```
+  Same rule for running a smoke against a hosted project: pass `SUPABASE_URL` / `SUPABASE_ANON_KEY` /
+  `SUPABASE_SERVICE_ROLE_KEY` through `env`, since the smokes read them from the environment and otherwise
+  fall back to the local stack.
 - **`supabase/.env`** (gitignored): `RESEND_API_KEY`, `ANTHROPIC_API_KEY`, `NOTIFY_FROM`.
 - **Vercel** connected to the GitHub repo (GitHub App), production branch = `main`.
 

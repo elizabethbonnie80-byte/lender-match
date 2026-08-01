@@ -787,6 +787,20 @@ on several sets — any data migration must map **by display label** using the t
    Also recorded: `job_reset_monthly_switches` was already safe, and NOT because of its grant — the
    `profiles_privilege_guard` trigger refuses changes to `offer_switches_this_month` unless `is_admin()`.
    Defence-in-depth held; it was the only thing holding.
+   ⚠️ **OPEN, not yet fixed — the same family outside `job_*`.** Found while checking the advisors during
+   the 63–64 deploy (2026-07-31), pre-existing and NOT introduced by it, so it was deliberately left out
+   of that deploy rather than mixed in:
+   - **`best_match_for(p_lender, p_deal_id)`** — `security definer`, PUBLIC-executable, and it takes the
+     lender id as a **parameter** instead of reading `auth.uid()`. Any signed-in user can pass someone
+     else's id and read that lender's match percentages and filter names. This is the one worth fixing.
+   - **`send_auto_offers(p_deal_id)`** — `security definer`, PUBLIC-executable. Callable directly rather
+     than only from `submit_deal`. Internally gated (deal must be submitted/offer_received,
+     `deal_allows_auto_offer`, plus each lender's own rules), so the realistic worst case is firing
+     auto-offers early on a deal that would have received them at submit anyway.
+   `saved_filter_matches` and `match_percentage` are also PUBLIC but are **not** `security definer`, so
+   they run as the caller with RLS applied — those are fine. The advisors count 48 `anon` / 50
+   `authenticated` in this family on both envs; most are internally `is_admin()`-gated, so the count alone
+   is not the signal — check `prosecdef` **and** whether the body trusts a caller-supplied identity.
 
 ## Core business rules (exact — regression-test against `docs/extracted/test-vectors.md`)
 
