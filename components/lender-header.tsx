@@ -29,10 +29,12 @@ export function LenderHeader() {
   const router = useRouter()
   const unread = useUnread('lender')
 
-  // E-7: which nav items carry an unread dot. Submitted Offers is the lender's deal surface (offer
-  // accepted / switched / auto-offer digest / prequal converted); Messages uses the real thread unread.
+  // E-7 + the 2026-07-30 follow-up (F-1): which nav items carry an unread dot. New Deals carries it
+  // (unread `filter_match` — a new deal matched a saved filter), NOT Submitted Offers: the daily
+  // auto-offer digest kept re-lighting that one every morning, so it read as permanent. See
+  // DEAL_SURFACE_TYPES for the full reasoning. Messages uses the real thread unread.
   const navUnread: Partial<Record<(typeof NAV)[number]['key'], number>> = {
-    submittedOffers: unread.deals,
+    newDeals: unread.deals,
     messages: unread.messages,
   }
 

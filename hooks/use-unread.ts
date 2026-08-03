@@ -13,7 +13,7 @@ import {
 export type UnreadCounts = {
   /** Every unread notification — an exact server count, not a count of what happens to be loaded. */
   total: number
-  /** Unread notifications belonging to the role's deal surface (Deal Room / Submitted Offers). */
+  /** Unread notifications belonging to the role's dotted nav item (broker Deal Room / lender New Deals). */
   deals: number
   /** Unread MESSAGES (not notifications) across every thread the user is in. */
   messages: number
@@ -22,21 +22,49 @@ export type UnreadCounts = {
 
 const EMPTY: UnreadCounts = { total: 0, deals: 0, messages: 0, ready: false }
 
+/** Every mounted useUnread(), so a read action in this tab can re-count all of them at once. */
+const listeners = new Set<() => void>()
+
+/**
+ * Tell every mounted `useUnread()` to re-count NOW. Call it right after a write that changes read state
+ * — mark one notification read, mark all read, mark a chat read.
+ *
+ * ⚠️ This is NOT redundant with the Realtime subscription below, and removing it silently breaks the
+ * client's F-1 request ("it should also go away once they review the new notifications"). Realtime
+ * delivers the INSERTs but **not** the `is_read` UPDATEs: `notifications` has REPLICA IDENTITY DEFAULT,
+ * so on an UPDATE the old tuple carries only the primary key and the subscription's
+ * `recipient_id=eq.<uid>` filter has nothing to match, so the event is dropped. Measured locally —
+ * inserting a row lit the badge live, while "Mark all read" left the badge, the nav dot and the banner
+ * showing 53 against a database that already said 0, until the next navigation or reload.
+ *
+ * The server-side alternative (`alter table notifications replica identity full`) would also work and is
+ * deliberately not used: it writes the entire previous row into the WAL on every UPDATE of the app's
+ * busiest table, purely to broadcast an event back to the tab that caused it. Read state is only ever
+ * written by the user's own client, so a local notification is both sufficient and exact. The one thing
+ * it does not cover is a SECOND tab open on the same account — that tab still corrects itself on its
+ * next navigation, which is the same guarantee it had before.
+ */
+export function notifyUnreadChanged() {
+  for (const listener of listeners) listener()
+}
+
 /**
  * Shared unread state for the header badges, the nav dots and the landing banner (E-7, client
  * 2026-07-30: "can we make the notifications more prominent? … Maybe deal room and messages also need
  * the red bulb").
  *
  * Two different sources on purpose, because they are two different questions:
- *  • the deal dot counts unread NOTIFICATIONS of that surface's types — which is literally what she
- *    asked for, and it clears when the notification is read or "mark all read" is used;
+ *  • the deal dot counts unread NOTIFICATIONS of that nav item's types — which is literally what she
+ *    asked for, and it clears when the notification is read or "mark all read" is used. Which types
+ *    those are is not arbitrary: a type that fires on a SCHEDULE rather than on an event cannot feed a
+ *    dot, or the dot never goes dark. That is the F-1 fix — see `DEAL_SURFACE_TYPES`;
  *  • the messages dot counts unread MESSAGES via `my_chat_threads`. That is the truthful signal and it
  *    self-clears through `mark_chat_read` when the thread is opened, so the dot cannot outlive the
  *    conversation the way a notification-derived one would.
  *
- * Refreshed on mount, on every notifications Realtime event, and on navigation — the last one covers
- * reading a thread (which writes no notification) and the case where a user has turned the
- * `message_received` notification type off entirely.
+ * Refreshed on mount, on every notifications Realtime event, on `notifyUnreadChanged()` (any read action
+ * taken in this tab — Realtime does not deliver the `is_read` UPDATEs, see that function), and on
+ * navigation. The last one is the backstop that also covers a second tab on the same account.
  */
 export function useUnread(role: NotificationRole): UnreadCounts {
   const [counts, setCounts] = useState<UnreadCounts>(EMPTY)
@@ -67,6 +95,16 @@ export function useUnread(role: NotificationRole): UnreadCounts {
   useEffect(() => {
     void refresh()
   }, [refresh, pathname])
+
+  // Re-count when this tab marks something read — see notifyUnreadChanged() for why Realtime alone
+  // cannot cover this.
+  useEffect(() => {
+    const listener = () => void refresh()
+    listeners.add(listener)
+    return () => {
+      listeners.delete(listener)
+    }
+  }, [refresh])
 
   useEffect(() => {
     const supabase = createClient()

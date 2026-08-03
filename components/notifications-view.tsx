@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { NotificationIcon } from "@/components/notification-icon"
 import { createClient } from "@/lib/supabase/client"
 import { useT, useLocale } from "@/components/i18n-provider"
+import { notifyUnreadChanged } from "@/hooks/use-unread"
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -93,7 +94,9 @@ export function NotificationsView({ role }: { role: NotificationRole }) {
   const onItemClick = (n: NotificationItem) => {
     if (!n.isRead) {
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)))
-      markNotificationRead(createClient(), n.id).catch(() => void refresh())
+      markNotificationRead(createClient(), n.id)
+        .then(notifyUnreadChanged)
+        .catch(() => void refresh())
     }
     const href = notificationHref(n, role)
     if (href) router.push(href)
@@ -103,6 +106,7 @@ export function NotificationsView({ role }: { role: NotificationRole }) {
     setItems((prev) => prev.map((x) => ({ ...x, isRead: true })))
     try {
       await markAllNotificationsRead(createClient())
+      notifyUnreadChanged()
     } catch {
       void refresh()
     }

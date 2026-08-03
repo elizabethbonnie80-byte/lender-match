@@ -98,18 +98,36 @@ export async function unreadNotificationCount(supabase: DB, types?: readonly Not
 }
 
 /**
- * Which notification types belong to each role's "deal" nav item, for the unread dot (E-7).
+ * Which notification types put an unread dot on which nav item (E-7), per role.
  *
- * The client asked for a dot on Deal Room and Messages "when there are new notifications". Deal Room
- * (broker) and Submitted Offers (lender) are the two surfaces where a deal's own activity lands.
- * `message_received` is deliberately absent: the Messages dot uses the real per-thread unread count
- * instead, which self-clears when the thread is opened.
+ * The client asked for a dot where there is "something new to look at", and `message_received` is
+ * deliberately absent from all of these: the Messages dot uses the real per-thread unread count
+ * instead, which self-clears via `mark_chat_read` when the thread is opened.
+ *
+ * ⚠️ The lender's dot belongs to **New Deals**, not Submitted Offers, and that is a correction —
+ * client 2026-07-30 follow-up (F-1): "there is a permanent red notification dot where it says
+ * submitted offers … it's fine to have one for new deals or messages, but we don't need that
+ * elsewhere." Two separate mistakes made it look permanent:
+ *
+ *  1. `auto_offer_sent` is the DAILY digest cron. Any lender with a live auto-offer got a fresh unread
+ *     row every morning, so the dot re-lit itself every day for the life of the account — the exact
+ *     "permanent" she reported. A recurring, scheduled notification type must never feed a nav dot;
+ *     the dot's job is "something new happened", and a daily heartbeat carries no such information.
+ *  2. `filter_match` was pointed at the wrong page. It means "a new deal matched your filter", which
+ *     lives on New Deals — `notificationHref` has always routed it to `/lender/new-deals`. So the dot
+ *     and the click destination disagreed: it lit up Submitted Offers over a deal that was not there.
+ *
+ * `filter_match` alone is therefore the honest lender signal, and it lands on the page it points to.
+ * The remaining lender types (offer accepted/switched, digest, prequal converted) still reach the bell,
+ * the notifications page and the banner — they just no longer brand a nav item permanently red.
+ *
+ * The broker list is unchanged: every type in it fires once per deal event, never on a schedule.
  *
  * Admin has no deal surface in its nav, hence the empty list.
  */
 export const DEAL_SURFACE_TYPES: Record<NotificationRole, readonly NotificationType[]> = {
   broker: ["new_offer", "deal_expiring", "deal_expired", "survey_pending"],
-  lender: ["offer_accepted", "offer_switched", "auto_offer_sent", "prequal_converted", "filter_match"],
+  lender: ["filter_match"],
   admin: [],
 }
 

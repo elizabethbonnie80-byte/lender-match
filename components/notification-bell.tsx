@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { NotificationIcon } from "@/components/notification-icon"
 import { createClient } from "@/lib/supabase/client"
 import { useT, useLocale } from "@/components/i18n-provider"
+import { notifyUnreadChanged } from "@/hooks/use-unread"
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -81,7 +82,9 @@ export function NotificationBell({ role, unreadCount }: { role: NotificationRole
     setOpen(false)
     if (!n.isRead) {
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)))
-      markNotificationRead(createClient(), n.id).catch(() => void refresh())
+      markNotificationRead(createClient(), n.id)
+        .then(notifyUnreadChanged)
+        .catch(() => void refresh())
     }
     const href = notificationHref(n, role)
     if (href) router.push(href)
@@ -91,6 +94,9 @@ export function NotificationBell({ role, unreadCount }: { role: NotificationRole
     setItems((prev) => prev.map((x) => ({ ...x, isRead: true })))
     try {
       await markAllNotificationsRead(createClient())
+      // The badge, the nav dots and the banner all live in useUnread(), and the `is_read` UPDATE does
+      // not come back over Realtime — without this they keep showing the old count (F-1).
+      notifyUnreadChanged()
     } catch {
       void refresh()
     }

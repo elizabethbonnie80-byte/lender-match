@@ -135,6 +135,8 @@ active work queue.** The first four are live on prod; the fifth is built but und
    LIVE on staging + prod (2026-07-31, `1ffe36d`, migrations 63–64).** Read it before touching the legal
    pages, the anti-contact notices, the invoice PDF header, Create Deal's Transaction Type, the
    notification bell/nav badges, or the auto-offer engine.
+   **The client approved this batch on 2026-08-02 with exactly one correction — `F-1`, the permanent red
+   dot on Submitted Offers (§F-1, built, NOT yet deployed).** Everything else in the batch is accepted.
    ⚠️ **E-5 made `deals.transaction_type` OPTIONAL, and the interesting part is not the form.** The column
    was already nullable; two read-side predicates assumed it never was. `saved_filter_matches` compared a
    NULL with `=` (NULL inside an AND chain reads as FALSE → the deal vanished from every lender who had
@@ -150,14 +152,37 @@ active work queue.** The first four are live on prod; the fifth is built but und
    newest 20 notifications** (it derived `unread` from the capped `listNotifications`), so anyone past 20
    was told they had fewer than they did. `unreadNotificationCount()` had been sitting there unused.
    Unread state now lives in ONE place, **`hooks/use-unread.ts`**, feeding the bell, the nav dots and the
-   banner. The two nav dots read from **different sources on purpose** — the deal dot (Deal Room / Submitted
-   Offers) counts unread NOTIFICATIONS of that surface's types (`DEAL_SURFACE_TYPES`), the Messages dot
-   counts unread MESSAGES from `my_chat_threads` so it self-clears via `mark_chat_read` instead of
-   outliving the conversation. Don't "unify" them.
+   banner. The two nav dots read from **different sources on purpose** — the deal dot (broker Deal Room /
+   lender New Deals) counts unread NOTIFICATIONS of that nav item's types (`DEAL_SURFACE_TYPES`), the
+   Messages dot counts unread MESSAGES from `my_chat_threads` so it self-clears via `mark_chat_read`
+   instead of outliving the conversation. Don't "unify" them.
    The client asked for a **modal popup on login; we deliberately shipped a dismissible banner instead**
    (`components/unread-banner.tsx`) — the app already mounts one non-dismissable modal (the A-3 legal
    gate) and a second per login trains people to close dialogs unread. Reasoning is in the control doc;
-   don't silently convert it to a modal.
+   don't silently convert it to a modal. **The client accepted the banner explicitly on 2026-08-02**
+   ("I like how you added the auto offers and notifications banner at the top as well") — that substitution
+   is settled, so it is not an open question to revisit.
+   ⚠️ **F-1 (2026-08-02) is THREE bugs behind one complaint, and the rules behind them generalize.** She
+   reported a "permanent red notification dot" on Submitted Offers and was right on every count.
+   **(a)** `DEAL_SURFACE_TYPES.lender` fed the dot `auto_offer_sent`, which is the **daily digest cron** — a
+   scheduled heartbeat re-lit it every morning, so nothing a lender did kept it dark. **(b)** It also fed it
+   `filter_match`, whose own `notificationHref` routes to `/lender/new-deals`, so the dot lit one page over a
+   deal that lived on another. Now `lender: ['filter_match']`, on the New Deals item; measured on staging,
+   every lit dot was held up by rows unread for 8–23 days. **(c)** ⚠️ **"Mark all read" did not clear the
+   badge, the dot or the banner at all** until the next navigation — because **Supabase Realtime delivers the
+   INSERTs but NOT the `is_read` UPDATEs**: `notifications` has `REPLICA IDENTITY DEFAULT`, so on an UPDATE
+   the old tuple carries only the PK and the subscription's `recipient_id=eq.<uid>` filter has nothing to
+   match. Fixed with **`notifyUnreadChanged()`** in `hooks/use-unread.ts`, called by the three writers
+   (`notification-bell`, `notifications-view`, `messages-inbox` — the Messages dot had the same defect).
+   `replica identity full` would also work and was rejected: it writes the whole previous row to the WAL on
+   every UPDATE of the busiest table, to broadcast an event back to the tab that caused it. **The rules: a
+   type that fires on a SCHEDULE must never feed a nav dot; a dot must sit on the page its notifications
+   navigate to (`notificationHref` is the declaration — the dot must agree with it); and a count rendered
+   outside the component that mutates it needs explicit invalidation, never Realtime.** `pnpm check` catches
+   none of the three. Deliberately NOT done: marking the surface read on page visit — both portals LAND on
+   the dotted page, so that would destroy the unread count at login and silently break the banner she just
+   praised (see §F-1). Also flagged-not-fixed there: the notifications PAGE still labels its tab
+   `Unread (20)` from its loaded page while the bell says 53.
    ⚠️ **E-8 shipped a warning the platform cannot enforce**: the anti-contact notice now says further
    attempts "may result in suspension of your account", and **there is no account-suspension mechanism**.
    Told to the client, and now the SECOND item awaiting a quote next to B-30 — scope is in §E-8 of the
@@ -970,6 +995,14 @@ on several sets — any data migration must map **by display label** using the t
   `listNotifications`**: that call is capped at 20 rows, and deriving from it was exactly the bug E-7 fixed
   (a user with 30 unread was shown fewer). Companion pieces: **`NavUnreadDot`** (`components/nav-unread-dot.tsx`
   — the pip; its parent `<Link>` must be `relative`) and **`UnreadBanner`** (`components/unread-banner.tsx`).
+  ⚠️ **Which notification types feed a nav dot is a real decision, not bookkeeping** (F-1, 2026-08-02):
+  a type that fires on a **schedule** (the daily `auto_offer_sent` digest) re-lights the dot every morning
+  and makes it permanent, and a dot must sit on the page `notificationHref` sends its types to. Both rules
+  live in the `DEAL_SURFACE_TYPES` docstring — read it before adding a type there.
+  ⚠️ **After ANY write that changes read state, call `notifyUnreadChanged()`** (also F-1) — Realtime does
+  **not** deliver the `is_read` UPDATEs (`REPLICA IDENTITY DEFAULT` + a filtered subscription), so without it
+  the badge/dots/banner keep showing the pre-read count until the next navigation. That was the client's
+  actual "it should go away once they review" complaint, and it applies to `mark_chat_read` too.
   ⚠️ **A `<Button>` wrapped in a `<Link>` nests a `<button>` inside an `<a>` and the inner button eats the
   click** — the nav's icon buttons get away with it, but it silently broke the auto-offer strip's Manage
   button in QA. Use `<Button asChild><Link …></Button>` so the button renders AS the anchor.

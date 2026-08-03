@@ -222,21 +222,23 @@ badge meant to tell them how much they had missed. `unreadNotificationCount()` a
 |---|---|
 | Bell | `h-5 w-5` in an `h-10 w-10` button — deliberately larger than its neighbours — and the badge gets a ring in the header colour so it reads as a raised pip. |
 | Count | Exact server count via `unreadNotificationCount()`, not "unread among the 20 I happened to load". |
-| Nav dots | `components/nav-unread-dot.tsx` on **Messages** (both portals) and on the role's deal surface — **Deal Room** for brokers, **Submitted Offers** for lenders. |
+| Nav dots | `components/nav-unread-dot.tsx` on **Messages** (both portals) and on the role's deal surface — **Deal Room** for brokers, ~~**Submitted Offers**~~ **New Deals** for lenders (corrected in F-1 below). |
 | Banner | `components/unread-banner.tsx` on `/deal-room` and `/lender/new-deals`. |
 | Shared state | `hooks/use-unread.ts` — one hook feeding the bell, the dots and the banner, Realtime-subscribed. |
 
 **The two dots read from different sources on purpose**, and it is not an inconsistency worth
 "fixing" later:
 
-- the **deal dot** counts unread NOTIFICATIONS of that surface's types (`DEAL_SURFACE_TYPES`), which is
-  literally what she asked for — "the red bulb when there are new notifications";
+- the **deal dot** counts unread NOTIFICATIONS of that nav item's types (`DEAL_SURFACE_TYPES`), which is
+  literally what she asked for — "the red bulb when there are new notifications". ⚠️ **Which types feed
+  it turned out to matter more than this section assumed — see F-1;**
 - the **messages dot** counts unread MESSAGES from `my_chat_threads`. That is the truthful signal and it
   self-clears through `mark_chat_read` when the thread is opened. A notification-derived dot would sit
   there after the lender had already read and replied to the conversation.
 
-Verified in the browser: reading the thread cleared the Messages dot while the Submitted Offers dot
-stayed — the intended asymmetry.
+Verified in the browser: reading the thread cleared the Messages dot while the notification-derived dot
+stayed — the intended asymmetry. (At the time that second dot was on Submitted Offers; F-1 moved it to
+New Deals. The asymmetry itself is unchanged.)
 
 ### The popup: declined, with a substitute
 
@@ -454,3 +456,144 @@ unread count) that nobody had reported.
 1. **B-30** — admin-editable invoice templates (carried over from the 07-28 batch). E-9 + E-10 touch the
    same invoice surface, so worth grouping.
 2. **Account suspension** (from E-8) — the warning shipped, the capability did not. Scope in §E-8.
+
+---
+
+## F-1 · The permanent red dot on Submitted Offers (follow-up, 2026-08-02)
+
+Elizabeth reviewed the shipped batch on 2026-08-02 and **approved everything except one item**:
+
+> The only thing I'm wondering about is in the lender portal, there is a permanent red notification dot
+> where it says "submitted offers". Can you remove the notification dot on submitted offers? It's fine to
+> have one for new notifications on "new deals" or "messages", but we don't need that elsewhere. It should
+> also go away once they review the new notifications.
+
+She also confirmed the rest lands well — *"it looks great now"*, and specifically *"I like how you added
+the auto offers and notifications banner at the top as well. I think this works well!"* — which settles
+the E-7 popup→banner substitution: **the banner is accepted, do not convert it to a modal.**
+
+### She was reporting a real defect, not a preference
+
+"Permanent" was literal. **Three** independent mistakes, all mine, all in E-7 — two in which notification
+types feed the dot (`DEAL_SURFACE_TYPES.lender`), and a third in the refresh path that only surfaced when I
+drove the UI (see "It should also go away…" below, which is the one I initially got wrong twice):
+
+**1. A scheduled notification type was feeding an event dot.** `auto_offer_sent` is the **daily digest
+cron** (`job_auto_offer_digest`, 07:00). A dot's meaning is "something new happened"; a once-a-day
+heartbeat carries no such information, and for any lender running auto-offers it re-lights the dot every
+morning for the life of the account. Nothing the lender could do in the UI would keep it dark.
+
+**2. `filter_match` was pointed at the wrong page.** It means "a new deal matched your saved filter" —
+which lives on **New Deals**, and `notificationHref` has always routed it to `/lender/new-deals`. So the
+dot lit up Submitted Offers over a deal that was not on Submitted Offers. The dot and its own click
+destination disagreed.
+
+Measured on staging before the fix — every lit dot was held up by rows that had been unread for **8 to
+23 days**, i.e. it had already stopped meaning anything:
+
+| Lender | Old dot (Submitted Offers) | New dot (New Deals) | Oldest row holding it lit |
+|---|---|---|---|
+| Lena Lender | 23 | 9 | 2026-07-11 |
+| Neil Osei | 11 | 0 | 2026-07-11 |
+| Leah Nguyen | 3 | 0 | 2026-07-11 |
+| RMG Casault | 2 | 0 | 2026-07-25 |
+
+RMG Casault is the account she was looking at: **2 unread rows from Jul 25–26** — one prequal-conversion
+notice and one auto-offer digest — permanently branding the tab red for over a week, neither of them
+something she needed to act on there.
+
+### The fix
+
+`DEAL_SURFACE_TYPES.lender` becomes **`['filter_match']`** and the dot moves to the **New Deals** nav
+item. Three of the four staging lenders go dark immediately; the one that keeps a dot (Lena, 9 unread
+`filter_match`) keeps it because there genuinely are new matching deals to look at — which is exactly the
+signal she said was fine to keep.
+
+The dropped types (offer accepted/switched, auto-offer digest, prequal converted) still reach the **bell,
+the notifications page and the banner**. Nothing stops being reported; it stops branding a nav item.
+
+No migration. `lib/queries/notifications.ts` + `components/lender-header.tsx` for the dot's home, plus
+`hooks/use-unread.ts`, `components/notification-bell.tsx`, `components/notifications-view.tsx` and
+`components/messages-inbox.tsx` for the refresh fix below. The broker's Deal Room dot keeps its type list —
+every type in it fires on a deal event, none on a schedule — but it does get the refresh fix, which it
+needed just as much.
+
+### "It should also go away once they review" — a SECOND bug, found in the browser
+
+My first reading of that sentence was that it was already true and merely invisible. **It was not true.**
+Verified by driving the UI: with 53 unread, "Mark all read" cleared the list's own pips and wrote to the
+database (`0 unread / 53 total`), while the **bell badge, the New Deals dot and the banner all kept showing
+53** until the next navigation or a reload. Her sentence was reporting this, not just the type mix.
+
+The cause is one I had assumed away in E-7's docstring, which claimed the dot "clears when the notification
+is read … live over Realtime":
+
+**Realtime delivers the INSERTs but not the `is_read` UPDATEs.** `notifications` has `REPLICA IDENTITY
+DEFAULT`, so on an UPDATE the old tuple carries only the primary key, and the subscription's
+`recipient_id=eq.<uid>` filter has no `recipient_id` to match against — the event is dropped. Proven both
+ways on the same page: inserting a row lit the badge and the dot live (Realtime works), marking all read
+changed nothing on screen (the UPDATE never arrived).
+
+Fixed client-side with **`notifyUnreadChanged()`** in `hooks/use-unread.ts` — a module-level subscriber set
+that every mounted `useUnread()` joins, called by the three places that write read state:
+`notification-bell.tsx`, `notifications-view.tsx` and `messages-inbox.tsx`.
+
+**Why not `alter table notifications replica identity full`.** It would also work, and it is the wrong
+trade: it writes the entire previous row into the WAL on every UPDATE of the app's busiest table, purely to
+broadcast an event back to the tab that caused it. `is_read` is only ever written by the user's own client,
+so a local notification is both sufficient and exact. The one case it does not cover is a second tab open on
+the same account — that tab still self-corrects on its next navigation, which is the guarantee it already
+had.
+
+**The Messages dot had the same latent defect** and is fixed by the same call: opening a thread runs
+`mark_chat_read` without navigating, so the header had no trigger to re-count on. E-7's QA note that
+"reading the thread cleared the Messages dot" was true only because that test navigated to the inbox.
+
+Removing the scheduled types from the dot (above) is what makes this clearing behaviour *observable* — but
+on its own it would not have been enough, because the clearing did not work.
+
+⚠️ **Deliberately NOT done: marking the surface's notifications read on page visit.** It would guarantee
+the dot clears, and it would break the banner she just praised. Both portals land the user on the page
+that carries the dot (`/lender/new-deals`, `/deal-room`), so "mark read on arrival" means the unread count
+is destroyed at login — the banner would announce the count and then immediately have nothing to announce.
+Her sentence says review *the notifications*, and that path now works. If she later asks for the dot to
+clear by visiting the page, the banner has to be reconsidered in the same change, not separately.
+
+### Browser verification
+
+Driven locally as `lender@loanlink.test` (Lena Lender: 53 unread, of which 28 `filter_match` and 21 of the
+types being dropped — one login covers both halves):
+
+| Check | Result |
+|---|---|
+| Dot on **New Deals** | ✅ present |
+| Dot on **Submitted Offers** | ✅ gone |
+| Dot stays on New Deals while viewing another page | ✅ (checked from Maturing Deals) |
+| The dropped types still reported in the bell | ✅ the "Offer accepted" rows are all still listed |
+| Realtime INSERT still live | ✅ inserting one `filter_match` lit badge + dot with no reload |
+| Click one notification | ✅ badge **53 → 52** live, no navigation |
+| "Mark all read" | ✅ badge, dot **and** banner all clear live; DB confirmed `0 unread / 53 total` |
+
+`pnpm check` clean (0 errors, i18n in parity, 19 unit tests). No migration and no RPC signature changed, so
+the smoke suite is unaffected.
+
+### One thing noticed and deliberately left alone
+
+The notifications **page** labels its filter tab `Unread (20)` while the bell correctly says 53 — it counts
+within the page of 20 it has loaded, which is the same shape as the bug E-7 fixed on the bell. It is a
+filter label over a paginated list rather than a summary badge, it is not what she reported, and changing it
+means deciding how the tab behaves as more pages load. **Flagged, not fixed** — worth raising with her
+rather than absorbing silently.
+
+### The general rule this leaves behind
+
+**A notification type that fires on a schedule must never feed a nav dot; a dot must live on the page its
+notifications navigate to; and a count shown outside the component that changes it needs an explicit
+invalidation, because Realtime will not carry the UPDATE.** `notificationHref` is the existing declaration
+of where each type belongs — the dot assignment has to agree with it.
+
+All three halves of F-1 were violations of that, and **`pnpm check` cannot catch any of them**: the types
+are valid, the keys resolve, the count query is right. The first two only show up by looking at the nav for
+more than a day; the third only shows up by clicking the button and watching what does *not* change. This is
+the second time in this batch that the browser caught what the gate could not — the first was the auto-offer
+strip's dead Manage button.

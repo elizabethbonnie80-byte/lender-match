@@ -27,6 +27,7 @@ import {
   type ChatMessage,
 } from "@/lib/queries/messages"
 import { declineDeal, hasLenderOfferedOnDeal } from "@/lib/queries/offers"
+import { notifyUnreadChanged } from "@/hooks/use-unread"
 import { scanContact } from "@/lib/queries/anti-contact"
 import { DEAL_STATUS_LABEL } from "@/lib/enums"
 import { useT } from "@/components/i18n-provider"
@@ -74,6 +75,9 @@ export function MessagesInbox() {
       try {
         setMessages(await listMessages(supabase, chatId))
         await markChatRead(supabase, chatId)
+        // Opening a thread happens without navigating, so the header's Messages dot has no other
+        // trigger to re-count on — same reason as the notification bell (F-1).
+        notifyUnreadChanged()
       } catch (e) {
         console.warn("messages-inbox: loadMessages failed", e)
       }
