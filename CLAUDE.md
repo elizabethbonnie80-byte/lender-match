@@ -136,7 +136,8 @@ active work queue.** The first four are live on prod; the fifth is built but und
    pages, the anti-contact notices, the invoice PDF header, Create Deal's Transaction Type, the
    notification bell/nav badges, or the auto-offer engine.
    **The client approved this batch on 2026-08-02 with exactly one correction — `F-1`, the permanent red
-   dot on Submitted Offers (§F-1, built, NOT yet deployed).** Everything else in the batch is accepted.
+   dot on Submitted Offers, now DONE and LIVE on staging + prod (2026-08-03, `515dd68`, NO migration).**
+   Everything else in the batch is accepted, including the banner-instead-of-modal substitution.
    ⚠️ **E-5 made `deals.transaction_type` OPTIONAL, and the interesting part is not the form.** The column
    was already nullable; two read-side predicates assumed it never was. `saved_filter_matches` compared a
    NULL with `=` (NULL inside an AND chain reads as FALSE → the deal vanished from every lender who had
@@ -514,8 +515,9 @@ cosmetic — false would have stopped every pre-existing auto-offer silently. No
 **Hosted status: migrations 36–64 are applied to BOTH staging AND prod**
 (36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; 52–56 on 2026-07-27;
 57–62 on 2026-07-29; **63–64 on 2026-07-31** — 64/64 on each, advisors 0 ERROR, browser- and
-smoke-QA'd on staging). The 63–64 deploy **redeployed `invoice-pdf`** on both (E-9 changed its header;
-that function does not ship with the Vercel build). The 57–62 deploy
+smoke-QA'd on staging). **F-1 (`515dd68`, 2026-08-03) added NO migration — it is client-side only, so 64/64
+still stands and nothing was applied to either DB.** The 63–64 deploy **redeployed `invoice-pdf`** on both
+(E-9 changed its header; that function does not ship with the Vercel build). The 57–62 deploy
 shipped the new `purge-invoices` edge fn + the redeployed `anti-contact` (its AI threshold changed), and
 created the `purge_invoices_url` Vault secret on both. ⚠️ **Prod has NO published `legal_documents`** (2 rows,
 neither published), so `/legal/terms` and `/legal/privacy` render "Not available yet" — which the restored

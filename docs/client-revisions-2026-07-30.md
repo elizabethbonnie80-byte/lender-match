@@ -461,6 +461,10 @@ unread count) that nobody had reported.
 
 ## F-1 · The permanent red dot on Submitted Offers (follow-up, 2026-08-02)
 
+**Status: DONE and LIVE on staging + prod (2026-08-03, `515dd68`). No migration** — 64/64 unchanged on
+both, nothing to apply in Supabase, no edge function touched. Shipped as two commits: `d411c5b` (the dot's
+home + the invalidation) and `515dd68` (the shared store, found by QA'ing the first one on staging).
+
 Elizabeth reviewed the shipped batch on 2026-08-02 and **approved everything except one item**:
 
 > The only thing I'm wondering about is in the lender portal, there is a permanent red notification dot
