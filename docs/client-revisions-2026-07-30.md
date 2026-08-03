@@ -474,9 +474,10 @@ the E-7 popup→banner substitution: **the banner is accepted, do not convert it
 
 ### She was reporting a real defect, not a preference
 
-"Permanent" was literal. **Three** independent mistakes, all mine, all in E-7 — two in which notification
-types feed the dot (`DEAL_SURFACE_TYPES.lender`), and a third in the refresh path that only surfaced when I
-drove the UI (see "It should also go away…" below, which is the one I initially got wrong twice):
+"Permanent" was literal. **Four** independent mistakes, all mine, all in E-7 — two in which notification
+types feed the dot (`DEAL_SURFACE_TYPES.lender`), and two in the refresh path, neither of which any check
+could see and both of which only surfaced by driving the UI (see "It should also go away…" and "One store,
+not one per caller" below — the refresh path is the part I initially got wrong twice):
 
 **1. A scheduled notification type was feeding an event dot.** `auto_offer_sent` is the **daily digest
 cron** (`job_auto_offer_digest`, 07:00). A dot's meaning is "something new happened"; a once-a-day
@@ -552,6 +553,28 @@ had.
 Removing the scheduled types from the dot (above) is what makes this clearing behaviour *observable* — but
 on its own it would not have been enough, because the clearing did not work.
 
+### One store, not one per caller — found on staging, after the fix above was already deployed
+
+The dot fix and the refresh fix went to staging together, and QA there turned up a fourth defect that only
+appears with more than one consumer mounted. Inserting a single `filter_match` row produced a banner reading
+**"You have 1 unread notification" beside a bell with no badge and a nav item with no dot.**
+
+`useUnread()` is mounted at least twice on a landing page — once in the header (bell + dots), once in
+`UnreadBanner`. Each instance kept its own state *and its own Realtime channel*, and both called
+`supabase.channel('notifications-unread')` — the **same topic**. Two subscriptions on one topic: one receives
+the events, the other silently never does. Which one wins is a race, which is why local and staging behaved
+differently on the same code, and why my first sighting of the divergence locally got waved off as an
+artifact of my own psql poking. It was not.
+
+Giving each instance a unique topic would stop events being lost, and was rejected: it leaves two independent
+fetchers that only *usually* agree, and two numbers disagreeing on one screen is the exact class of thing the
+client reported. `hooks/use-unread.ts` now holds **one module-level store and one reference-counted Realtime
+channel**, read through `useSyncExternalStore`. The bell, the dots and the banner cannot disagree because
+there is only one number. It also halves the queries per navigation, and drops one lint warning, since the
+hook no longer calls `setState` inside an effect.
+
+This is what CLAUDE.md has claimed since E-7 — "unread state lives in ONE place". It is now true.
+
 ⚠️ **Deliberately NOT done: marking the surface's notifications read on page visit.** It would guarantee
 the dot clears, and it would break the banner she just praised. Both portals land the user on the page
 that carries the dot (`/lender/new-deals`, `/deal-room`), so "mark read on arrival" means the unread count
@@ -573,6 +596,19 @@ types being dropped — one login covers both halves):
 | Realtime INSERT still live | ✅ inserting one `filter_match` lit badge + dot with no reload |
 | Click one notification | ✅ badge **53 → 52** live, no navigation |
 | "Mark all read" | ✅ badge, dot **and** banner all clear live; DB confirmed `0 unread / 53 total` |
+| Bell and banner agree | ✅ after the store fix, one insert moved **both** to 54 together |
+
+Then repeated on **staging** against `lender3@loanlink.test` (Neil Osei — 11 unread, **zero** `filter_match`,
+deliberately the same shape as the client's own account, `RMG Casault`: 2 unread, zero `filter_match`):
+
+- **no dot on any nav item**, bell reading 11 — her exact case, fixed;
+- the bell still listing every dropped notification, aged 9 and 24 days — visibly the rows that had been
+  branding the tab red;
+- "Mark all read" clearing badge, banner and pips live, DB confirming `0 unread / 11 total`;
+- one inserted `filter_match` lighting the New Deals dot — this is the run that exposed the store bug.
+
+Staging's `notifications` is `relreplident = 'd'` too, so the Realtime gap reproduced there identically. Both
+QA accounts were restored afterwards (probe rows deleted, read state reset).
 
 `pnpm check` clean (0 errors, i18n in parity, 19 unit tests). No migration and no RPC signature changed, so
 the smoke suite is unaffected.
@@ -587,13 +623,22 @@ rather than absorbing silently.
 
 ### The general rule this leaves behind
 
-**A notification type that fires on a schedule must never feed a nav dot; a dot must live on the page its
-notifications navigate to; and a count shown outside the component that changes it needs an explicit
-invalidation, because Realtime will not carry the UPDATE.** `notificationHref` is the existing declaration
-of where each type belongs — the dot assignment has to agree with it.
+Four rules, one per defect:
 
-All three halves of F-1 were violations of that, and **`pnpm check` cannot catch any of them**: the types
-are valid, the keys resolve, the count query is right. The first two only show up by looking at the nav for
-more than a day; the third only shows up by clicking the button and watching what does *not* change. This is
-the second time in this batch that the browser caught what the gate could not — the first was the auto-offer
-strip's dead Manage button.
+1. **A notification type that fires on a schedule must never feed a nav dot.** A daily heartbeat carries no
+   "something happened" information, and it re-lights the dot forever.
+2. **A dot must live on the page its notifications navigate to.** `notificationHref` is the existing
+   declaration of where each type belongs; the dot assignment has to agree with it.
+3. **A count rendered outside the component that mutates it needs explicit invalidation.** Realtime will not
+   carry an `is_read` UPDATE under `REPLICA IDENTITY DEFAULT`.
+4. **Shared state means one store, not one copy per caller.** Two instances of the same hook also meant two
+   Realtime channels on one topic, where only one of them receives anything.
+
+**`pnpm check` cannot catch any of the four.** The types are valid, the keys resolve, the count query is
+right, and both hook instances are legal React. #1 and #2 only show up by looking at the nav for more than a
+day; #3 only by clicking the button and watching what does *not* change; #4 only with two consumers mounted
+and a row arriving from outside the tab — it did not reproduce locally on the first run at all.
+
+That makes three times in this batch that the browser caught what the gate could not: the auto-offer strip's
+dead Manage button, then #3, then #4 — and #4 was found on staging *after* the first fix had already been
+deployed as complete.

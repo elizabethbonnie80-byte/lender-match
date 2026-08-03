@@ -162,7 +162,7 @@ active work queue.** The first four are live on prod; the fifth is built but und
    don't silently convert it to a modal. **The client accepted the banner explicitly on 2026-08-02**
    ("I like how you added the auto offers and notifications banner at the top as well") — that substitution
    is settled, so it is not an open question to revisit.
-   ⚠️ **F-1 (2026-08-02) is THREE bugs behind one complaint, and the rules behind them generalize.** She
+   ⚠️ **F-1 (2026-08-02) is FOUR bugs behind one complaint, and the rules behind them generalize.** She
    reported a "permanent red notification dot" on Submitted Offers and was right on every count.
    **(a)** `DEAL_SURFACE_TYPES.lender` fed the dot `auto_offer_sent`, which is the **daily digest cron** — a
    scheduled heartbeat re-lit it every morning, so nothing a lender did kept it dark. **(b)** It also fed it
@@ -175,14 +175,22 @@ active work queue.** The first four are live on prod; the fifth is built but und
    match. Fixed with **`notifyUnreadChanged()`** in `hooks/use-unread.ts`, called by the three writers
    (`notification-bell`, `notifications-view`, `messages-inbox` — the Messages dot had the same defect).
    `replica identity full` would also work and was rejected: it writes the whole previous row to the WAL on
-   every UPDATE of the busiest table, to broadcast an event back to the tab that caused it. **The rules: a
-   type that fires on a SCHEDULE must never feed a nav dot; a dot must sit on the page its notifications
-   navigate to (`notificationHref` is the declaration — the dot must agree with it); and a count rendered
-   outside the component that mutates it needs explicit invalidation, never Realtime.** `pnpm check` catches
-   none of the three. Deliberately NOT done: marking the surface read on page visit — both portals LAND on
-   the dotted page, so that would destroy the unread count at login and silently break the banner she just
-   praised (see §F-1). Also flagged-not-fixed there: the notifications PAGE still labels its tab
-   `Unread (20)` from its loaded page while the bell says 53.
+   every UPDATE of the busiest table, to broadcast an event back to the tab that caused it.
+   **(d)** ⚠️ Found on STAGING after (a)–(c) were already deployed: `useUnread()` is mounted **twice** on a
+   landing page (header + `UnreadBanner`) and each instance opened its own Realtime channel on the **same
+   topic** `'notifications-unread'` — two subscriptions, one topic, one of them silently receives nothing.
+   Symptom: a banner reading "1 unread notification" beside a bell with no badge and no dot. Which instance
+   wins is a **race**, so it did not reproduce locally on the first run. `hooks/use-unread.ts` now holds ONE
+   module-level store + ONE reference-counted channel, read via `useSyncExternalStore` — unique topics were
+   rejected because two independent fetchers only *usually* agree, and two disagreeing numbers on one screen
+   is the very thing she reported. **The rules: a type that fires on a SCHEDULE must never feed a nav dot; a
+   dot must sit on the page its notifications navigate to (`notificationHref` is the declaration — the dot
+   must agree with it); a count rendered outside the component that mutates it needs explicit invalidation,
+   never Realtime; and shared state means ONE store, not one copy per caller.** `pnpm check` catches none of
+   the four. Deliberately NOT done: marking the surface read on page visit — both portals LAND on the dotted
+   page, so that would destroy the unread count at login and silently break the banner she just praised (see
+   §F-1). Also flagged-not-fixed there: the notifications PAGE still labels its tab `Unread (20)` from its
+   loaded page while the bell says 53.
    ⚠️ **E-8 shipped a warning the platform cannot enforce**: the anti-contact notice now says further
    attempts "may result in suspension of your account", and **there is no account-suspension mechanism**.
    Told to the client, and now the SECOND item awaiting a quote next to B-30 — scope is in §E-8 of the
@@ -995,6 +1003,10 @@ on several sets — any data migration must map **by display label** using the t
   `listNotifications`**: that call is capped at 20 rows, and deriving from it was exactly the bug E-7 fixed
   (a user with 30 unread was shown fewer). Companion pieces: **`NavUnreadDot`** (`components/nav-unread-dot.tsx`
   — the pip; its parent `<Link>` must be `relative`) and **`UnreadBanner`** (`components/unread-banner.tsx`).
+  ⚠️ "ONE place" means **one module-level store + one Realtime channel**, read via `useSyncExternalStore`
+  (F-1, 2026-08-02). It was per-hook-instance state until then, and since the hook mounts twice on a landing
+  page that meant two channels on the same topic where only one received events — a banner showing a count
+  next to a bell showing none. **Don't give the hook per-instance state or a per-instance channel again.**
   ⚠️ **Which notification types feed a nav dot is a real decision, not bookkeeping** (F-1, 2026-08-02):
   a type that fires on a **schedule** (the daily `auto_offer_sent` digest) re-lights the dot every morning
   and makes it permanent, and a dot must sit on the page `notificationHref` sends its types to. Both rules
