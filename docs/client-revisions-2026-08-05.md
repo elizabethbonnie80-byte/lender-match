@@ -1,5 +1,9 @@
 # Client revisions — 2026-08-05
 
+**Status: DONE and LIVE on staging + prod (`37671e2`). NO migration** — 64/64 unchanged on both. The
+`invoice-pdf` edge function was redeployed to **both** environments (G-3 changed it, and it does not ship
+with the Vercel build).
+
 Elizabeth's reply to the F-1 deploy confirmation. **Two items**, sent from her phone at 3:33 p.m.
 
 Source: Gmail thread *"LenderMatch — July 30 revisions are live"*, Elizabeth Iginla → Ivan + Bonnie,

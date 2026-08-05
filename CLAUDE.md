@@ -540,8 +540,11 @@ cosmetic — false would have stopped every pre-existing auto-offer silently. No
 **Hosted status: migrations 36–64 are applied to BOTH staging AND prod**
 (36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; 52–56 on 2026-07-27;
 57–62 on 2026-07-29; **63–64 on 2026-07-31** — 64/64 on each, advisors 0 ERROR, browser- and
-smoke-QA'd on staging). **F-1 (`515dd68`, 2026-08-03) added NO migration — it is client-side only, so 64/64
-still stands and nothing was applied to either DB.** The 63–64 deploy **redeployed `invoice-pdf`** on both
+smoke-QA'd on staging). **F-1 (`515dd68`, 2026-08-03) and the 08-05 batch (`37671e2`) added NO migration —
+64/64 still stands and nothing was applied to either DB.** ⚠️ The 08-05 deploy DID **redeploy `invoice-pdf`
+on both** (G-3 changed its issue date) — that function never ships with the Vercel build, so a code change
+inside `supabase/functions/` needs its own `supabase functions deploy` per environment. The 63–64 deploy
+**redeployed `invoice-pdf`** on both
 (E-9 changed its header; that function does not ship with the Vercel build). The 57–62 deploy
 shipped the new `purge-invoices` edge fn + the redeployed `anti-contact` (its AI threshold changed), and
 created the `purge_invoices_url` Vault secret on both. ⚠️ **Prod has NO published `legal_documents`** (2 rows,
