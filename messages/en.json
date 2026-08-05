@@ -12,6 +12,7 @@
     "notPublishedBody": "This document hasn't been published yet. Please check back later."
   },
   "common": {
+    "menu": "Menu",
     "settings": "Settings",
     "signOut": "Logout",
     "previous": "Previous",
@@ -1652,6 +1653,8 @@
     "invMarkPaid": "Mark as paid",
     "invMarkedPaid": "Invoice marked as paid.",
     "invMarkPaidErr": "Could not mark the invoice as paid.",
+    "invView": "View",
+    "invPdfError": "Could not open the invoice PDF.",
     "actions": "Actions"
   },
   "autoOffers": {

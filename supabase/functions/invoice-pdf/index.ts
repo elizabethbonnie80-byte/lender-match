@@ -99,7 +99,11 @@ async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   }
   row("Invoice #", inv.invoice_number)
   row("Deal", deal?.deal_number ?? "—")
-  row("Issue date", new Date().toISOString().slice(0, 10))
+  // ⚠️ The issue date is the invoice's `created_at`, NOT the render date. This function re-renders and
+  // upserts the stored PDF on EVERY view, so `new Date()` here meant the same invoice showed a different
+  // issue date each time anyone opened it — and an admin opening one would silently rewrite the file the
+  // lender had already downloaded. Found while wiring the admin View action (client 2026-08-05).
+  row("Issue date", String(inv.created_at).slice(0, 10))
   row("Closing date", inv.closing_date)
   row("Due date", inv.due_date)
   row("Status", inv.status.toUpperCase())
@@ -160,7 +164,7 @@ Deno.serve(async (req) => {
     const { data: inv, error } = await asUser
       .from("invoices")
       .select(
-        "id, invoice_number, loan_amount, term_years, mortgage_product, platform_bps, amount, broker_name, client_name, document_name, closing_date, due_date, status, deals(deal_number, city, province)",
+        "id, invoice_number, loan_amount, term_years, mortgage_product, platform_bps, amount, broker_name, client_name, document_name, closing_date, due_date, status, created_at, deals(deal_number, city, province)",
       )
       .eq("id", invoiceId)
       .single()

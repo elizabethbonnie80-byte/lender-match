@@ -7,6 +7,7 @@ import { LogOut, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationBell } from '@/components/notification-bell'
 import { NavUnreadDot } from '@/components/nav-unread-dot'
+import { NavMenu } from '@/components/nav-menu'
 import { useUnread } from '@/hooks/use-unread'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { useT } from '@/components/i18n-provider'
@@ -48,6 +49,22 @@ export function LenderHeader() {
     <header className="bg-card border-b border-border sticky top-0 z-50">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 h-16">
+          {/* Below xl the bar is hidden, so the same links move into the sheet — see NavMenu for why a
+              breakpoint may never remove navigation outright (client 2026-08-05). */}
+          <NavMenu
+            triggerClassName="xl:hidden shrink-0"
+            sections={[
+              {
+                key: 'lender',
+                items: NAV.map((item) => ({
+                  href: item.href,
+                  label: t(item.key),
+                  unread: navUnread[item.key],
+                })),
+              },
+            ]}
+          />
+
           <Link href="/lender/new-deals" className="text-xl font-bold text-primary shrink-0">
             <BrandMark />
           </Link>

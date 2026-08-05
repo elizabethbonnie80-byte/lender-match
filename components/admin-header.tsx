@@ -12,6 +12,7 @@ import {
 import { LogOut, ChevronDown, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationBell } from '@/components/notification-bell'
+import { NavMenu, type NavMenuSection } from '@/components/nav-menu'
 import { useUnread } from '@/hooks/use-unread'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { useT } from '@/components/i18n-provider'
@@ -75,15 +76,34 @@ export function AdminHeader() {
     router.refresh()
   }
 
+  // The compact menu flattens the bar's dropdowns into titled sections — 15 destinations, so the sheet
+  // scrolls rather than trying to fit them into a dropdown on a short viewport.
+  const menuSections: NavMenuSection[] = [
+    {
+      key: 'main',
+      items: NAV.filter((e): e is NavLink => !('group' in e)).map((e) => ({ href: e.href, label: t(e.key) })),
+    },
+    ...NAV.filter((e): e is NavGroup => 'group' in e).map((g) => ({
+      key: g.group,
+      label: t(g.group),
+      items: g.items.map((i) => ({ href: i.href, label: t(i.key) })),
+    })),
+  ]
+
   return (
     <header className="bg-card border-b border-border sticky top-0 z-50">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 h-16">
+          {/* Admin's bar never hid itself, which is the same hole in a different shape: with 6 wide
+              entries and no overflow handling it squashed instead of disappearing. It now hides below
+              xl like the lender's, with this sheet behind it (client 2026-08-05). */}
+          <NavMenu triggerClassName="xl:hidden shrink-0" sections={menuSections} />
+
           <Link href="/admin/lender-approvals" className="flex items-center text-xl font-bold text-primary shrink-0">
             <BrandMark /> <span className="ml-1 text-muted-foreground font-normal text-sm">{t('admin')}</span>
           </Link>
 
-          <nav className="flex items-center justify-center gap-0.5 flex-1">
+          <nav className="hidden xl:flex items-center justify-center gap-0.5 flex-1">
             {NAV.map((entry) =>
               'group' in entry ? (
                 (() => {

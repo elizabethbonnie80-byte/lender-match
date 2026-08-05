@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Toaster, toast } from 'sonner'
-import { Receipt, Search, AlertCircle, Download, DollarSign, CheckCircle, Clock } from 'lucide-react'
+import { Receipt, Search, AlertCircle, Download, DollarSign, CheckCircle, Clock, Eye } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { listAllInvoices, type AdminInvoiceRow } from '@/lib/queries/admin'
-import { markInvoicePaid } from '@/lib/queries/offers'
+import { markInvoicePaid, downloadInvoicePdf } from '@/lib/queries/offers'
 import { RowActions } from '@/components/row-actions'
 import { downloadCsv, todayStamp } from '@/lib/csv'
 import { useT, useLocale } from '@/components/i18n-provider'
@@ -81,6 +81,26 @@ export default function AdminInvoicesPage() {
       toast.error(err instanceof Error ? err.message : t('invMarkPaidErr'))
     } finally {
       setBusyId(null)
+    }
+  }
+
+  // Client 2026-08-05: "There also doesn't seem to be a way to view the invoices in the admin section.
+  // Is there a way to make it so we can see the actual invoices that have been generated?"
+  //
+  // Needed no migration and no edge-function change: `invoice-pdf` performs no role check of its own —
+  // it fetches the invoice with the CALLER's JWT and lets RLS decide, and `invoices_admin` is
+  // `for all using (is_admin())`. So the lender's own `downloadInvoicePdf` helper works unchanged for an
+  // admin. The gap was purely that this page never offered the action.
+  const [pdfBusyId, setPdfBusyId] = useState<string | null>(null)
+  const handleViewPdf = async (id: string) => {
+    setPdfBusyId(id)
+    try {
+      const url = await downloadInvoicePdf(supabase, id)
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('invPdfError'))
+    } finally {
+      setPdfBusyId(null)
     }
   }
 
@@ -262,17 +282,28 @@ export default function AdminInvoicesPage() {
                           <span className={overdue ? 'text-red-600 font-medium' : 'text-muted-foreground'}>{i.dueDate}</span>
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
-                          {i.status === 'pending' && (
-                            <RowActions
-                              label={t('actions')}
-                              actions={[{
+                          {/* The whole menu used to be wrapped in `status === 'pending'`, so paid and
+                              cancelled rows rendered an empty cell — which is why adding View here also
+                              meant lifting that guard onto the Mark-paid entry alone. View is offered on
+                              every row on purpose: this is the oversight screen, and a cancelled or paid
+                              invoice is exactly the kind of record an admin needs to be able to open. */}
+                          <RowActions
+                            label={t('actions')}
+                            actions={[
+                              {
+                                label: t('invView'),
+                                icon: <Eye className={`h-4 w-4 ${pdfBusyId === i.id ? 'animate-pulse' : ''}`} />,
+                                onSelect: () => handleViewPdf(i.id),
+                                disabled: pdfBusyId === i.id,
+                              },
+                              i.status === 'pending' && {
                                 label: t('invMarkPaid'),
                                 icon: <CheckCircle className="h-4 w-4" />,
                                 onSelect: () => handleMarkPaid(i.id),
                                 disabled: busyId === i.id,
-                              }]}
-                            />
-                          )}
+                              },
+                            ]}
+                          />
                         </td>
                       </tr>
                     )

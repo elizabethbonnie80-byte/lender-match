@@ -107,8 +107,8 @@ belongs to the Phase 3 prequal flow, other dev).
 
 ## Client revision batches after Round 3 (read before touching the lender or broker portals)
 
-Five feedback rounds have landed since Phase 3 shipped. Each has its own control doc; **they are the
-active work queue.** The first four are live on prod; the fifth is built but undeployed.
+Six feedback rounds have landed since Phase 3 shipped. Each has its own control doc; **they are the
+active work queue.** All are live on prod.
 
 1. **2026-07-20** (12 items) → [`docs/client-revisions-2026-07-20.md`](./docs/client-revisions-2026-07-20.md)
    — **DONE and live on staging + prod.**
@@ -202,6 +202,31 @@ active work queue.** The first four are live on prod; the fifth is built but und
    per-row rules decide. They stay separate because collapsing them loses which auto-offers the lender had
    deliberately paused. **Default TRUE is load-bearing** — a false default would have silently stopped
    every pre-existing auto-offer on deploy day, which is why `smoke-auto-offer` asserts the default.
+
+6. **2026-08-05** (2 items) → [`docs/client-revisions-2026-08-05.md`](./docs/client-revisions-2026-08-05.md)
+   — **DONE and LIVE on staging + prod. NO migration.** Read it before touching any portal header or the
+   invoice PDF.
+   ⚠️ **G-1: the lender's whole top navigation was invisible below 1280px, and it was NOT the F-1 change
+   she suspected.** `lender-header.tsx` carried `hidden xl:flex` on its `<nav>` with **no fallback behind
+   it** — the seven links stayed in the DOM and simply could not be reached. An exhaustive grep found the
+   same hole in every portal: broker `hidden md:flex` (768px), and admin with **no** `hidden` and no
+   `overflow-x-auto`, so it squashed instead of hiding. **The rule: a responsive breakpoint may only ever
+   MOVE navigation, never remove it.** Fixed with a shared **`components/nav-menu.tsx`** (left `Sheet`)
+   mounted in all three headers; each passes the exact complement of its own `<nav>` breakpoint as
+   `triggerClassName` (`xl:hidden` vs `hidden xl:flex`) so no width falls through the gap. The bell is
+   deliberately NOT duplicated inside the sheet — it owns a fixed-topic Realtime channel and a second
+   instance would collide, which is F-1 bug (d) all over again. `NavUnreadDot` gained an `inline` variant
+   instead of a second dot being written (no `ring-card` there — the sheet is `bg-background`).
+   ⚠️ **G-2 needed NO migration**: `invoice-pdf` does no role check of its own — it fetches with the
+   CALLER's JWT and lets RLS decide, and `invoices_admin` is `for all using (is_admin())`, so the lender's
+   `downloadInvoicePdf` helper already worked for an admin. The real trap was that `/admin/invoices`
+   wrapped its **entire `RowActions` in `status === 'pending'`**, so paid/cancelled rows had no actions at
+   all and a naive "add View" would have stayed invisible on them.
+   ⚠️ **G-3 (found, not reported): the invoice PDF printed `new Date()` as its issue date.** The function
+   re-renders and upserts the stored file on EVERY view, so the same invoice showed a different issue date
+   each time, and G-2 would have let an admin silently rewrite what the lender had downloaded. Now
+   `invoices.created_at` (added to the fn's `select`). **Verifying it needs a BACKDATED row** — a
+   same-day invoice makes the bug and the fix print identical output.
 
 ⚠️ **Two traps recorded in that doc, worth knowing before you open it:**
 - **`docs/Revisions_23_Jul_2026.pdf` is NOT a reliable source.** It is a Gmail print whose long lines are
@@ -1017,6 +1042,11 @@ on several sets — any data migration must map **by display label** using the t
   **not** deliver the `is_read` UPDATEs (`REPLICA IDENTITY DEFAULT` + a filtered subscription), so without it
   the badge/dots/banner keep showing the pre-read count until the next navigation. That was the client's
   actual "it should go away once they review" complaint, and it applies to `mark_chat_read` too.
+  ⚠️ **A responsive breakpoint may only ever MOVE navigation, never remove it** (G-1, 2026-08-05). Every
+  header hid its `<nav>` below a breakpoint with nothing behind it, so the links were in the DOM and
+  unreachable. **`NavMenu`** (`components/nav-menu.tsx`) is the fallback; a header must pass the exact
+  complement of its own `<nav>` breakpoint as `triggerClassName` (`xl:hidden` against `hidden xl:flex`) so
+  no viewport width falls between them. Don't mount a second `NotificationBell` inside it.
   ⚠️ **A `<Button>` wrapped in a `<Link>` nests a `<button>` inside an `<a>` and the inner button eats the
   click** — the nav's icon buttons get away with it, but it silently broke the auto-offer strip's Manage
   button in QA. Use `<Button asChild><Link …></Button>` so the button renders AS the anchor.

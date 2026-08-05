@@ -12,6 +12,7 @@
     "notPublishedBody": "Ce document n'a pas encore été publié. Veuillez réessayer plus tard."
   },
   "common": {
+    "menu": "Menu",
     "settings": "Paramètres",
     "signOut": "Déconnexion",
     "previous": "Précédent",
@@ -1652,6 +1653,8 @@
     "invMarkPaid": "Marquer comme payée",
     "invMarkedPaid": "Facture marquée comme payée.",
     "invMarkPaidErr": "Impossible de marquer la facture comme payée.",
+    "invView": "Voir",
+    "invPdfError": "Impossible d'ouvrir le PDF de la facture.",
     "actions": "Actions"
   },
   "autoOffers": {
