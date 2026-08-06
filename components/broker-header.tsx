@@ -39,19 +39,18 @@ const NAV = [...PRIMARY, ...SECONDARY]
  * Same three tiers as the lender header (client 2026-08-05, follow-up to G-1) — see that file for the
  * full reasoning and the Tailwind-literal warning. This header needs the least room of the three:
  *
- *   ≥ 1100px   logo + wordmark · 5 flat links (px-3) · language + bell + settings + sign out
- *   768–1099   logo + wordmark · 3 flat links (px-2) + "Help ▾" · bell + one overflow trigger
- *   < 768      hamburger sheet
+ *   ≥ 1090px   logo + wordmark · 5 flat links (px-3) · language + bell + settings + sign out
+ *   1024–1089  logo + wordmark · 3 flat links (px-2) + "Help ▾" · bell + one overflow trigger
+ *   < 1024     hamburger sheet
  *
- * ⚠️ Measured in FRENCH, the binding locale: full = logo 183 + links 522 + right cluster 296 + padding
- * and gaps 96 = **1097**; compact = 183 + 401 + 84 + 96 = **764**. The old `md` (768) showed the full bar
- * from 768 up, where it needed 1097 — so between 768 and 1097 the broker bar had been **overflowing**,
- * the same latent defect the lender had at 1280.
+ * ⚠️ Measured in FRENCH, the binding locale, scrollbar included: full **1074**, compact **789**. The old
+ * `md` (768) showed the FULL bar from 768 up where it needed 1074, so between 768 and 1074 this bar had
+ * been **overflowing** — the same latent defect the lender had at 1280, just never reported.
  *
- * The hamburger stays at `md` here rather than `lg`: the compact tier genuinely fits at 768, and moving it
- * to 1024 would hide a bar that works.
+ * The sheet sits at `lg` rather than `md` even though the compact bar fits from 789: 768–1024 is tablet,
+ * and the client asked for the sheet there. This is the one header with slack to spare.
  *
- * ⚠️ `min-[1100px]` is spelled out literally at every use. Interpolating it into a template kills the
+ * ⚠️ `min-[1090px]` is spelled out literally at every use. Interpolating it into a template kills the
  * class — Tailwind only scans for literal strings.
  */
 export function BrokerHeader() {
@@ -75,7 +74,7 @@ export function BrokerHeader() {
   }
 
   const itemCls = (active: boolean) =>
-    `relative px-2 min-[1100px]:px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
+    `relative px-2 min-[1090px]:px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
       active ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:text-primary hover:bg-muted'
     }`
 
@@ -83,9 +82,11 @@ export function BrokerHeader() {
     <header className="bg-card border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 h-16">
-          {/* Below md the bar has no room at all, so the same links move into a sheet (G-1). */}
+          {/* Below lg the bar becomes a sheet (G-1). ⚠️ `lg`, not `md`: the compact bar needs 789px in
+              French, so at 768–789 it would still overflow — and 768–1024 is tablet, where the client
+              asked for the sheet anyway. */}
           <NavMenu
-            triggerClassName="md:hidden flex-shrink-0"
+            triggerClassName="lg:hidden flex-shrink-0"
             sections={[
               {
                 key: 'broker',
@@ -102,7 +103,7 @@ export function BrokerHeader() {
             <BrandMark />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
+          <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
             {PRIMARY.map((item) => (
               <Link key={item.href} href={item.href} className={itemCls(pathname === item.href)}>
                 {t(item.key)}
@@ -115,7 +116,7 @@ export function BrokerHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`hidden min-[1100px]:inline-flex ${itemCls(pathname === item.href)}`}
+                className={`hidden min-[1090px]:inline-flex ${itemCls(pathname === item.href)}`}
               >
                 {t(item.key)}
               </Link>
@@ -124,7 +125,7 @@ export function BrokerHeader() {
             {/* Compact tier: the same two behind one dropdown. */}
             <DropdownMenu>
               <DropdownMenuTrigger
-                className={`min-[1100px]:hidden inline-flex items-center gap-1 outline-none ${itemCls(
+                className={`min-[1090px]:hidden inline-flex items-center gap-1 outline-none ${itemCls(
                   SECONDARY.some((s) => s.href === pathname),
                 )}`}
               >
@@ -147,14 +148,14 @@ export function BrokerHeader() {
           </nav>
 
           <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-            <span className="hidden min-[1100px]:flex items-center gap-2">
+            <span className="hidden min-[1090px]:flex items-center gap-2">
               <LocaleSwitcher triggerClassName="w-28 h-8 text-xs" />
             </span>
 
             {/* Mounted exactly once — see the lender header on why the bell is never duplicated. */}
             <NotificationBell role="broker" unreadCount={unread.total} />
 
-            <span className="hidden min-[1100px]:flex items-center gap-2">
+            <span className="hidden min-[1090px]:flex items-center gap-2">
               <Link href="/settings">
                 <Button variant="ghost" size="icon" title={tc('settings')}>
                   <Settings className="h-4 w-4" />
@@ -168,7 +169,7 @@ export function BrokerHeader() {
             <HeaderOverflowMenu
               settingsHref="/settings"
               onSignOut={signOut}
-              triggerClassName="min-[1100px]:hidden"
+              triggerClassName="min-[1090px]:hidden"
             />
           </div>
         </div>
