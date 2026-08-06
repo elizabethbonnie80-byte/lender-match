@@ -60,7 +60,7 @@ const NAV: NavEntry[] = [
 // ⚠️ px-1.5 in the compact tier, not px-2 like the other two headers, and that is measured: admin's six
 // entries need 1033px at px-2 in French, which does not clear 1024. px-1.5 brings it to 1009.
 const linkCls = (active: boolean) =>
-  `px-1.5 min-[1290px]:px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
+  `px-1.5 min-[1320px]:px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
     active ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:text-primary hover:bg-muted'
   }`
 
@@ -68,15 +68,18 @@ const linkCls = (active: boolean) =>
  * Same three tiers as the other two headers (client 2026-08-05, follow-up to G-1) — see
  * `lender-header.tsx` for the full reasoning and the Tailwind-literal warning.
  *
- *   ≥ 1290px   logo + wordmark + "Admin" · 3 links + 3 groups (px-3) · language + bell + settings + out
- *   1024–1289  logo + wordmark · same 6 entries (px-1.5) · bell + one overflow trigger
+ *   ≥ 1320px   logo + wordmark + "Admin" · 3 links + 3 groups (px-3) · language + bell + settings + out
+ *   1024–1319  logo + wordmark · same 6 entries (px-1.5) · bell + one overflow trigger
  *   < 1024     hamburger sheet
  *
  * ⚠️ Admin is the tightest of the three once the lender's secondary links are grouped, because
  * **"Approbations des prêteurs" alone is 165px** and the logo carries a 41px "Admin" suffix. Measured in
- * FRENCH (scrollbar included): full **1274**, compact **1033 at px-2** — which does NOT clear 1024, hence
+ * FRENCH (scrollbar included): full **~1284**, compact **1033 at px-2** — which does NOT clear 1024, hence
  * px-1.5 here and **1009**. The suffix hiding in the compact tier is load-bearing for the same reason:
  * with it, admin misses 1024 and the hamburger comes back on desktop.
+ *
+ * 1320 sits ~35px above the requirement deliberately — see the lender header for why pixel-exact
+ * thresholds kept failing by a hair.
  *
  * The bar's entries are already grouped, so unlike the other two there is nothing further to fold — the
  * savings come from the padding, the suffix and the right cluster.
@@ -125,7 +128,7 @@ export function AdminHeader() {
           <Link href="/admin/lender-approvals" className="flex items-center text-xl font-bold text-primary shrink-0">
             <BrandMark />{' '}
             {/* The 41px suffix is what buys admin its 1024 fit — see the tier note above. */}
-            <span className="hidden min-[1290px]:inline ml-1 text-muted-foreground font-normal text-sm">
+            <span className="hidden min-[1320px]:inline ml-1 text-muted-foreground font-normal text-sm">
               {t('admin')}
             </span>
           </Link>
@@ -165,14 +168,14 @@ export function AdminHeader() {
           </nav>
 
           <div className="flex items-center gap-1 ml-auto shrink-0">
-            <span className="hidden min-[1290px]:flex items-center gap-1">
+            <span className="hidden min-[1320px]:flex items-center gap-1">
               <LocaleSwitcher triggerClassName="w-28 h-8 text-xs" />
             </span>
 
             {/* Mounted exactly once — see the lender header on why the bell is never duplicated. */}
             <NotificationBell role="admin" unreadCount={unread.total} />
 
-            <span className="hidden min-[1290px]:flex items-center gap-1">
+            <span className="hidden min-[1320px]:flex items-center gap-1">
               <Link href="/admin/settings">
                 <Button variant="ghost" size="icon" title={tc('settings')}>
                   <Settings className="h-4 w-4" />
@@ -186,7 +189,7 @@ export function AdminHeader() {
             <HeaderOverflowMenu
               settingsHref="/admin/settings"
               onSignOut={signOut}
-              triggerClassName="min-[1290px]:hidden"
+              triggerClassName="min-[1320px]:hidden"
             />
           </div>
         </div>

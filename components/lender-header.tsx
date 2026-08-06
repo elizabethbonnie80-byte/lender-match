@@ -42,21 +42,24 @@ const NAV = [...PRIMARY, ...SECONDARY]
  * siendo desktop"). The header keeps its full layout wherever that fits, compacts in between, and only
  * becomes a sheet on tablet and below.
  *
- *   ≥ 1320px   logo + wordmark · 7 flat links (px-3) · language + bell + settings + sign out
- *   1024–1319  logo + wordmark · 5 flat links (px-2) + "Help ▾" · bell + one overflow trigger
+ *   ≥ 1350px   logo + wordmark · 7 flat links (px-3) · language + bell + settings + sign out
+ *   1024–1349  logo + wordmark · 5 flat links (px-2) + "Help ▾" · bell + one overflow trigger
  *   < 1024     hamburger sheet
  *
  * ⚠️ **The thresholds are measured, and the binding locale is FRENCH** — the seven flat links are 768px in
- * FR against 680px in EN. Requirements, verified live on staging rather than computed:
- * full **1311**, compact **1012**. So 1320 and `lg` both clear with a real margin.
+ * FR against 680px in EN. Live requirement on staging: full **1321**, compact **1012**.
  *
- * ⚠️ The measurement has to include the **vertical scrollbar (~15px)**, which is easy to forget: a first
- * pass put this breakpoint at 1300 and the full bar overflowed by 11px at exactly 1300 in French.
+ * The thresholds sit ~30px above those requirements on purpose. Two earlier passes were set to the
+ * computed figure and both overflowed by a hair — first by 11px (the **vertical scrollbar**, ~15px, was
+ * missing from the budget), then by 1px (sub-pixel rounding across ten flex children, which a
+ * part-by-part model cannot predict). A threshold tuned to the exact pixel is fragile anyway: a longer
+ * translation or a different font fallback moves it. 1350 still leaves every common laptop width
+ * (1366, 1440, 1512, 1536) on the full header.
  *
  * Consequence worth knowing: the previous `xl` (1280) was not conservative, it was **insufficient** — in
  * French the bar had been quietly overflowing its `overflow-x-auto` all along.
  *
- * ⚠️ Do not refactor `min-[1320px]` into a constant and interpolate it. Tailwind scans for **literal**
+ * ⚠️ Do not refactor `min-[1350px]` into a constant and interpolate it. Tailwind scans for **literal**
  * class strings, so `${BP}:px-3` produces no CSS at all and the tier silently stops working. Every
  * occurrence below is spelled out for that reason. The measurements live in
  * `docs/client-revisions-2026-08-05.md`.
@@ -89,7 +92,7 @@ export function LenderHeader() {
       : 'text-foreground hover:text-primary hover:bg-muted'
 
   const itemCls = (active: boolean) =>
-    `relative px-2 min-[1320px]:px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${stateCls(active)}`
+    `relative px-2 min-[1350px]:px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${stateCls(active)}`
 
   return (
     <header className="bg-card border-b border-border sticky top-0 z-50">
@@ -128,7 +131,7 @@ export function LenderHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`hidden min-[1320px]:inline-flex ${itemCls(pathname === item.href)}`}
+                className={`hidden min-[1350px]:inline-flex ${itemCls(pathname === item.href)}`}
               >
                 {t(item.key)}
               </Link>
@@ -137,7 +140,7 @@ export function LenderHeader() {
             {/* Compact tier: the same two behind one dropdown — the pattern the admin bar already uses. */}
             <DropdownMenu>
               <DropdownMenuTrigger
-                className={`min-[1320px]:hidden inline-flex items-center gap-1 outline-none ${itemCls(
+                className={`min-[1350px]:hidden inline-flex items-center gap-1 outline-none ${itemCls(
                   SECONDARY.some((s) => s.href === pathname),
                 )}`}
               >
@@ -161,7 +164,7 @@ export function LenderHeader() {
 
           <div className="flex items-center gap-2 ml-auto shrink-0">
             {/* Full tier: language expanded, exactly as before. */}
-            <span className="hidden min-[1320px]:flex items-center gap-2">
+            <span className="hidden min-[1350px]:flex items-center gap-2">
               <LocaleSwitcher triggerClassName="w-28 h-8 text-xs" />
             </span>
 
@@ -169,7 +172,7 @@ export function LenderHeader() {
                 channel, and a duplicate silently receives nothing (F-1 bug (d)). */}
             <NotificationBell role="lender" unreadCount={unread.total} />
 
-            <span className="hidden min-[1320px]:flex items-center gap-2">
+            <span className="hidden min-[1350px]:flex items-center gap-2">
               <Link href="/lender/settings">
                 <Button variant="ghost" size="icon" title={tc('settings')}>
                   <Settings className="h-4 w-4" />
@@ -184,7 +187,7 @@ export function LenderHeader() {
             <HeaderOverflowMenu
               settingsHref="/lender/settings"
               onSignOut={signOut}
-              triggerClassName="min-[1320px]:hidden"
+              triggerClassName="min-[1350px]:hidden"
             />
           </div>
         </div>

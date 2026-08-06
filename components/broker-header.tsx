@@ -39,18 +39,19 @@ const NAV = [...PRIMARY, ...SECONDARY]
  * Same three tiers as the lender header (client 2026-08-05, follow-up to G-1) — see that file for the
  * full reasoning and the Tailwind-literal warning. This header needs the least room of the three:
  *
- *   ≥ 1090px   logo + wordmark · 5 flat links (px-3) · language + bell + settings + sign out
- *   1024–1089  logo + wordmark · 3 flat links (px-2) + "Help ▾" · bell + one overflow trigger
+ *   ≥ 1120px   logo + wordmark · 5 flat links (px-3) · language + bell + settings + sign out
+ *   1024–1119  logo + wordmark · 3 flat links (px-2) + "Help ▾" · bell + one overflow trigger
  *   < 1024     hamburger sheet
  *
- * ⚠️ Measured in FRENCH, the binding locale, scrollbar included: full **1074**, compact **789**. The old
+ * ⚠️ Measured in FRENCH, the binding locale, scrollbar included: full **~1084**, compact **789**; the
+ * threshold sits ~35px above that, see the lender header for why. The old
  * `md` (768) showed the FULL bar from 768 up where it needed 1074, so between 768 and 1074 this bar had
  * been **overflowing** — the same latent defect the lender had at 1280, just never reported.
  *
  * The sheet sits at `lg` rather than `md` even though the compact bar fits from 789: 768–1024 is tablet,
  * and the client asked for the sheet there. This is the one header with slack to spare.
  *
- * ⚠️ `min-[1090px]` is spelled out literally at every use. Interpolating it into a template kills the
+ * ⚠️ `min-[1120px]` is spelled out literally at every use. Interpolating it into a template kills the
  * class — Tailwind only scans for literal strings.
  */
 export function BrokerHeader() {
@@ -74,7 +75,7 @@ export function BrokerHeader() {
   }
 
   const itemCls = (active: boolean) =>
-    `relative px-2 min-[1090px]:px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
+    `relative px-2 min-[1120px]:px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
       active ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:text-primary hover:bg-muted'
     }`
 
@@ -116,7 +117,7 @@ export function BrokerHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`hidden min-[1090px]:inline-flex ${itemCls(pathname === item.href)}`}
+                className={`hidden min-[1120px]:inline-flex ${itemCls(pathname === item.href)}`}
               >
                 {t(item.key)}
               </Link>
@@ -125,7 +126,7 @@ export function BrokerHeader() {
             {/* Compact tier: the same two behind one dropdown. */}
             <DropdownMenu>
               <DropdownMenuTrigger
-                className={`min-[1090px]:hidden inline-flex items-center gap-1 outline-none ${itemCls(
+                className={`min-[1120px]:hidden inline-flex items-center gap-1 outline-none ${itemCls(
                   SECONDARY.some((s) => s.href === pathname),
                 )}`}
               >
@@ -148,14 +149,14 @@ export function BrokerHeader() {
           </nav>
 
           <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-            <span className="hidden min-[1090px]:flex items-center gap-2">
+            <span className="hidden min-[1120px]:flex items-center gap-2">
               <LocaleSwitcher triggerClassName="w-28 h-8 text-xs" />
             </span>
 
             {/* Mounted exactly once — see the lender header on why the bell is never duplicated. */}
             <NotificationBell role="broker" unreadCount={unread.total} />
 
-            <span className="hidden min-[1090px]:flex items-center gap-2">
+            <span className="hidden min-[1120px]:flex items-center gap-2">
               <Link href="/settings">
                 <Button variant="ghost" size="icon" title={tc('settings')}>
                   <Settings className="h-4 w-4" />
@@ -169,7 +170,7 @@ export function BrokerHeader() {
             <HeaderOverflowMenu
               settingsHref="/settings"
               onSignOut={signOut}
-              triggerClassName="min-[1090px]:hidden"
+              triggerClassName="min-[1120px]:hidden"
             />
           </div>
         </div>
