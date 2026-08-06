@@ -13,6 +13,9 @@
   },
   "common": {
     "menu": "Menu",
+    "more": "More",
+    "language": "Language",
+    "help": "Help",
     "settings": "Settings",
     "signOut": "Logout",
     "previous": "Previous",

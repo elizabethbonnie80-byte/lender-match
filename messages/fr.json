@@ -13,6 +13,9 @@
   },
   "common": {
     "menu": "Menu",
+    "more": "Plus",
+    "language": "Langue",
+    "help": "Aide",
     "settings": "Paramètres",
     "signOut": "Déconnexion",
     "previous": "Précédent",

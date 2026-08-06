@@ -13,6 +13,7 @@ import { LogOut, ChevronDown, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationBell } from '@/components/notification-bell'
 import { NavMenu, type NavMenuSection } from '@/components/nav-menu'
+import { HeaderOverflowMenu } from '@/components/header-overflow'
 import { useUnread } from '@/hooks/use-unread'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { useT } from '@/components/i18n-provider'
@@ -57,9 +58,28 @@ const NAV: NavEntry[] = [
 ]
 
 const linkCls = (active: boolean) =>
-  `px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
+  `px-2 min-[1260px]:px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
     active ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:text-primary hover:bg-muted'
   }`
+
+/**
+ * Same three tiers as the other two headers (client 2026-08-05, follow-up to G-1) — see
+ * `lender-header.tsx` for the full reasoning and the Tailwind-literal warning.
+ *
+ *   ≥ 1260px   logo + wordmark + "Admin" · 3 links + 3 groups (px-3) · language + bell + settings + out
+ *   1024–1259  logo + wordmark · same 6 entries (px-2) · bell + one overflow trigger
+ *   < 1024     hamburger sheet
+ *
+ * ⚠️ Admin turned out to be the tightest of the three once the lender's secondary links were grouped,
+ * because **"Approbations des prêteurs" alone is 165px** and the logo carries a 41px "Admin" suffix.
+ * Measured in FRENCH: full = logo 228 + nav 698 + right cluster 236 + padding/gaps 96 = **1258**; compact
+ * = logo 183 (suffix hidden) + nav 650 + right 84 + 96 = **1013**, which clears 1024 by 11px. That margin
+ * is why the suffix hides in the compact tier — with it, admin would not fit and the hamburger would come
+ * back on desktop.
+ *
+ * The bar's own entries are already grouped (Reports / Manage / Content), so unlike the other two there is
+ * nothing further to fold — the savings here come from the padding, the suffix and the right cluster.
+ */
 
 export function AdminHeader() {
   const t = useT('adminNav')
@@ -95,15 +115,18 @@ export function AdminHeader() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 h-16">
           {/* Admin's bar never hid itself, which is the same hole in a different shape: with 6 wide
-              entries and no overflow handling it squashed instead of disappearing. It now hides below
-              xl like the lender's, with this sheet behind it (client 2026-08-05). */}
-          <NavMenu triggerClassName="xl:hidden shrink-0" sections={menuSections} />
+              entries and no overflow handling it squashed instead of disappearing (G-1). */}
+          <NavMenu triggerClassName="lg:hidden shrink-0" sections={menuSections} />
 
           <Link href="/admin/lender-approvals" className="flex items-center text-xl font-bold text-primary shrink-0">
-            <BrandMark /> <span className="ml-1 text-muted-foreground font-normal text-sm">{t('admin')}</span>
+            <BrandMark />{' '}
+            {/* The 41px suffix is what buys admin its 1024 fit — see the tier note above. */}
+            <span className="hidden min-[1260px]:inline ml-1 text-muted-foreground font-normal text-sm">
+              {t('admin')}
+            </span>
           </Link>
 
-          <nav className="hidden xl:flex items-center justify-center gap-0.5 flex-1">
+          <nav className="hidden lg:flex items-center justify-center gap-0.5 flex-1">
             {NAV.map((entry) =>
               'group' in entry ? (
                 (() => {
@@ -138,16 +161,29 @@ export function AdminHeader() {
           </nav>
 
           <div className="flex items-center gap-1 ml-auto shrink-0">
-            <LocaleSwitcher triggerClassName="w-28 h-8 text-xs" />
+            <span className="hidden min-[1260px]:flex items-center gap-1">
+              <LocaleSwitcher triggerClassName="w-28 h-8 text-xs" />
+            </span>
+
+            {/* Mounted exactly once — see the lender header on why the bell is never duplicated. */}
             <NotificationBell role="admin" unreadCount={unread.total} />
-            <Link href="/admin/settings">
-              <Button variant="ghost" size="icon" title={tc('settings')}>
-                <Settings className="h-4 w-4" />
+
+            <span className="hidden min-[1260px]:flex items-center gap-1">
+              <Link href="/admin/settings">
+                <Button variant="ghost" size="icon" title={tc('settings')}>
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Button variant="ghost" size="icon" title={tc('signOut')} onClick={signOut}>
+                <LogOut className="h-4 w-4" />
               </Button>
-            </Link>
-            <Button variant="ghost" size="icon" title={tc('signOut')} onClick={signOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+            </span>
+
+            <HeaderOverflowMenu
+              settingsHref="/admin/settings"
+              onSignOut={signOut}
+              triggerClassName="min-[1260px]:hidden"
+            />
           </div>
         </div>
       </div>
