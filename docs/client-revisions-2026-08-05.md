@@ -263,12 +263,11 @@ Lender, French (the binding locale), on the deployed build:
 Both dropdowns opened: "Help" listing FAQ's and Contact Us, and `⋮` showing Language (English checked),
 Français, Settings, Logout.
 
-⚠️ **Admin and broker were NOT verified at live widths** — that needs a signed-in session per role and
-those were not available in this pass. Their thresholds come from the same measurement model, carrying
-~35px of margin over a model now known to underestimate by ~10px, and their CSS was confirmed present in
-the compiled bundle (`min-width:1120px` / `1320px` alongside the standard `48rem`/`64rem`). The component
-and the tier pattern are shared with the lender, which is verified. **Worth a spot check at ~1100 and
-~1300 on each when a session is handy.**
+**Admin and broker were checked by Ivan directly** before the prod deploy, not by this pass — the driven
+browser had a lender session only. Their thresholds come from the same measurement model, carrying ~35px of
+margin over a model now known to underestimate by ~10px, and their CSS was confirmed present in the
+compiled bundle (`min-width:1120px` / `1320px` alongside the standard `48rem`/`64rem`). The component and
+the tier pattern are shared with the lender, which was verified at the four widths above.
 
 ⚠️ **The breakpoints are written as literal class strings on purpose** (`min-[1350px]:px-3`, not
 `` `${BP}:px-3` ``). Tailwind only scans for literal strings, so interpolating one emits no CSS at all and
