@@ -148,6 +148,84 @@ date and the two answers separate — the fixed function printed `2026-07-11` ag
 
 ---
 
+## G-1b · The hamburger was appearing on desktop (follow-up, same day)
+
+> me comentan si en vez de tener los links del header en un menú tipo mobile si se pueden tener siempre en
+> desktop en el header. Tal vez reduciendo espacios y tamaños de fuente si es necesario. […] el menu de
+> hamburguesa solo debería salir en mobile y tablet, nunca en desktop […] Veo que lo que más ocupa espacio
+> es el dropdown de imagen, tal vez unificando los items de la derecha del header en un solo menu cuando no
+> haya espacio?
+
+Correct on every count. G-1 put the sheet below 1280px, and 1280 is a desktop.
+
+### Three tiers instead of two
+
+Each header now keeps the most complete layout that actually fits, and the sheet is reserved for tablet
+and below:
+
+| | Full header | Compact | Sheet |
+|---|---|---|---|
+| **Lender** | ≥ 1350 | 1024–1349 | < 1024 |
+| **Admin** | ≥ 1320 | 1024–1319 | < 1024 |
+| **Broker** | ≥ 1120 | 1024–1119 | < 1024 |
+
+The compact tier does three things, all of them the client's suggestions:
+
+- **FAQ + Contact Us fold into a "Help ▾" dropdown** — reusing the pattern the admin bar already had
+  (Reports / Manage / Content) rather than inventing one. Admin has nothing left to fold; its entries were
+  already grouped.
+- **Item padding tightens** to `px-2` (`px-1.5` on admin, which needs the extra 24px).
+- **Language + Settings + Sign out collapse behind one `⋮`** — `components/header-overflow.tsx`. This is
+  where most of the room comes from: 248px expanded against 84px for bell + trigger.
+
+⚠️ **The bell stays outside every tier and is mounted exactly once.** It owns a fixed-topic Realtime
+channel and a duplicate silently receives nothing — F-1 bug (d), which G-1 had already had to dodge in
+`NavMenu`. The language picker is rendered as menu *items* rather than by nesting `LocaleSwitcher`'s
+`Select` inside the dropdown, because two overlapping poppers fight over focus.
+
+### ⚠️ French is the binding locale, and it is what makes this hard
+
+The lender's seven flat links are **768px in French against 680px in English** — an 88px gap. Every
+threshold above is set by the French requirement, measured with the real font:
+
+| | Full needs | Compact needs |
+|---|---|---|
+| Lender | **1321** (live) | 1012 |
+| Admin | ~1284 | 1033 at `px-2` → **1009 at `px-1.5`** |
+| Broker | ~1084 | 789 |
+
+Consequence to accept: CSS cannot branch on locale, so an English user at 1280 sees the compact header
+even though the full one would fit at ~1210. Locale-aware thresholds would need JS measurement, and that
+is not worth the complexity here.
+
+### ⚠️ Two thresholds set from arithmetic, two overflows — read this before touching the numbers
+
+The first pass computed each threshold by summing part widths. It was wrong twice, in ways the arithmetic
+could not have caught:
+
+1. **The vertical scrollbar takes ~15px of usable width.** At exactly 1300px in French the lender's full
+   bar overflowed by 11px. Available width is `viewport − padding − scrollbar`, not `viewport − padding`.
+2. **Sub-pixel rounding across ten flex children.** Corrected to 1320, it still overflowed — by 1px. A
+   part-by-part model cannot predict that.
+
+So the thresholds now sit **~30px above the measured requirement**, not at it. Pixel-exact breakpoints are
+fragile anyway: a longer translation or a different font fallback moves them. 1350 still leaves every
+common laptop width (1366, 1440, 1512, 1536) on the full header.
+
+### Two latent defects the measurements exposed
+
+- **The lender's original `xl` (1280) was not conservative, it was insufficient.** French needs 1321, so
+  between 1280 and 1321 the bar had been quietly overflowing its `overflow-x-auto` since it was written.
+- **The broker had the same defect and nobody had reported it.** Its `md` (768) showed the *full* bar from
+  768px up, where it needs 1084.
+
+Also: **admin turned out to be the tightest header of the three**, not the lender, once the lender's
+secondary links were grouped — "Approbations des prêteurs" is 165px on its own, and the logo carries a
+41px "Admin" suffix that now hides in the compact tier. Without hiding it, admin misses 1024 and the
+hamburger returns on desktop.
+
+---
+
 ## Verification
 
 Browser-driven locally against seeded fixtures (one invoice per status — pending, paid, cancelled — since
@@ -167,11 +245,35 @@ the whole point of G-2's trap is the non-pending rows):
 
 `pnpm check` clean (0 errors, EN/FR parity at 1653 keys each, 19 unit tests) and `pnpm build` compiles.
 
-⚠️ **Not verified by resizing the browser.** The driven Chrome tab renders at a fixed width and ignores
-`resize_window` — `window.innerWidth` stayed 1920 through every attempt. The menu was exercised by
-stripping its `xl:hidden` class at runtime, which tests the component itself (contents, active state,
-dots, close-on-navigate) but not the Tailwind breakpoint arithmetic. That arithmetic is a static class
-pair and was confirmed by reading the computed `display` against `matchMedia('(min-width:1280px)')`.
+### G-1b, verified live on staging at real viewport widths
+
+`resize_window` only works once the Chrome window is **un-maximised** — while maximised it reports success
+and `innerWidth` does not move, which is what blocked the first attempt. Popups are blocked too, so that
+route is out.
+
+Lender, French (the binding locale), on the deployed build:
+
+| Width | Expected | Result |
+|---|---|---|
+| 1320 | full | ✅ 7 flat links, no hamburger — but **1px deficit**, which is why the threshold is now 1350 |
+| 1234 | compact | ✅ 5 links + "Help ▾" + bell + `⋮`, **no hamburger** |
+| 1024 | compact, tightest case | ✅ no overflow (945 of 945 used) |
+| 984 | sheet | ✅ hamburger + logo + bell + `⋮` |
+
+Both dropdowns opened: "Help" listing FAQ's and Contact Us, and `⋮` showing Language (English checked),
+Français, Settings, Logout.
+
+⚠️ **Admin and broker were NOT verified at live widths** — that needs a signed-in session per role and
+those were not available in this pass. Their thresholds come from the same measurement model, carrying
+~35px of margin over a model now known to underestimate by ~10px, and their CSS was confirmed present in
+the compiled bundle (`min-width:1120px` / `1320px` alongside the standard `48rem`/`64rem`). The component
+and the tier pattern are shared with the lender, which is verified. **Worth a spot check at ~1100 and
+~1300 on each when a session is handy.**
+
+⚠️ **The breakpoints are written as literal class strings on purpose** (`min-[1350px]:px-3`, not
+`` `${BP}:px-3` ``). Tailwind only scans for literal strings, so interpolating one emits no CSS at all and
+the tier silently stops working. Verified in the compiled output that `min-width:1350px`, `1320px` and
+`1120px` are all emitted.
 
 ---
 

@@ -212,11 +212,27 @@ active work queue.** All are live on prod.
    same hole in every portal: broker `hidden md:flex` (768px), and admin with **no** `hidden` and no
    `overflow-x-auto`, so it squashed instead of hiding. **The rule: a responsive breakpoint may only ever
    MOVE navigation, never remove it.** Fixed with a shared **`components/nav-menu.tsx`** (left `Sheet`)
-   mounted in all three headers; each passes the exact complement of its own `<nav>` breakpoint as
-   `triggerClassName` (`xl:hidden` vs `hidden xl:flex`) so no width falls through the gap. The bell is
-   deliberately NOT duplicated inside the sheet — it owns a fixed-topic Realtime channel and a second
-   instance would collide, which is F-1 bug (d) all over again. `NavUnreadDot` gained an `inline` variant
-   instead of a second dot being written (no `ring-card` there — the sheet is `bg-background`).
+   mounted in all three headers. The bell is deliberately NOT duplicated inside the sheet — it owns a
+   fixed-topic Realtime channel and a second instance would collide, which is F-1 bug (d) all over again.
+   `NavUnreadDot` gained an `inline` variant instead of a second dot being written (no `ring-card` there —
+   the sheet is `bg-background`).
+   ⚠️ **G-1b, same day: the sheet was appearing at 1280px, which is a DESKTOP.** Every header now has
+   **three** tiers — full / compact / sheet — instead of two, keeping the most complete layout that fits:
+   lender full ≥1350, admin ≥1320, broker ≥1120; compact 1024 up; sheet below 1024. The compact tier folds
+   FAQ+Contact into a **"Help ▾"** dropdown (the pattern admin's bar already used), tightens item padding,
+   and collapses **language + settings + sign out** behind one `⋮`
+   (**`components/header-overflow.tsx`** — 248px expanded vs 84px for bell + trigger, which is where the
+   room comes from). ⚠️ **FRENCH is the binding locale for every threshold** — the lender's links are 768px
+   in FR against 680px in EN. ⚠️ **Two passes set the thresholds from arithmetic and both overflowed**:
+   first by 11px (the **vertical scrollbar** takes ~15px of usable width — available is
+   `viewport − padding − scrollbar`), then by 1px (sub-pixel rounding across ten flex children, which a
+   part-by-part model cannot predict). They now sit **~30px above the measured requirement**; don't shave
+   them back to the exact pixel. ⚠️ **Write the breakpoints as LITERAL class strings**
+   (`min-[1350px]:px-3`): Tailwind only scans literals, so interpolating one emits no CSS and the tier
+   silently dies. Also exposed: the lender's old `xl` was **insufficient**, not conservative (FR needs
+   1321), and the broker had shown its full bar from 768px where it needs 1084 — the same latent defect,
+   unreported. Admin is the tightest header of the three ("Approbations des prêteurs" is 165px alone), so
+   it uses `px-1.5` and hides its "Admin" logo suffix in the compact tier; without that it misses 1024.
    ⚠️ **G-2 needed NO migration**: `invoice-pdf` does no role check of its own — it fetches with the
    CALLER's JWT and lets RLS decide, and `invoices_admin` is `for all using (is_admin())`, so the lender's
    `downloadInvoicePdf` helper already worked for an admin. The real trap was that `/admin/invoices`
@@ -1048,8 +1064,16 @@ on several sets — any data migration must map **by display label** using the t
   ⚠️ **A responsive breakpoint may only ever MOVE navigation, never remove it** (G-1, 2026-08-05). Every
   header hid its `<nav>` below a breakpoint with nothing behind it, so the links were in the DOM and
   unreachable. **`NavMenu`** (`components/nav-menu.tsx`) is the fallback; a header must pass the exact
-  complement of its own `<nav>` breakpoint as `triggerClassName` (`xl:hidden` against `hidden xl:flex`) so
+  complement of its own `<nav>` breakpoint as `triggerClassName` (`lg:hidden` against `hidden lg:flex`) so
   no viewport width falls between them. Don't mount a second `NotificationBell` inside it.
+  ⚠️ **The headers are THREE-tier, and the numbers are measured in FRENCH** (G-1b): full / compact / sheet,
+  with `min-[1350px]` (lender) · `min-[1320px]` (admin) · `min-[1120px]` (broker) as the full-tier
+  thresholds and `lg` as the sheet boundary. The compact tier uses a "Help ▾" group plus
+  **`components/header-overflow.tsx`** for language+settings+sign-out. Before changing any threshold, read
+  the G-1b section of the control doc: **available width is `viewport − padding − scrollbar`** (the
+  ~15px scrollbar was missed once), sub-pixel rounding costs another pixel or two, so the thresholds carry
+  ~30px of deliberate margin. And **the breakpoints must stay literal class strings** — Tailwind does not
+  scan interpolated ones, so `` `${BP}:flex` `` compiles to nothing.
   ⚠️ **A `<Button>` wrapped in a `<Link>` nests a `<button>` inside an `<a>` and the inner button eats the
   click** — the nav's icon buttons get away with it, but it silently broke the auto-offer strip's Manage
   button in QA. Use `<Button asChild><Link …></Button>` so the button renders AS the anchor.
