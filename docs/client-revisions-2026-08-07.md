@@ -8,8 +8,8 @@ Source: the client's email, sent after the 08-05 batch went live.
 > Is there a way to stop the broker in their tracks when they upload incorrect documents? Perhaps when
 > the uploads show as "mismatch" the broker cannot proceed until they upload the correct documents?
 
-**Status: DONE. Migration 65. Not yet deployed** (awaiting the go-ahead — a migration on the hosted DBs
-is a prod push).
+**Status: DONE and LIVE on staging + prod (2026-08-07, `e93167e`, migration 65 — 65/65 on both).**
+No edge function changed, so none needed redeploying.
 
 ---
 
@@ -108,6 +108,23 @@ inside a `WHERE` reads as no-match by luck rather than by intent.
   3. Consent replaced too → both verified, Submit enables, deal submits as `DEAL-2026-123`.
   Step 3 is the one that matters as much as step 1: it proves the gate does **not** reject a correct
   document, which is the failure mode that would cost her real deals.
+- **Staging, after deploy** — the environment-specific half, since the AI key and the deployed function
+  are what differ from local:
+  - The same random PNG uploaded to both slots through the wizard → both rows came back
+    `name_matches = false`, `checked_at` set, `extracted_name` empty. **So the key is live on staging and
+    the vision call really ran** (a missing key would have left the rows NULL and let the deal through).
+  - `submit_deal` called **directly as the broker, bypassing the wizard entirely** →
+    `The name on the uploaded photo ID does not match the primary borrower. Replace it before submitting.`
+    This is the assertion that matters: the refusal is in the database, so it cannot be clicked past.
+  - Both documents then replaced with PDFs bearing the correct name and re-checked through **staging's
+    deployed `match-document-name`** → it read `"Nadia Okonkwo"` off the files (proof it ran the model
+    rather than trusting stored state — the flags were reset to NULL first so a failed re-check could not
+    pass as an approval), both `name_matches = true`, and the deal submitted as `DEAL-2026-628`.
+  - Test deal and its two Storage objects deleted afterwards (objects do **not** cascade with the deal).
+- **Prod: verified at the DB level only** — 65/65, the guard present in `submit_deal`, `ANTHROPIC_API_KEY`
+  set. Deliberately **not** exercised end-to-end there: prod holds one real account and no deals, and
+  proving this needs creating a deal and uploading documents. That is test data in production, so it was
+  not done.
 
 ### ⚠️ The risk profile changed, and she should know
 

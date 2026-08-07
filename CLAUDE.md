@@ -245,9 +245,9 @@ active work queue.** All are live on prod.
    same-day invoice makes the bug and the fix print identical output.
 
 7. **2026-08-07** (1 item) → [`docs/client-revisions-2026-08-07.md`](./docs/client-revisions-2026-08-07.md)
-   — **H-1: a document name mismatch now BLOCKS the submission** (was advisory). **DONE, migration 65,
-   NOT yet deployed.** Read that doc before touching the document upload, `submit_deal`, or the
-   `match-document-name` function.
+   — **H-1: a document name mismatch now BLOCKS the submission** (was advisory). **DONE and LIVE on
+   staging + prod (2026-08-07, `e93167e`, migration 65).** Read that doc before touching the document
+   upload, `submit_deal`, or the `match-document-name` function.
    ⚠️ **She was right and nothing was broken** — Round 3 Phase 3 specced the name-match as *advisory,
    fail-open, never blocks submit* (migration 46's header, the fn docstring, and the broker copy which
    literally said "This is only a warning"). Her random-image test did exactly what the build was built to
@@ -583,14 +583,15 @@ The name-match was advisory until now (migration 46). ⚠️ Only `name_matches 
 `name_variance` is allowed (the client's own rule: both names print on the invoice) and **NULL is
 allowed**, because blocking unchecked rows would let an Anthropic outage halt every submission and would
 break every smoke. No new column: the answer was already stored, it just was not read).
-⚠️ **Migration 65 is applied LOCALLY ONLY — it is NOT on staging or prod yet** (awaiting the go-ahead;
-a hosted migration is a prod push). Everything below describes the state through 64.
-
-**Hosted status: migrations 36–64 are applied to BOTH staging AND prod**
+**Hosted status: migrations 36–65 are applied to BOTH staging AND prod**
 (36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; 52–56 on 2026-07-27;
-57–62 on 2026-07-29; **63–64 on 2026-07-31** — 64/64 on each, advisors 0 ERROR, browser- and
-smoke-QA'd on staging). **F-1 (`515dd68`, 2026-08-03) and the 08-05 batch (`37671e2`) added NO migration —
-64/64 still stands and nothing was applied to either DB.** ⚠️ The 08-05 deploy DID **redeploy `invoice-pdf`
+57–62 on 2026-07-29; 63–64 on 2026-07-31; **65 on 2026-08-07** — 65/65 on each, browser- and
+smoke-QA'd on staging). **F-1 (`515dd68`, 2026-08-03) and the 08-05 batch (`37671e2`) added NO migration.**
+⚠️ **`supabase db push` prints a `pgdelta` "Failed to read certificate file … pgdelta-target-ca.crt" error
+after applying** (seen on both envs, migration 65). It is the post-push catalog-cache step, NOT the push —
+`Finished supabase db push` is still the success marker. **Don't trust either message: verify by querying
+`supabase_migrations.schema_migrations` and grepping `pg_proc.prosrc` for the new guard**, which is how 65
+was confirmed on both. ⚠️ The 08-05 deploy DID **redeploy `invoice-pdf`
 on both** (G-3 changed its issue date) — that function never ships with the Vercel build, so a code change
 inside `supabase/functions/` needs its own `supabase functions deploy` per environment. The 63–64 deploy
 **redeployed `invoice-pdf`** on both
