@@ -244,6 +244,30 @@ active work queue.** All are live on prod.
    `invoices.created_at` (added to the fn's `select`). **Verifying it needs a BACKDATED row** — a
    same-day invoice makes the bug and the fix print identical output.
 
+7. **2026-08-07** (1 item) → [`docs/client-revisions-2026-08-07.md`](./docs/client-revisions-2026-08-07.md)
+   — **H-1: a document name mismatch now BLOCKS the submission** (was advisory). **DONE, migration 65,
+   NOT yet deployed.** Read that doc before touching the document upload, `submit_deal`, or the
+   `match-document-name` function.
+   ⚠️ **She was right and nothing was broken** — Round 3 Phase 3 specced the name-match as *advisory,
+   fail-open, never blocks submit* (migration 46's header, the fn docstring, and the broker copy which
+   literally said "This is only a warning"). Her random-image test did exactly what the build was built to
+   do. Three separate things had to change: the rule itself, `submit_deal` (which only ever counted
+   `count(distinct kind) < 2` and never read `name_matches`), and **the fire-and-forget check** — a
+   UI-only gate was bypassable by clicking Submit before Claude answered, so `handleSubmit` now **awaits**
+   any pending check.
+   ⚠️ **"Block on mismatch" is THREE states, and two of them must keep passing.** `name_matches = false`
+   blocks; `true + name_variance` is allowed (**the client's own migration-46 rule** — same person, and
+   both names print on the invoice); `NULL` is allowed. **Blocking on NULL would make an Anthropic outage
+   halt every submission on the platform**, and would break every smoke (`attachDealDocuments` inserts
+   unchecked rows). The fail-open and the `await` are **one mechanism**: fail-open is only defensible
+   because the await makes NULL mean "the AI is down" rather than "the broker was fast". Don't remove
+   either half. Use `is false`, never `= false`/`not name_matches` — those are NULL for an unchecked row.
+   ⚠️ **The risk profile changed: a wrong AI answer now blocks a real deal**, where before it was
+   cosmetic. Recourse is unlimited re-upload; there is deliberately **no admin override** (not requested,
+   and it would be a hole in the control she asked for — flagged to her as her decision). Known gap left
+   open on purpose: a mismatch introduced by EDITING an already-submitted deal is gated in the wizard but
+   not at the data layer (`updateSubmittedDeal` is a plain UPDATE, not an RPC).
+
 ⚠️ **Two traps recorded in that doc, worth knowing before you open it:**
 - **`docs/Revisions_23_Jul_2026.pdf` is NOT a reliable source.** It is a Gmail print whose long lines are
   **clipped at the right page margin — the text is genuinely gone**, including the entity name in a
@@ -552,7 +576,16 @@ true**, gating `send_auto_offers` — the lender-level master the New Deals stri
 the per-row `auto_offers.is_active`, deliberately: master off = nothing sends; master on = the per-row
 rules decide. Collapsing them would lose which offers the lender had paused. ⚠️ The TRUE default is not
 cosmetic — false would have stopped every pre-existing auto-offer silently. No RLS change needed: the
-`profiles_privilege_guard` trigger is a DENY-list and this column is not on it).
+`profiles_privilege_guard` trigger is a DENY-list and this column is not on it) ·
+`65_block_submit_on_name_mismatch` (**client 2026-08-07, H-1**: `submit_deal` refuses a deal holding a
+document whose AI name-check came back as a different person, and the exception names WHICH document.
+The name-match was advisory until now (migration 46). ⚠️ Only `name_matches is false` blocks — a
+`name_variance` is allowed (the client's own rule: both names print on the invoice) and **NULL is
+allowed**, because blocking unchecked rows would let an Anthropic outage halt every submission and would
+break every smoke. No new column: the answer was already stored, it just was not read).
+⚠️ **Migration 65 is applied LOCALLY ONLY — it is NOT on staging or prod yet** (awaiting the go-ahead;
+a hosted migration is a prod push). Everything below describes the state through 64.
+
 **Hosted status: migrations 36–64 are applied to BOTH staging AND prod**
 (36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; 52–56 on 2026-07-27;
 57–62 on 2026-07-29; **63–64 on 2026-07-31** — 64/64 on each, advisors 0 ERROR, browser- and
@@ -1016,6 +1049,9 @@ on several sets — any data migration must map **by display label** using the t
   **prequal → live deal** flow (`smoke-prequal` — the address-or-prequal submit gate, bidding on a prequal,
   the accept-before-conversion refusal, every conversion guard, offers carrying over + the lender
   notification, and no marketplace re-entry),
+  the **document name-match submit gate** (`smoke-doc-name-gate` — client 2026-08-07 H-1: the block, the
+  message naming WHICH document to replace, and ⚠️ the two states that must keep PASSING, a preferred-name
+  variance and an unchecked/NULL row — collapsing the guard into `not name_matches` breaks both),
   the Round 3 **filter criteria** (`smoke-open-filtered`), the **optional transaction type**
   (`smoke-optional-transaction-type` — an untyped deal reaches a lender filtering on a type, through both
   the saved-filter chip and the ad-hoc panel, AND scores 100% rather than losing the 18-point weight;

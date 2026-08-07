@@ -221,7 +221,16 @@ export default function CreateDealPage() {
   // both are uploaded — the submit_deal RPC enforces it too (data-layer backstop).
   const [documents, setDocuments] = useState<DealDocument[]>([])
   const [uploadingKind, setUploadingKind] = useState<DocumentKind | null>(null)
+  // Documents whose AI name-check is still in flight. Rendered as "checking…" so a broker never reads
+  // the absence of a badge as a pass (client 2026-08-07, H-1).
+  const [checkingKinds, setCheckingKinds] = useState<DocumentKind[]>([])
   const hasDoc = (kind: DocumentKind) => documents.some((d) => d.kind === kind)
+  /**
+   * A checked document that belongs to a different person. Blocks the step (client 2026-08-07, H-1) —
+   * a preferred-name variance (`nameMatches === true && nameVariance`) deliberately does NOT, that is
+   * the client's own rule from migration 46. `=== false` and not falsiness: `null` means unchecked.
+   */
+  const mismatchedDoc = () => documents.find((d) => d.nameMatches === false)
 
   // Resume an existing draft (?draft=<id>) or edit a submitted deal (?edit=<id>): load it and
   // prefill the whole form. The loaded status decides the mode, not the param name.
@@ -421,9 +430,12 @@ export default function CreateDealPage() {
       case "property":
         // Round 3 Phase 3 (OQ#41 / client feedback #7): no property address ⇒ the deal must be a
         // prequal. submit_deal enforces the same rule at the data layer.
+        // A document that failed the name check blocks the step (client 2026-08-07, H-1). Property is
+        // the LAST step, so this gates Submit without ever trapping the broker mid-wizard — and
+        // submit_deal refuses it at the data layer regardless of what the wizard allows.
         return (!!propertyAddress.trim() || preQualification)
           && !!city.trim() && !!province && !!location && !!propertyValue.trim() && !!squareFootage.trim() && !!dwellingType
-          && hasDoc("consent") && hasDoc("photo_id")
+          && hasDoc("consent") && hasDoc("photo_id") && !mismatchedDoc()
     }
   }
 
@@ -507,6 +519,45 @@ export default function CreateDealPage() {
     return id
   }
 
+  type NameCheck = Pick<DealDocument, "nameMatches" | "nameVariance" | "extractedName">
+  const UNCHECKED: NameCheck = { nameMatches: null, nameVariance: null, extractedName: null }
+
+  /**
+   * Run the AI name-check for one document and reflect the outcome on it. Never throws: the check is
+   * fail-open, so an unreachable edge function resolves as UNCHECKED rather than stopping the broker.
+   */
+  const applyNameCheck = async (docId: string): Promise<NameCheck> => {
+    try {
+      const r = await matchDocumentName(supabase, docId)
+      if (!r.checked) return UNCHECKED
+      const outcome: NameCheck = {
+        nameMatches: r.nameMatches ?? null,
+        nameVariance: r.nameVariance ?? null,
+        extractedName: r.extractedName ?? null,
+      }
+      setDocuments((prev) => prev.map((d) => (d.id === docId ? { ...d, ...outcome } : d)))
+      return outcome
+    } catch {
+      return UNCHECKED
+    }
+  }
+
+  /**
+   * Resolve every document whose check has not landed yet, so Submit decides on real results instead
+   * of on the NULLs that a still-in-flight check leaves behind (client 2026-08-07, H-1). Returns false
+   * when any document belongs to a different person.
+   *
+   * An unavailable AI still resolves to null and still passes — `submit_deal` is fail-open on NULL on
+   * purpose (an Anthropic outage must not halt every submission on the platform, see migration 65).
+   * This function is what makes that NULL mean "the AI is down" rather than "the broker was fast".
+   */
+  const documentsPassNameCheck = async (): Promise<boolean> => {
+    const results = await Promise.all(
+      documents.map((d) => (d.nameMatches === null ? applyNameCheck(d.id).then((r) => r.nameMatches) : d.nameMatches)),
+    )
+    return !results.includes(false)
+  }
+
   const handleUpload = async (kind: DocumentKind, file: File | undefined) => {
     if (!file || uploadingKind) return
     setUploadingKind(kind)
@@ -515,19 +566,13 @@ export default function CreateDealPage() {
       const doc = await uploadDealDocument(supabase, id, kind, file)
       setDocuments((prev) => [...prev.filter((d) => d.kind !== kind), doc])
       toast.success(t("docUploaded"))
-      // Advisory AI name-match (never blocks submission). Reflect the result on the doc when it lands.
-      matchDocumentName(supabase, doc.id)
-        .then((r) => {
-          if (!r.checked) return
-          setDocuments((prev) =>
-            prev.map((d) =>
-              d.id === doc.id
-                ? { ...d, nameMatches: r.nameMatches ?? null, nameVariance: r.nameVariance ?? null, extractedName: r.extractedName ?? null }
-                : d,
-            ),
-          )
-        })
+      // AI name-match. Fire-and-forget so the upload feels instant, but the kind is marked as being
+      // checked and handleSubmit awaits anything still pending — a mismatch must not slip through
+      // just because the broker submitted before Claude answered (client 2026-08-07, H-1).
+      setCheckingKinds((prev) => [...prev, kind])
+      applyNameCheck(doc.id)
         .catch(() => {})
+        .finally(() => setCheckingKinds((prev) => prev.filter((k) => k !== kind)))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("docUploadError"))
     } finally {
@@ -566,6 +611,16 @@ export default function CreateDealPage() {
     }
     setIsSaving(true)
     try {
+      // Client 2026-08-07 (H-1): resolve any name-check still in flight, then refuse on a mismatch.
+      // submit_deal raises on the same condition — this is the legible version of that backstop.
+      // Deliberately NOT in handleSaveDraft: a draft is private and unfinished, and holding one
+      // hostage would leave the broker with nowhere to put the work while they chase a better scan.
+      if (!(await documentsPassNameCheck())) {
+        setAttempted((a) => ({ ...a, property: true }))
+        setActiveSection("property")
+        toast.error(t("docNameMismatchBlocks"))
+        return
+      }
       const issue = await notesContactIssue()
       if (issue) {
         toast.error(issue)
@@ -1550,7 +1605,9 @@ export default function CreateDealPage() {
                     ).map(([kind, labelKey]) => {
                       const doc = documents.find((d) => d.kind === kind)
                       const busy = uploadingKind === kind
-                      const missing = attempted.property && !doc
+                      const checking = checkingKinds.includes(kind)
+                      // A mismatch is a blocking error now, so the card is outlined like a missing one.
+                      const missing = (attempted.property && !doc) || doc?.nameMatches === false
                       return (
                         <div
                           key={kind}
@@ -1579,8 +1636,20 @@ export default function CreateDealPage() {
                                 <Paperclip className="h-3.5 w-3.5" />
                                 <span className="truncate max-w-[180px]">{doc.fileName ?? t("docView")}</span>
                               </button>
-                              {doc.nameMatches === false && (
-                                <p className="mt-1 text-xs text-destructive">{t("docNameMismatch")}</p>
+                              {/* An unchecked document must never read as a silent pass — say so while
+                                  the AI is still looking (client 2026-08-07, H-1). */}
+                              {checking && (
+                                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  {t("docNameChecking")}
+                                </p>
+                              )}
+                              {!checking && doc.nameMatches === false && (
+                                <p className="mt-1 text-xs text-destructive">
+                                  {doc.extractedName
+                                    ? t("docNameMismatchNamed", { name: doc.extractedName })
+                                    : t("docNameMismatch")}
+                                </p>
                               )}
                               {doc.nameMatches === true && doc.nameVariance === true && (
                                 <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
@@ -1617,6 +1686,9 @@ export default function CreateDealPage() {
                   </div>
                   {attempted.property && (!hasDoc("consent") || !hasDoc("photo_id")) && (
                     <p className="text-xs text-destructive">{t("docsRequired")}</p>
+                  )}
+                  {mismatchedDoc() && (
+                    <p className="text-xs text-destructive">{t("docNameMismatchBlocks")}</p>
                   )}
                 </div>
 
