@@ -121,6 +121,35 @@ inside a `WHERE` reads as no-match by luck rather than by intent.
     rather than trusting stored state — the flags were reset to NULL first so a failed re-check could not
     pass as an approval), both `name_matches = true`, and the deal submitted as `DEAL-2026-628`.
   - Test deal and its two Storage objects deleted afterwards (objects do **not** cascade with the deal).
+- **Staging, through the wizard in the browser** (second pass, after the extension reconnected) — and this
+  one caught the fail-open path happening for real, which is better evidence than the designed test:
+  1. Random PNG on both slots → the photo ID came back `false` and turned red, but **the consent's check
+     returned `checked: false`** (a transient failure of the Claude call; its row stayed NULL with no
+     `checked_at`). One document blocked, the other was simply unverified. Deal stayed `draft`, and
+     clicking Submit did nothing.
+  2. Photo ID replaced with the correct PDF → it cleared to "Name matches", and with no `false` row left,
+     **Submit went live again while the consent was still an unverified random image.** That is exactly the
+     hole `documentsPassNameCheck()` exists to cover.
+  3. **Clicked Submit in that state → the pending check re-ran, came back `false`, and the deal was NOT
+     submitted**: the consent card turned red, the summary line appeared, Submit went back to disabled.
+     DB confirmed `draft`, no `deal_number`, consent now `name_matches = false`.
+     ⚠️ **This is the live proof of the bypass the `await` closes.** A UI-only gate would have submitted
+     that deal — the flag was NULL at click time and the card showed nothing at all.
+  4. Consent replaced with the correct PDF → both read `"Nadia Okonkwo"`, Submit enabled, deal submitted
+     as `DEAL-2026-629` and the wizard redirected to the Deal Room. Cleaned up after.
+
+### ⚠️ Found during that pass, NOT fixed — an unverified document is silent
+
+Step 1 above is worth its own note: when the AI check fails to run, the card shows **nothing** — no
+badge, no warning, just the filename. Next to a sibling card reading "Name matches the primary borrower",
+a broker reasonably reads the blank one as fine. Then Submit appears to work and errors a few seconds
+later, because the check runs at that point.
+
+The behaviour is *safe* (nothing is submitted that shouldn't be) but it is confusing, and this is not a
+theoretical path — it happened on the first real attempt on staging. The fix is small: render a neutral
+"Could not verify this document — it will be re-checked when you submit" line when `name_matches` is null
+but the document has been uploaded. **Deliberately left out of this deploy** rather than expanding scope
+after the client's item was already shipped and verified — raise it with her as a small follow-up.
 - **Prod: verified at the DB level only** — 65/65, the guard present in `submit_deal`, `ANTHROPIC_API_KEY`
   set. Deliberately **not** exercised end-to-end there: prod holds one real account and no deals, and
   proving this needs creating a deal and uploading documents. That is test data in production, so it was

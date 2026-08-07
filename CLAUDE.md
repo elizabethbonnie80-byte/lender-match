@@ -262,6 +262,13 @@ active work queue.** All are live on prod.
    unchecked rows). The fail-open and the `await` are **one mechanism**: fail-open is only defensible
    because the await makes NULL mean "the AI is down" rather than "the broker was fast". Don't remove
    either half. Use `is false`, never `= false`/`not name_matches` — those are NULL for an unchecked row.
+   ⚠️ **The fail-open path is REAL, not theoretical — it fired on the first staging run.** One document's
+   check returned `checked: false` (transient Claude failure), leaving its row NULL, so it did not block
+   and **Submit went live while it was still an unverified random image**. Clicking Submit re-ran the
+   pending check, got `false`, and refused — which is the live proof that the `await` is what closes the
+   bypass, since a UI-only gate would have submitted that deal. Consequence flagged but NOT fixed: an
+   unverified document renders **nothing** (no badge) next to a sibling reading "Name matches", so a
+   broker reads blank as fine and then hits a surprise error on Submit. Small follow-up, see the control doc.
    ⚠️ **The risk profile changed: a wrong AI answer now blocks a real deal**, where before it was
    cosmetic. Recourse is unlimited re-upload; there is deliberately **no admin override** (not requested,
    and it would be a hole in the control she asked for — flagged to her as her decision). Known gap left
