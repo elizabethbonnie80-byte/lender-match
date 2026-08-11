@@ -266,14 +266,42 @@ active work queue.** All are live on prod.
    check returned `checked: false` (transient Claude failure), leaving its row NULL, so it did not block
    and **Submit went live while it was still an unverified random image**. Clicking Submit re-ran the
    pending check, got `false`, and refused — which is the live proof that the `await` is what closes the
-   bypass, since a UI-only gate would have submitted that deal. Consequence flagged but NOT fixed: an
-   unverified document renders **nothing** (no badge) next to a sibling reading "Name matches", so a
-   broker reads blank as fine and then hits a surprise error on Submit. Small follow-up, see the control doc.
+   bypass, since a UI-only gate would have submitted that deal. Consequence flagged but NOT fixed at the
+   time: an unverified document rendered **nothing** (no badge) next to a sibling reading "Name matches", so
+   a broker read blank as fine and then hit a surprise error on Submit. **Closed on 2026-08-11 by I-2** —
+   every uploaded document now reads one neutral "Upload successful" and only a real mismatch differs.
    ⚠️ **The risk profile changed: a wrong AI answer now blocks a real deal**, where before it was
    cosmetic. Recourse is unlimited re-upload; there is deliberately **no admin override** (not requested,
    and it would be a hole in the control she asked for — flagged to her as her decision). Known gap left
    open on purpose: a mismatch introduced by EDITING an already-submitted deal is gated in the wizard but
    not at the data layer (`updateSubmittedDeal` is a plain UPDATE, not an RPC).
+
+8. **2026-08-11** (2 items) → [`docs/client-revisions-2026-08-11.md`](./docs/client-revisions-2026-08-11.md)
+   — **DONE and LIVE on staging + prod (2026-08-11, `c7e54ce`, migration 66).** Read it before touching
+   `job_expire_old_deals`, the prequal lender window, or the Create Deal document cards.
+   ⚠️ **I-1: a notification's TYPE is copy, not a routing detail — and that is the whole bug.** Migration 52
+   sent the broker a courtesy notice when a prequal's 15-day lender window closed, riding on the existing
+   `deal_expired` type "because the body is prequal-specific". But the type — not the body — picks the email
+   subject (`SUBJECTS` in `notify-email`), the bell label (`NOTIFICATION_TYPE_KEY` → `typeDealExpired`) and
+   the red `XCircle`. So a prequal that deliberately **never** expires for the broker announced itself as
+   "A deal has expired" in her inbox and "Deal expired" in her bell. **The behaviour was correct all along**
+   — `DEAL-2026-611` was still `submitted` with `expired_at` null. If a notification needs different words
+   than its type says, it needs its own type, or it should not be sent.
+   ⚠️ **The notice was REMOVED, not re-typed** — she never asked to be told, the Deal Room row already says
+   it where the broker acts (`dealRoom.prequalQueueClosed`, verified on screen), and a new enum value would
+   have cost 8 surfaces + an edge redeploy **and still emailed her on day 15**, which is what she asked to
+   stop. `prequal_lender_notice_at` is still stamped as a support record; it never drove visibility (that is
+   computed from `created_at`). Structural detail: removing the insert left a `with … update … returning`
+   CTE with no consumer (not a valid statement), so the prequal branch is now a plain `UPDATE` placed
+   **after** `get diagnostics`, keeping the function's return value unchanged.
+   ⚠️ **I-2: the broker no longer sees the AI name-check narrated** — *"better that the users don't see that
+   it's just scanning for a name"*. Four card states collapsed to two: **"Upload successful"** for anything
+   uploaded (verified / variance / unchecked / in-flight — none of them stops the broker) and the red
+   mismatch line, which must stay because it is H-1 and a Submit that refuses without saying why is worse
+   than silence. **No extracted name is printed anywhere now.** The check is otherwise untouched: still
+   stored, still blocks in `submit_deal`, still in `/admin/documents`, and a variance still prints both
+   names on the invoice. 📌 This **reverses part of B-34** (2026-07-23/25), where she said she *liked*
+   seeing that the PDFs are scanned — don't re-add the variance line citing B-34.
 
 ⚠️ **Two traps recorded in that doc, worth knowing before you open it:**
 - **`docs/Revisions_23_Jul_2026.pdf` is NOT a reliable source.** It is a Gmail print whose long lines are
@@ -589,16 +617,29 @@ document whose AI name-check came back as a different person, and the exception 
 The name-match was advisory until now (migration 46). ⚠️ Only `name_matches is false` blocks — a
 `name_variance` is allowed (the client's own rule: both names print on the invoice) and **NULL is
 allowed**, because blocking unchecked rows would let an Anthropic outage halt every submission and would
-break every smoke. No new column: the answer was already stored, it just was not read).
-**Hosted status: migrations 36–65 are applied to BOTH staging AND prod**
+break every smoke. No new column: the answer was already stored, it just was not read) ·
+`66_prequal_no_broker_expiry_notice` (**client 2026-08-11, I-1**: `job_expire_old_deals` no longer notifies
+the broker when a prequal's 15-day LENDER window closes. The notice was ours (migration 52) and rode on the
+`deal_expired` type, so the email subject read "A deal has expired" and the bell said "Deal expired" about a
+deal that deliberately never expires for the broker. The live-deal expiry path is untouched.
+⚠️ `prequal_lender_notice_at` is still stamped — a support record of when the window closed, never the
+source of truth for visibility. ⚠️ The prequal branch is now a plain `UPDATE` rather than a CTE: dropping
+the `insert` left `with closed as (update … returning …)` with no consumer, which will not parse. It sits
+**after** `get diagnostics n = row_count` so the return value still counts live-deal notices).
+**Hosted status: migrations 36–66 are applied to BOTH staging AND prod**
 (36–39 on 2026-07-14; 40–43 on 2026-07-17; 44 on 2026-07-21; 45–51 on 2026-07-22; 52–56 on 2026-07-27;
-57–62 on 2026-07-29; 63–64 on 2026-07-31; **65 on 2026-08-07** — 65/65 on each, browser- and
-smoke-QA'd on staging). **F-1 (`515dd68`, 2026-08-03) and the 08-05 batch (`37671e2`) added NO migration.**
+57–62 on 2026-07-29; 63–64 on 2026-07-31; 65 on 2026-08-07; **66 on 2026-08-11** — 66/66 on each, browser-
+and smoke-QA'd on staging, except 66 which was verified against staging's live data with no local
+environment — see its control doc). **F-1 (`515dd68`, 2026-08-03) and the 08-05 batch (`37671e2`) added NO migration.**
 ⚠️ **`supabase db push` prints a `pgdelta` "Failed to read certificate file … pgdelta-target-ca.crt" error
-after applying** (seen on both envs, migration 65). It is the post-push catalog-cache step, NOT the push —
-`Finished supabase db push` is still the success marker. **Don't trust either message: verify by querying
-`supabase_migrations.schema_migrations` and grepping `pg_proc.prosrc` for the new guard**, which is how 65
-was confirmed on both. ⚠️ The 08-05 deploy DID **redeploy `invoice-pdf`
+after applying** (seen on both envs, migrations 65 and 66). It is the post-push catalog-cache step, NOT the
+push — `Finished supabase db push` is still the success marker. **Don't trust either message: verify by
+querying `supabase_migrations.schema_migrations` and grepping `pg_proc.prosrc` for the new guard**, which is
+how 65 and 66 were confirmed on both. ⚠️ Related: **`npx supabase link` fails with `Unauthorized`** in this
+environment (no management-API token), and a failed link leaves `.temp/project-ref` pointing at the PREVIOUS
+project — so `db push` silently targets the wrong database. Pass `--db-url` explicitly (build it from
+`scripts/.env.cloud`, pooler host, port **5432** for session mode) and `--dry-run` first to confirm which
+migrations are pending. ⚠️ The 08-05 deploy DID **redeploy `invoice-pdf`
 on both** (G-3 changed its issue date) — that function never ships with the Vercel build, so a code change
 inside `supabase/functions/` needs its own `supabase functions deploy` per environment. The 63–64 deploy
 **redeployed `invoice-pdf`** on both
@@ -1056,7 +1097,10 @@ on several sets — any data migration must map **by display label** using the t
   touching the per-row `is_active`, and resuming with nothing re-enabled by hand]), the Phase 3
   **prequal → live deal** flow (`smoke-prequal` — the address-or-prequal submit gate, bidding on a prequal,
   the accept-before-conversion refusal, every conversion guard, offers carrying over + the lender
-  notification, and no marketplace re-entry),
+  notification, no marketplace re-entry, and — client 2026-08-11, I-1 — that the expiry job leaves the
+  prequal active while notifying the broker **nothing**; that assertion is deliberately NOT filtered by
+  notification type, since the bug was the notice riding on `deal_expired`, so re-adding it under a new type
+  has to fail too),
   the **document name-match submit gate** (`smoke-doc-name-gate` — client 2026-08-07 H-1: the block, the
   message naming WHICH document to replace, and ⚠️ the two states that must keep PASSING, a preferred-name
   variance and an unchecked/NULL row — collapsing the guard into `not name_matches` breaks both),
