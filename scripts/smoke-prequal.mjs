@@ -157,6 +157,7 @@ async function main() {
     check("a normal deal is rejected by convert_prequal_to_live", !!notPrequal, notPrequal?.message)
 
     // ── 9. Client 2026-07-27: a prequal expires for LENDERS (15 days) but not for the BROKER ──
+    //       …and per client 2026-08-11 (I-1) the broker is not notified about it at all.
     const aged = await makeDraft({ prequal: true })
     await broker.rpc("submit_deal", { p_deal_id: aged })
     check("fresh prequal is visible to lenders", await inFeed(lender2, aged))
@@ -191,20 +192,31 @@ async function main() {
       ["submitted", "offer_received"].includes(afterJob?.status),
       `status=${afterJob?.status} expired_at=${afterJob?.expired_at}`)
     check("no expired_at stamped on the prequal", afterJob?.expired_at === null)
-    check("the broker was told the lender window closed", !!afterJob?.prequal_lender_notice_at)
+    check("the lender window close is recorded", !!afterJob?.prequal_lender_notice_at)
     const { data: brokerVisible } = await broker.from("deals").select("id").eq("id", aged)
     check("the broker still sees their prequal", (brokerVisible ?? []).length === 1)
-    const noticeRows = async () => {
+    // Client 2026-08-11 (I-1): the broker is told NOTHING. Deliberately not filtered by type — the
+    // bug was that the notice rode on `deal_expired`, so re-adding it under a shiny new type has to
+    // fail here too. The lender's bid above legitimately notifies the broker; nothing else may.
+    const dealNotices = async () => {
       const { data } = await svc.from("notifications")
-        .select("body").eq("recipient_id", brokerId).eq("deal_id", aged).eq("type", "deal_expired")
+        .select("type, body").eq("recipient_id", brokerId).eq("deal_id", aged)
       return data ?? []
     }
-    const firstNotice = await noticeRows()
-    check("exactly one notice was sent", firstNotice.length === 1, `${firstNotice.length}`)
-    check("the notice says the file stays in the Deal Room", /Deal Room/i.test(firstNotice[0]?.body ?? ""),
-      firstNotice[0]?.body)
+    const describe = (rows) => rows.map((r) => `${r.type}: ${r.body}`).join(" | ")
+    const notices = await dealNotices()
+    check("the broker is never told a prequal expired",
+      notices.every((r) => r.type === "new_offer"), describe(notices))
     await svc.rpc("job_expire_old_deals")
-    check("running the job again does not re-notify", (await noticeRows()).length === 1)
+    const second = await dealNotices()
+    check("a second run still notifies nobody", second.every((r) => r.type === "new_offer"), describe(second))
+    // The `is null` predicate still gates the stamp, so the marker records when the window closed
+    // rather than when the cron last ran.
+    const { data: reStamped } = await svc.from("deals")
+      .select("prequal_lender_notice_at").eq("id", aged).single()
+    check("and does not re-stamp the marker",
+      reStamped?.prequal_lender_notice_at === afterJob?.prequal_lender_notice_at,
+      `${afterJob?.prequal_lender_notice_at} → ${reStamped?.prequal_lender_notice_at}`)
 
     // Control: a backdated LIVE deal still expires the old way.
     const agedLive = await makeDraft({ prequal: false, address: "4 Elm St, Kingston, ON", closingDate: "2026-12-20" })

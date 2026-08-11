@@ -221,9 +221,6 @@ export default function CreateDealPage() {
   // both are uploaded — the submit_deal RPC enforces it too (data-layer backstop).
   const [documents, setDocuments] = useState<DealDocument[]>([])
   const [uploadingKind, setUploadingKind] = useState<DocumentKind | null>(null)
-  // Documents whose AI name-check is still in flight. Rendered as "checking…" so a broker never reads
-  // the absence of a badge as a pass (client 2026-08-07, H-1).
-  const [checkingKinds, setCheckingKinds] = useState<DocumentKind[]>([])
   const hasDoc = (kind: DocumentKind) => documents.some((d) => d.kind === kind)
   /**
    * A checked document that belongs to a different person. Blocks the step (client 2026-08-07, H-1) —
@@ -566,13 +563,10 @@ export default function CreateDealPage() {
       const doc = await uploadDealDocument(supabase, id, kind, file)
       setDocuments((prev) => [...prev.filter((d) => d.kind !== kind), doc])
       toast.success(t("docUploaded"))
-      // AI name-match. Fire-and-forget so the upload feels instant, but the kind is marked as being
-      // checked and handleSubmit awaits anything still pending — a mismatch must not slip through
-      // just because the broker submitted before Claude answered (client 2026-08-07, H-1).
-      setCheckingKinds((prev) => [...prev, kind])
-      applyNameCheck(doc.id)
-        .catch(() => {})
-        .finally(() => setCheckingKinds((prev) => prev.filter((k) => k !== kind)))
+      // AI name-match. Fire-and-forget so the upload feels instant; handleSubmit awaits anything still
+      // pending, so a mismatch cannot slip through just because the broker submitted before Claude
+      // answered (client 2026-08-07, H-1). Its progress is deliberately not shown — see the card.
+      applyNameCheck(doc.id).catch(() => {})
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("docUploadError"))
     } finally {
@@ -1605,7 +1599,6 @@ export default function CreateDealPage() {
                     ).map(([kind, labelKey]) => {
                       const doc = documents.find((d) => d.kind === kind)
                       const busy = uploadingKind === kind
-                      const checking = checkingKinds.includes(kind)
                       // A mismatch is a blocking error now, so the card is outlined like a missing one.
                       const missing = (attempted.property && !doc) || doc?.nameMatches === false
                       return (
@@ -1636,28 +1629,20 @@ export default function CreateDealPage() {
                                 <Paperclip className="h-3.5 w-3.5" />
                                 <span className="truncate max-w-[180px]">{doc.fileName ?? t("docView")}</span>
                               </button>
-                              {/* An unchecked document must never read as a silent pass — say so while
-                                  the AI is still looking (client 2026-08-07, H-1). */}
-                              {checking && (
-                                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                  {t("docNameChecking")}
-                                </p>
-                              )}
-                              {!checking && doc.nameMatches === false && (
-                                <p className="mt-1 text-xs text-destructive">
-                                  {doc.extractedName
-                                    ? t("docNameMismatchNamed", { name: doc.extractedName })
-                                    : t("docNameMismatch")}
-                                </p>
-                              )}
-                              {doc.nameMatches === true && doc.nameVariance === true && (
-                                <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
-                                  {t("docNameVariance", { name: doc.extractedName ?? "" })}
-                                </p>
-                              )}
-                              {doc.nameMatches === true && doc.nameVariance === false && (
-                                <p className="mt-1 text-xs text-muted-foreground">{t("docNameVerified")}</p>
+                              {/* The name-check result is deliberately NOT narrated to the broker
+                                  (client 2026-08-11, I-2: "better that the users don't see that it's
+                                  just scanning for a name"). Two states only: uploaded, or blocked.
+                                  The blocking one has to stay visible — it is the whole point of H-1,
+                                  and a Submit that refuses without saying why is worse than silence.
+                                  Verified/variance/in-flight/unchecked all read as a plain success:
+                                  none of them stops the broker, so none of them needs its own copy.
+                                  The result itself is still stored, still blocks in submit_deal, still
+                                  shows in /admin/documents, and a variance still prints both names on
+                                  the invoice — only this line changed. */}
+                              {doc.nameMatches === false ? (
+                                <p className="mt-1 text-xs text-destructive">{t("docNameMismatch")}</p>
+                              ) : (
+                                <p className="mt-1 text-xs text-muted-foreground">{t("docUploadSuccess")}</p>
                               )}
                             </>
                           ) : (
