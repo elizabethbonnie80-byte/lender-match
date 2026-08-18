@@ -316,6 +316,36 @@ Batch B also settles two things the original extraction left open: **OQ#30 — "
 not 5** (so `platform_bps_for` must change), and it **reopens OQ#18** by implying Maturing Deals has no
 upper age bound.
 
+## Round 4 change request — QUOTED 2026-08-18, NOT APPROVED, nothing in progress
+
+A fourth batch was specced and quoted but **not approved** — do not start any of it, and do not treat it as
+backlog. Full inventory, per-item sizing and the open questions live in
+**[`docs/round4-change-request.md`](./docs/round4-change-request.md)**; the client-facing proposal is
+`docs/LenderMatch_Round4_Change_Request.docx` (+ a `.pdf` export). Sources: the client's 2026-08-04 answers
+on suspension, Bonnie's 2026-08-17 "Next updates" email (18 items) with its
+`docs/Document_requirements_2026-08-17.docx` attachment, Elizabeth's 2026-08-17 email (SendGrid, survey
+wording, Net Worth annual income), and the 2026-08-18 message adding invoice-template editing + sales tax.
+
+**26 items, 88 h, 5 phases, 2 weeks.** It finally absorbs the two items that were left unquoted after
+Round 3 — **B-30** (admin-editable invoice templates) and **E-8** (enforceable suspension) — so after this
+there is no unquoted backlog. Things worth knowing before touching any of it:
+- **Phase order is a dependency, not a preference.** The document-requirements engine keys off six fields
+  that do not exist yet (HoldCo, spousal buyout, refinance plus improvements, foster care income, the
+  child-support TDS checkbox, condo conversion), so the Phase 1 field work has to land first.
+- **The lender half of "suspension" is already built** — it is the migration 23/26 rating-penalty effect
+  (`lender_can_see_deal` + the admin-configurable 45d/14d `penalty_settings`). Manual control, the audit
+  trail and the broker side are the new work; keep the manual flag distinct from `penalty_active` for the
+  same reason E-11 kept the auto-offer master switch separate from `auto_offers.is_active`.
+- **Two items are deliberately unpriced and must not be built on assumption**: showing the broker which
+  lenders declined (it reverses Security invariant #1 — identities hidden until acceptance) and realtor.ca
+  scraping (CREA terms + bot protection + no open API; the legitimate route is a DDF licence the client
+  would hold).
+- **11 open questions** are listed in §7 of the control doc, including which province governs the invoice
+  sales tax and the rental-income matching semantics. Both change what gets built, not just how long.
+- ⚠️ `SENDGRID_API_KEY` was added to **Vercel**, where nothing reads it — the sender is a Supabase edge
+  function, so it belongs in `supabase secrets`. And Supabase Auth cannot use SendGrid *dynamic templates*,
+  only SMTP; the account emails stay dashboard-templated.
+
 ## Stack
 
 - **Next.js 16 (App Router) + React 19 + TypeScript**, package manager **pnpm**.
