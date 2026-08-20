@@ -53,13 +53,23 @@ pnpm db:reset      # replays every migration in supabase/migrations/ from scratc
 
 ## 3. Environment
 
-`.env.local` is committed with the **well-known local Supabase keys** (public dev defaults — not
-secrets):
+⚠️ **`.env.local` is NOT in the repo — create it yourself.** It is gitignored (`.env*.local`), so a
+fresh clone has none. Nothing warns you: `lib/supabase/client.ts` / `server.ts` pass `undefined` into
+`createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, …)` and the error never names the file.
+(Earlier versions of this section claimed the file was committed. It never was.)
+
+Take the values from what `pnpm db:start` printed — or re-print them any time with `pnpm exec supabase
+status` — and write them to `.env.local` in the repo root:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<local anon key>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<ANON_KEY from supabase status>
 ```
+
+These are the **well-known local Supabase defaults** — public dev keys, not secrets. The CLI prints
+both a legacy `ANON_KEY` (a JWT) and a newer `PUBLISHABLE_KEY` (`sb_publishable_…`); either one works
+with `@supabase/ssr`. The seed scripts need no env at all — they fall back to the same well-known
+local `SERVICE_ROLE_KEY`.
 
 Never put a hosted project's keys here — use Vercel/CI environment variables for those.
 
@@ -143,8 +153,11 @@ admin → `/admin/alerts`).
 
 ### Edge functions + secrets (optional, for the AI / PDF / email features)
 
-The edge functions in `supabase/functions/` (`anti-contact`, `invoice-pdf`, `notify-email`) need to be
-served with their secrets to work locally:
+`supabase start` already runs an `edge_runtime` container serving everything in `supabase/functions/`
+(`anti-contact`, `contact-us`, `invoice-pdf`, `match-document-name`, `notify-email`, `purge-documents`,
+`purge-invoices`), so a function that needs **no custom secret** — `invoice-pdf` — works right after
+`pnpm db:start`. Use `functions:serve` when a function needs a key from `supabase/.env`, or when you
+ADDED a function since the runtime last started (it returns "Function not found" until then):
 
 ```bash
 pnpm functions:serve        # = supabase functions serve --env-file supabase/.env  (hot-reload)
@@ -255,10 +268,17 @@ node scripts/smoke-penalty.mjs        # rating penalty: effect + survey→job co
 node scripts/smoke-notify-email.mjs   # email channel: anon rejected (401), disabled recipient → no send; opt-in real send
 ```
 
-> `smoke-invoice-pdf.mjs` needs the `invoice-pdf` edge function running. If it reports "Function not
-> found", start the functions runtime with `pnpm functions:serve` (serves `supabase/functions/`,
-> hot-reloads, and loads `supabase/.env`). The same applies to the lender/invoices **Download PDF**
-> button, the `anti-contact` AI layer, and `smoke-notify-email.mjs` locally.
+> `smoke-invoice-pdf.mjs` passes on a plain `pnpm db:start` — the bundled `edge_runtime` serves
+> `invoice-pdf`, which needs no custom key (same for the lender/invoices **Download PDF** button). Start
+> `pnpm functions:serve` only if it reports "Function not found" (a function added since the runtime
+> booted), or for the ones that read `supabase/.env`: the `anti-contact` AI layer, `notify-email` /
+> `smoke-notify-email.mjs`, `match-document-name` and `contact-us`.
+>
+> ⚠️ **After `pnpm seed:demo`, expect `smoke-penalty.mjs` to fail one check** — "computation: 3 + 3
+> across both questions → NOT penalized". It is seed contamination, not a bug: `seed-surveys.mjs` writes
+> a survey on `DEAL-2026-402` with `doc_review_on_time = false` for **`lender@loanlink.test`**, the same
+> lender the smoke uses, and it lands inside the last-10 window the penalty job reads — becoming a 4th
+> "no" in the 3+3 case. `pnpm smoke` reseeds without surveys, so a DB that never ran `seed:demo` is green.
 >
 > `smoke-notify-email.mjs` is standalone (not in `pnpm smoke`): safe by default (no email), and with
 > `TEST_EMAIL=you@example.com pnpm smoke:email` it sends one real email to verify delivery.

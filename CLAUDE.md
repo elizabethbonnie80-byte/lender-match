@@ -392,6 +392,18 @@ Setup, commands, and test accounts: see **[`README.md`](./README.md)**. Quick re
 `pnpm db:start` → `pnpm db:reset` → `pnpm seed`, then **`pnpm build && pnpm start`** to run.
 
 **Environment gotchas (bit us, will bite you):**
+- ⚠️ **A fresh clone has NO `.env.local`.** `.gitignore` (`.env*.local`) has always excluded it, yet
+  `README.md` §3 and `.env.example` both used to claim it shipped with the repo — **both were corrected
+  on 2026-08-19**, so they now tell you to create it. Nothing warns you at runtime —
+  `lib/supabase/client.ts` / `server.ts` just pass `undefined` into
+  `createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, …)` and the error never names the file.
+  **Create it by hand** after `pnpm db:start`, from the values `pnpm exec supabase status` prints:
+  `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321` + `NEXT_PUBLIC_SUPABASE_ANON_KEY=<ANON_KEY>`.
+  CLI 2.109 prints **both** a legacy `ANON_KEY` JWT and a newer `PUBLISHABLE_KEY` (`sb_publishable_…`) —
+  either works with `@supabase/ssr` — and the legacy `SERVICE_ROLE_KEY` still matches the hardcoded
+  fallback in the seed scripts, so seeding needs no env at all. (Clone-from-scratch verified 2026-08-19
+  on macOS: pnpm 11.10.0 / node 23.11.0 / Docker 28.0.4 / Supabase CLI 2.109.0 — all 66 migrations
+  applied clean on the first `supabase start`.)
 - **`pnpm dev` works** (verified 2026-07-07: pnpm 11.10.0 / Next 16.2.4 / node 24 on Windows — Turbopack
   starts in ~1s and serves routes 200 with the real app). The earlier "Turbopack panics: Next.js package
   not found" note is stale (it was a corrupt/partial-install state, not an inherent pnpm+Turbopack
@@ -862,8 +874,13 @@ custom ones need the file. In hosted deploys these go through `supabase secrets 
 **Edge functions locally:** `supabase start` should serve `supabase/functions/`, but a function ADDED
 after the runtime last started isn't picked up (it returns "Function not found"), and `supabase start`
 does NOT load the env-file — so use **`pnpm functions:serve`** (serves all, hot-reloads `per_worker`,
-loads `supabase/.env`). The `invoice-pdf` function must be served for the lender/invoices "Download PDF"
-button to work locally. `anti-contact` runs its AI 2nd layer only when served with `ANTHROPIC_API_KEY`
+loads `supabase/.env`). ⚠️ **`invoice-pdf` is the exception and the old "must be served" note was wrong:**
+a fresh `supabase start` brings up the `edge_runtime` container with every function in the folder, and
+`invoice-pdf` needs no custom secret — so the lender/invoices "Download PDF" button and
+`smoke-invoice-pdf` both work with **no `functions:serve` at all** (measured 2026-08-19: the smoke
+asserts real `%PDF-` bytes, and it passed on a bare start). `functions:serve` is what you need for the
+functions that read `supabase/.env` (`anti-contact`'s AI layer, `notify-email`, `match-document-name`,
+`contact-us`) or for a function ADDED since the runtime last started. `anti-contact` runs its AI 2nd layer only when served with `ANTHROPIC_API_KEY`
 present (else it falls open to the regex result); `notify-email` is invoked by the `notifications`
 trigger (migration 25), which stays a **fail-safe toggle: OFF by default** (no-ops until the DB settings
 exist). Leave it off locally — that guarantees `pnpm smoke` + dev never hit Resend (even for the fake
@@ -1143,8 +1160,20 @@ on several sets — any data migration must map **by display label** using the t
   sign-up, admin, FAQs, the **login-page logos** (`smoke-logos` — the anon-reads-active-only /
   admin-writes-only asymmetry), surveys, the rating penalty (effect + **survey→job computation**), and password
   reset. Pure helpers (`lib/csv`, `lib/status-styles`, `lib/enums`) have **Vitest** unit tests
-  (`pnpm test`). `smoke-invoice-pdf` needs the edge runtime served (`pnpm functions:serve`), so it's
-  the one expected red in a bare `pnpm smoke`. When an RPC signature changes, update its smoke — a smoke
+  (`pnpm test`). ⚠️ **`smoke-invoice-pdf` is NOT an expected red** — that note predated the bundled
+  `edge_runtime` container; on a fresh `supabase start` it passes without `functions:serve` (see
+  Edge functions locally). ⚠️ **The one real red is `smoke-penalty` after `pnpm seed:demo`**, and it is
+  seed contamination, not a bug: `seed-surveys.mjs` writes a completed survey on `DEAL-2026-402` with
+  `doc_review_on_time = false` for **`lender@loanlink.test`** — the very lender `smoke-penalty` uses — and
+  the smoke stamps its own 14 surveys at `now - idx hours`, so that seeded row sorts second-newest and
+  lands inside `job_apply_rating_penalties`' last-10 window. In the 3+3 case it becomes a 4th
+  `doc_review` "no" and flips "3 + 3 across both questions → NOT penalized". Proven 2026-08-19 by
+  flipping that one field (suite → 27/27) and restoring it. **The smoke's own comment — that its
+  explicit `completed_at` makes it "deterministic against any seeded history" — is false**: it only
+  orders the smoke's OWN rows, it cannot exclude foreign surveys from the lender's window. `pnpm smoke`
+  reseeds with `seed-users`/`seed-maturing`/`seed-admin` only (no surveys), so a DB that never saw
+  `seed:demo` is green. Real fix if it ever matters: give `smoke-penalty` a dedicated lender instead of
+  sharing `lender@`. When an RPC signature changes, update its smoke — a smoke
   that reads a null/empty result can pass a `.every(...)` assertion vacuously (this bit `open_deals_filtered`
   after migration 30 switched it to single-value params), so assert **non-empty** where a match must exist.
 - **UI**: reuse the existing shadcn components; keep the V0 design tokens already in `globals.css`;
