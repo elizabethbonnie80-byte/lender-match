@@ -275,7 +275,7 @@
   "maturingDeals": {
     "prequal": "PREQUAL",
     "title": "Maturing Deals",
-    "subtitle": "Deals with no offers approaching their closing date — sorted by urgency. Row color indicates match with your saved filters.",
+    "subtitle": "Deals with no offers that are approaching their closing date — sorted by urgency. Row colour indicates match with your saved filters.",
     "legendTitle": "Filter match legend — scored against your saved filters",
     "legend90": "≥ 90% match",
     "legend80": "80 – 89% match",
