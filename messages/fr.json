@@ -1307,6 +1307,7 @@
     "creditIssuesMulti": "Problèmes de crédit — cochez tout ce qui s’applique",
     "downPaymentSourceMulti": "Source de la mise de fonds — cochez tout ce qui s’applique",
     "residencyStatusMulti": "Statut de résidence — cochez tout ce qui s’applique",
+    "workPermitWarning": "Assurez-vous qu’il reste au moins 183 jours de validité au permis de travail à la date de clôture du prêt.",
     "infoButtonLabel": "Plus d’information",
     "infoGdsTitle": "Comment l’ABD est calculé",
     "infoGds": "Pour calculer manuellement le ratio d’amortissement brut de la dette (ABD), utilisez cette formule : Paiement hypothécaire + montant mensuel des taxes foncières + montant mensuel de chauffage + 50 % des frais de copropriété / revenu mensuel brut x 100. Généralement, si le chauffage est inclus dans les frais de copropriété, vous pouvez l’exclure du calcul.",

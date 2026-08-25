@@ -1227,6 +1227,9 @@ export default function CreateDealPage() {
                     ))}
                   </div>
                   <FieldError show={invalid("qualifying", residencyStatuses.length > 0)} />
+                  {(residencyStatuses.includes("work_permit_cuaet") || residencyStatuses.includes("work_permit_non_cuaet")) && (
+                    <p className="text-xs text-destructive">{t("workPermitWarning")}</p>
+                  )}
                 </div>
 
                 <div className="space-y-3">

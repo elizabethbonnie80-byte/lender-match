@@ -1307,6 +1307,7 @@
     "creditIssuesMulti": "Credit Issues — check all that apply",
     "downPaymentSourceMulti": "Source of Down Payment — check all that apply",
     "residencyStatusMulti": "Residency Status — check all that apply",
+    "workPermitWarning": "Ensure the work permit has a minimum of 183 days remaining as of the loan closing date.",
     "infoButtonLabel": "More information",
     "infoGdsTitle": "How GDS is calculated",
     "infoGds": "To calculate the Gross Debt Service ratio manually, you can use this formula: Mortgage payment + monthly property tax amount + monthly heating amount + 50% condo fees / gross monthly income x 100. Generally, if heat is included in condo fees, you can exclude heat from the calculation.",
