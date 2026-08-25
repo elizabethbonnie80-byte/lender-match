@@ -83,7 +83,7 @@ const CREDIT_ISSUE: Record<Enums["credit_issue"], Bi> = {
 
 const INCOME_TYPE: Record<Enums["income_type"], Bi> = {
   salary_no_ot: ["Salary (no OT/Bonus)", "Salaire (sans heures supp./boni)"],
-  hourly_no_ot: ["Hourly (no OT/Bonus)", "Horaire (sans heures supp./boni)"],
+  hourly_no_ot: ["Hourly (Guaranteed hours, no OT/Bonus)", "Horaire (sans heures supp./boni)"],
   salary_hourly_with_ot_2y_avg: ["Salary/Hourly with OT (2y avg)", "Salaire/horaire avec heures supp. (moy. 2 ans)"],
   casual_seasonal_2y_avg: ["Casual/seasonal/part-time income (2y avg)", "Revenu occasionnel/saisonnier/à temps partiel (moy. 2 ans)"],
   commission: ["Commission", "Commission"],
