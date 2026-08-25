@@ -192,10 +192,10 @@ const FAQ_CATEGORY: Record<Enums["faq_category"], Bi> = {
 type DealCol = keyof Database["public"]["Tables"]["deals"]["Row"]
 
 const DEAL_INFO_FLAG_TABLE: [DealCol, Bi][] = [
-  ["fthb", ["First-Time Buyer", "Premier acheteur"]],
+  ["fthb", ["First Time Home Buyer", "Premier acheteur"]],
   ["new_to_canada", ["New to Canada", "Nouvel arrivant au Canada"]],
-  ["networth_program", ["Networth Program", "Programme valeur nette"]],
-  ["medical_professional", ["Medical Professional", "Professionnel de la santé"]],
+  ["networth_program", ["Net Worth Program", "Programme valeur nette"]],
+  ["medical_professional", ["Medical Professionals Program (Projected income)", "Programme professionnels de la santé (revenu prévisionnel)"]],
   ["collateral_transfer", ["Collateral Transfer", "Transfert collatéral"]],
   ["cashback", ["Cashback", "Remise en argent"]],
   ["bridge_loan_needed", ["Bridge Loan Needed", "Prêt-relais requis"]],
