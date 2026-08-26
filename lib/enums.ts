@@ -153,6 +153,8 @@ const DWELLING_TYPE: Record<Enums["dwelling_type"], Bi> = {
   semi_detached: ["Semi-Detached", "Jumelée"],
   townhouse: ["Townhouse", "Maison en rangée"],
   condo_townhouse: ["Condo Townhouse", "Maison en rangée en copropriété"],
+  // Round 4 (approved 2026-08-25): new dwelling_type enum value, additive-only.
+  condo_conversion: ["Condo Conversion", "Conversion en copropriété"],
   duplex: ["Duplex", "Duplex"],
   duplex_detached: ["Duplex - Detached", "Duplex – isolé"],
   duplex_semi_detached: ["Duplex - Semi-Detached", "Duplex – jumelé"],
