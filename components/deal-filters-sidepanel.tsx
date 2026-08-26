@@ -87,7 +87,7 @@ const OTHERS_FLAG_KEYS = [
   'excludeCosignorNotOccupying', 'excludeGuarantor', 'excludePrequal', 'excludeNewBuild',
   'excludeRecreational', 'excludeHobbyFarm', 'excludeWellWater', 'excludeSeptic',
   'excludeReverseMortgage', 'excludeMarriedOrCommonLaw', 'excludeSpouseNotOnApplication',
-  'excludeTransunion', 'excludeHoldcoOnTitle',
+  'excludeTransunion', 'excludeHoldcoOnTitle', 'excludeSpousalBuyout', 'excludeRefinancePlusImprovements',
 ] as const
 type OthersFlagKey = (typeof OTHERS_FLAG_KEYS)[number]
 // Maps a `deals` column key (from lib/enums.ts DEAL_INFO_FLAGS/PROPERTY_FLAGS) to its FilterCriteria field.
@@ -120,6 +120,8 @@ const DEAL_COL_TO_FLAG_KEY: Record<string, OthersFlagKey> = {
   spouse_not_on_application: 'excludeSpouseNotOnApplication',
   transunion_being_used: 'excludeTransunion',
   holdco_on_title: 'excludeHoldcoOnTitle',
+  spousal_buyout: 'excludeSpousalBuyout',
+  refinance_plus_improvements: 'excludeRefinancePlusImprovements',
 }
 
 const MAX_DOORS_OPTIONS = Array.from({ length: 10 }, (_, i) => i + 1)

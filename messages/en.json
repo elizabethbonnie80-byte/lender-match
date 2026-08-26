@@ -1283,6 +1283,8 @@
     "checkIfNo": "Check if no",
     "spouseNotOnApplicationHint": "Please include notes in the credit section about the spouse's credit and why they are not on the application.",
     "reverseMortgage": "Reverse Mortgage",
+    "spousalBuyout": "Spousal Buyout",
+    "refinancePlusImprovements": "Refinance Plus Improvements",
     "assetsLiquidValue": "Total value of assets (liquid assets only)",
     "assetsLiquidValuePlaceholder": "Enter liquid assets value",
     "assetsTotalValue": "Total value of all assets including non-liquid assets",

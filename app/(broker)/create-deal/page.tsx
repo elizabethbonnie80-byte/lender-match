@@ -177,6 +177,8 @@ export default function CreateDealPage() {
   const [purchasePlusImprovements, setPurchasePlusImprovements] = useState(false)
   const [networthProgram, setNetworthProgram] = useState(false)
   const [reverseMortgage, setReverseMortgage] = useState(false)
+  const [spousalBuyout, setSpousalBuyout] = useState(false)
+  const [refinancePlusImprovements, setRefinancePlusImprovements] = useState(false)
 
   // Qualifying Information
   const [creditScore, setCreditScore] = useState("")
@@ -274,6 +276,8 @@ export default function CreateDealPage() {
         setPurchasePlusImprovements(!!input.purchasePlusImprovements)
         setNetworthProgram(!!input.networthProgram)
         setReverseMortgage(!!input.reverseMortgage)
+        setSpousalBuyout(!!input.spousalBuyout)
+        setRefinancePlusImprovements(!!input.refinancePlusImprovements)
         setCreditScore(input.primaryCreditScore != null ? String(input.primaryCreditScore) : "")
         setCoBorrowerCreditScore(input.coBorrowerCreditScore != null ? String(input.coBorrowerCreditScore) : "")
         setCreditIssues(input.creditIssues ?? [])
@@ -366,6 +370,8 @@ export default function CreateDealPage() {
       purchasePlusImprovements,
       networthProgram,
       reverseMortgage,
+      spousalBuyout,
+      refinancePlusImprovements,
       primaryCreditScore: num(creditScore),
       coBorrowerCreditScore: num(coBorrowerCreditScore),
       creditIssues,
@@ -452,7 +458,7 @@ export default function CreateDealPage() {
     [isFlexible, isInsured, previouslyDeclined, firstTimeBuyer, newToCanada, medicalPrograms, cashback,
       collateralTransfer, firstAndHeloc, heloc, fixedSecond, cosignorOccupying, cosignorNotOccupying, guarantor,
       bridgeLoanNeeded, purchasePlusImprovements, networthProgram, reverseMortgage, marriedOrCommonLaw,
-      transunionBeingUsed, ownsOtherProperties, preQualification,
+      transunionBeingUsed, ownsOtherProperties, preQualification, spousalBuyout, refinancePlusImprovements,
       newConstruction, recreationalProperty, hobbyFarm, hasWell, hasSeptic, holdcoOnTitle].some(Boolean)
 
   /** Inline error: a required field is empty AND the user already tried to leave/submit this step. */
@@ -1059,6 +1065,8 @@ export default function CreateDealPage() {
                         ["medicalPrograms", medicalPrograms, setMedicalPrograms, "medicalProfessional"],
                         ["purchasePlusImprovements", purchasePlusImprovements, setPurchasePlusImprovements, "purchasePlusImprovements"],
                         ["reverseMortgage", reverseMortgage, setReverseMortgage, "reverseMortgage"],
+                        ["spousalBuyout", spousalBuyout, setSpousalBuyout, "spousalBuyout"],
+                        ["refinancePlusImprovements", refinancePlusImprovements, setRefinancePlusImprovements, "refinancePlusImprovements"],
                         ["cosignorOccupying", cosignorOccupying, setCosignorOccupying, "cosignorOccupying"],
                         ["cosignorNotOccupying", cosignorNotOccupying, setCosignorNotOccupying, "cosignorNotOccupying"],
                         ["guarantor", guarantor, setGuarantor, "guarantor"],

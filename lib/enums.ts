@@ -213,6 +213,9 @@ const DEAL_INFO_FLAG_TABLE: [DealCol, Bi][] = [
   ["married_or_common_law", ["Married / Common Law", "Marié(e) / conjoint de fait"]],
   ["spouse_not_on_application", ["Spouse Not on Application", "Conjoint absent de la demande"]],
   ["transunion_being_used", ["TransUnion Being Used", "TransUnion utilisé"]],
+  // Round 4 J-3 (approved 2026-08-25): plain independent flags, no transaction-purpose gating.
+  ["spousal_buyout", ["Spousal Buyout", "Rachat de la part du conjoint"]],
+  ["refinance_plus_improvements", ["Refinance Plus Improvements", "Refinancement plus rénovations"]],
 ]
 
 const PROPERTY_FLAG_TABLE: [DealCol, Bi][] = [
