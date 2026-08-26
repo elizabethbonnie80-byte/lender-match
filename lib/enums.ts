@@ -83,7 +83,7 @@ const CREDIT_ISSUE: Record<Enums["credit_issue"], Bi> = {
 
 const INCOME_TYPE: Record<Enums["income_type"], Bi> = {
   salary_no_ot: ["Salary (no OT/Bonus)", "Salaire (sans heures supp./boni)"],
-  hourly_no_ot: ["Hourly (no OT/Bonus)", "Horaire (sans heures supp./boni)"],
+  hourly_no_ot: ["Hourly (Guaranteed hours, no OT/Bonus)", "Horaire (sans heures supp./boni)"],
   salary_hourly_with_ot_2y_avg: ["Salary/Hourly with OT (2y avg)", "Salaire/horaire avec heures supp. (moy. 2 ans)"],
   casual_seasonal_2y_avg: ["Casual/seasonal/part-time income (2y avg)", "Revenu occasionnel/saisonnier/à temps partiel (moy. 2 ans)"],
   commission: ["Commission", "Commission"],
@@ -102,6 +102,8 @@ const INCOME_TYPE: Record<Enums["income_type"], Bi> = {
   short_term_disability: ["Short-Term Disability", "Invalidité de courte durée"],
   workers_comp: ["Workers' Compensation", "Indemnisation des accidentés du travail"],
   foreign_income: ["Foreign Income", "Revenu étranger"],
+  // Round 4 (approved 2026-08-25): new income_type enum value, additive-only.
+  foster_care_income: ["Foster Care Income", "Revenu de famille d’accueil"],
 }
 
 const RESIDENCY_STATUS: Record<Enums["residency_status"], Bi> = {
@@ -151,6 +153,8 @@ const DWELLING_TYPE: Record<Enums["dwelling_type"], Bi> = {
   semi_detached: ["Semi-Detached", "Jumelée"],
   townhouse: ["Townhouse", "Maison en rangée"],
   condo_townhouse: ["Condo Townhouse", "Maison en rangée en copropriété"],
+  // Round 4 (approved 2026-08-25): new dwelling_type enum value, additive-only.
+  condo_conversion: ["Condo Conversion", "Conversion en copropriété"],
   duplex: ["Duplex", "Duplex"],
   duplex_detached: ["Duplex - Detached", "Duplex – isolé"],
   duplex_semi_detached: ["Duplex - Semi-Detached", "Duplex – jumelé"],
@@ -192,10 +196,10 @@ const FAQ_CATEGORY: Record<Enums["faq_category"], Bi> = {
 type DealCol = keyof Database["public"]["Tables"]["deals"]["Row"]
 
 const DEAL_INFO_FLAG_TABLE: [DealCol, Bi][] = [
-  ["fthb", ["First-Time Buyer", "Premier acheteur"]],
+  ["fthb", ["First Time Home Buyer", "Premier acheteur"]],
   ["new_to_canada", ["New to Canada", "Nouvel arrivant au Canada"]],
-  ["networth_program", ["Networth Program", "Programme valeur nette"]],
-  ["medical_professional", ["Medical Professional", "Professionnel de la santé"]],
+  ["networth_program", ["Net Worth Program", "Programme valeur nette"]],
+  ["medical_professional", ["Medical Professionals Program (Projected income)", "Programme professionnels de la santé (revenu prévisionnel)"]],
   ["collateral_transfer", ["Collateral Transfer", "Transfert collatéral"]],
   ["cashback", ["Cashback", "Remise en argent"]],
   ["bridge_loan_needed", ["Bridge Loan Needed", "Prêt-relais requis"]],
@@ -213,6 +217,9 @@ const DEAL_INFO_FLAG_TABLE: [DealCol, Bi][] = [
   ["married_or_common_law", ["Married / Common Law", "Marié(e) / conjoint de fait"]],
   ["spouse_not_on_application", ["Spouse Not on Application", "Conjoint absent de la demande"]],
   ["transunion_being_used", ["TransUnion Being Used", "TransUnion utilisé"]],
+  // Round 4 J-3 (approved 2026-08-25): plain independent flags, no transaction-purpose gating.
+  ["spousal_buyout", ["Spousal Buyout", "Rachat de la part du conjoint"]],
+  ["refinance_plus_improvements", ["Refinance Plus Improvements", "Refinancement plus rénovations"]],
 ]
 
 const PROPERTY_FLAG_TABLE: [DealCol, Bi][] = [
@@ -222,6 +229,7 @@ const PROPERTY_FLAG_TABLE: [DealCol, Bi][] = [
   ["hobby_farm", ["Hobby Farm", "Ferme d'agrément"]],
   ["well_water", ["Well Water", "Eau de puits"]],
   ["septic", ["Septic", "Fosse septique"]],
+  ["holdco_on_title", ["HoldCo on title", "HoldCo sur le titre de propriété"]],
 ]
 
 // ── Builders ────────────────────────────────────────────────────────────────
