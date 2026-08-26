@@ -187,6 +187,7 @@ export default function CreateDealPage() {
   const [incomeTypes, setIncomeTypes] = useState<Enums["income_type"][]>([])
   const [gds, setGds] = useState("")
   const [tds, setTds] = useState("")
+  const [tdsIncludesChildSupportAlimony, setTdsIncludesChildSupportAlimony] = useState(false)
   const [foreignIncomeCountry, setForeignIncomeCountry] = useState("")
   const [ownsOtherProperties, setOwnsOtherProperties] = useState(false)
   const [doorCount, setDoorCount] = useState("")
@@ -284,6 +285,7 @@ export default function CreateDealPage() {
         setIncomeTypes(input.incomeTypes ?? [])
         setGds(input.gds != null ? String(input.gds) : "")
         setTds(input.tds != null ? String(input.tds) : "")
+        setTdsIncludesChildSupportAlimony(!!input.tdsIncludesChildSupportAlimony)
         setForeignIncomeCountry(input.foreignIncomeCountry ?? "")
         setOwnsOtherProperties(!!input.ownsOtherProperties)
         setDoorCount(input.doorCount != null ? String(input.doorCount) : "")
@@ -378,6 +380,7 @@ export default function CreateDealPage() {
       incomeTypes,
       gds: num(gds),
       tds: num(tds),
+      tdsIncludesChildSupportAlimony,
       ownsOtherProperties,
       doorCount: ownsOtherProperties ? num(doorCount) : null,
       doorTitlesCount: ownsOtherProperties ? num(doorTitlesCount) : null,
@@ -459,7 +462,8 @@ export default function CreateDealPage() {
       collateralTransfer, firstAndHeloc, heloc, fixedSecond, cosignorOccupying, cosignorNotOccupying, guarantor,
       bridgeLoanNeeded, purchasePlusImprovements, networthProgram, reverseMortgage, marriedOrCommonLaw,
       transunionBeingUsed, ownsOtherProperties, preQualification, spousalBuyout, refinancePlusImprovements,
-      newConstruction, recreationalProperty, hobbyFarm, hasWell, hasSeptic, holdcoOnTitle].some(Boolean)
+      newConstruction, recreationalProperty, hobbyFarm, hasWell, hasSeptic, holdcoOnTitle,
+      tdsIncludesChildSupportAlimony].some(Boolean)
 
   /** Inline error: a required field is empty AND the user already tried to leave/submit this step. */
   function invalid(section: Section, value: string | boolean): boolean {
@@ -1219,6 +1223,17 @@ export default function CreateDealPage() {
                     </div>
                     <FieldError show={invalid("qualifying", tds)} />
                   </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="tdsIncludesChildSupportAlimony"
+                    checked={tdsIncludesChildSupportAlimony}
+                    onCheckedChange={(checked) => setTdsIncludesChildSupportAlimony(checked as boolean)}
+                  />
+                  <Label htmlFor="tdsIncludesChildSupportAlimony" className="text-sm font-normal cursor-pointer">
+                    {t("tdsIncludesChildSupportAlimony")}
+                  </Label>
                 </div>
 
                 <div className="space-y-3">
