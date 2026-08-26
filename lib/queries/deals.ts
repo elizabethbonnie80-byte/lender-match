@@ -57,6 +57,7 @@ export type DealDraftInput = {
   incomeTypes?: Enums["income_type"][]
   gds?: number | null
   tds?: number | null
+  tdsIncludesChildSupportAlimony?: boolean
   ownsOtherProperties?: boolean
   doorCount?: number | null
   doorTitlesCount?: number | null
@@ -87,6 +88,8 @@ export type DealDraftInput = {
   wellWater?: boolean
   septic?: boolean
   holdcoOnTitle?: boolean
+  lenderToPayPropertyTaxes?: boolean
+  borrowerToPayPropertyTaxes?: boolean
 }
 
 /** Map the form input to the `deals` column set (identity + list fields handled separately). */
@@ -130,6 +133,7 @@ function toDealColumns(input: DealDraftInput): Omit<DealInsert, "broker_id" | "b
     co_borrower_credit_score: input.coBorrowerCreditScore ?? null,
     gds: input.gds ?? null,
     tds: input.tds ?? null,
+    tds_includes_child_support_alimony: input.tdsIncludesChildSupportAlimony ?? false,
     owns_other_properties: input.ownsOtherProperties ?? false,
     door_count: input.doorCount ?? null,
     door_titles_count: input.doorTitlesCount ?? null,
@@ -156,6 +160,8 @@ function toDealColumns(input: DealDraftInput): Omit<DealInsert, "broker_id" | "b
     well_water: input.wellWater ?? false,
     septic: input.septic ?? false,
     holdco_on_title: input.holdcoOnTitle ?? false,
+    lender_to_pay_property_taxes: input.lenderToPayPropertyTaxes ?? false,
+    borrower_to_pay_property_taxes: input.borrowerToPayPropertyTaxes ?? false,
   }
 }
 
@@ -308,6 +314,7 @@ export async function getDealDraft(supabase: DB, dealId: string): Promise<{ inpu
     incomeTypes: (d.deal_income_types ?? []).map((x) => x.income_type),
     gds: d.gds,
     tds: d.tds,
+    tdsIncludesChildSupportAlimony: d.tds_includes_child_support_alimony,
     ownsOtherProperties: d.owns_other_properties,
     doorCount: d.door_count,
     doorTitlesCount: d.door_titles_count,
@@ -337,6 +344,8 @@ export async function getDealDraft(supabase: DB, dealId: string): Promise<{ inpu
     wellWater: d.well_water,
     septic: d.septic,
     holdcoOnTitle: d.holdco_on_title,
+    lenderToPayPropertyTaxes: d.lender_to_pay_property_taxes,
+    borrowerToPayPropertyTaxes: d.borrower_to_pay_property_taxes,
   }
   return { input, status: d.status }
 }
@@ -632,6 +641,7 @@ export type LenderDealListItem = {
   incomeTypes: Enums["income_type"][]
   gds: number | null
   tds: number | null
+  tdsIncludesChildSupportAlimony: boolean
   foreignIncomeCountry: string | null
   residencyStatuses: Enums["residency_status"][]
   downPaymentSources: Enums["down_payment_source"][]
@@ -655,6 +665,8 @@ export type LenderDealListItem = {
   wellWater: boolean
   septic: boolean
   holdcoOnTitle: boolean
+  lenderToPayPropertyTaxes: boolean
+  borrowerToPayPropertyTaxes: boolean
   // programs / product options
   fthb: boolean
   networthProgram: boolean
@@ -726,6 +738,7 @@ function mapOpenDealRow(d: OpenDealRow): LenderDealListItem {
     incomeTypes: d.income_types ?? [],
     gds: d.gds === null ? null : Number(d.gds),
     tds: d.tds === null ? null : Number(d.tds),
+    tdsIncludesChildSupportAlimony: d.tds_includes_child_support_alimony ?? false,
     foreignIncomeCountry: d.foreign_income_country,
     residencyStatuses: d.residency_statuses ?? [],
     downPaymentSources: d.down_payment_sources ?? [],
@@ -744,6 +757,8 @@ function mapOpenDealRow(d: OpenDealRow): LenderDealListItem {
     wellWater: d.well_water ?? false,
     septic: d.septic ?? false,
     holdcoOnTitle: d.holdco_on_title ?? false,
+    lenderToPayPropertyTaxes: d.lender_to_pay_property_taxes ?? false,
+    borrowerToPayPropertyTaxes: d.borrower_to_pay_property_taxes ?? false,
     fthb: d.fthb ?? false,
     networthProgram: d.networth_program ?? false,
     medicalProfessional: d.medical_professional ?? false,
@@ -859,6 +874,8 @@ function othersExcludedKeys(f: OpenDealFilters): string[] | undefined {
     [f.excludeWellWater, "well_water"],
     [f.excludeSeptic, "septic"],
     [f.excludeHoldcoOnTitle, "holdco_on_title"],
+    [f.excludeLenderToPayPropertyTaxes, "lender_to_pay_property_taxes"],
+    [f.excludeBorrowerToPayPropertyTaxes, "borrower_to_pay_property_taxes"],
     // Round 3 flags ride the same deals-column key list (migration 43).
     [f.excludeReverseMortgage, "reverse_mortgage"],
     [f.excludeSpousalBuyout, "spousal_buyout"],

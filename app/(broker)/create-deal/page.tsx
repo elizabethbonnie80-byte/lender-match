@@ -187,6 +187,7 @@ export default function CreateDealPage() {
   const [incomeTypes, setIncomeTypes] = useState<Enums["income_type"][]>([])
   const [gds, setGds] = useState("")
   const [tds, setTds] = useState("")
+  const [tdsIncludesChildSupportAlimony, setTdsIncludesChildSupportAlimony] = useState(false)
   const [foreignIncomeCountry, setForeignIncomeCountry] = useState("")
   const [ownsOtherProperties, setOwnsOtherProperties] = useState(false)
   const [doorCount, setDoorCount] = useState("")
@@ -219,6 +220,8 @@ export default function CreateDealPage() {
   const [recreationalProperty, setRecreationalProperty] = useState(false)
   const [hobbyFarm, setHobbyFarm] = useState(false)
   const [holdcoOnTitle, setHoldcoOnTitle] = useState(false)
+  const [lenderToPayPropertyTaxes, setLenderToPayPropertyTaxes] = useState(false)
+  const [borrowerToPayPropertyTaxes, setBorrowerToPayPropertyTaxes] = useState(false)
 
   // Round 3 Phase 3: required documents (consent form + photo ID). A deal cannot be submitted until
   // both are uploaded — the submit_deal RPC enforces it too (data-layer backstop).
@@ -284,6 +287,7 @@ export default function CreateDealPage() {
         setIncomeTypes(input.incomeTypes ?? [])
         setGds(input.gds != null ? String(input.gds) : "")
         setTds(input.tds != null ? String(input.tds) : "")
+        setTdsIncludesChildSupportAlimony(!!input.tdsIncludesChildSupportAlimony)
         setForeignIncomeCountry(input.foreignIncomeCountry ?? "")
         setOwnsOtherProperties(!!input.ownsOtherProperties)
         setDoorCount(input.doorCount != null ? String(input.doorCount) : "")
@@ -313,6 +317,8 @@ export default function CreateDealPage() {
         setRecreationalProperty(!!input.recreationalProperty)
         setHobbyFarm(!!input.hobbyFarm)
         setHoldcoOnTitle(!!input.holdcoOnTitle)
+        setLenderToPayPropertyTaxes(!!input.lenderToPayPropertyTaxes)
+        setBorrowerToPayPropertyTaxes(!!input.borrowerToPayPropertyTaxes)
       })
       .catch((err) => toast.error(err instanceof Error ? err.message : t("errDraftLoad")))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -378,6 +384,7 @@ export default function CreateDealPage() {
       incomeTypes,
       gds: num(gds),
       tds: num(tds),
+      tdsIncludesChildSupportAlimony,
       ownsOtherProperties,
       doorCount: ownsOtherProperties ? num(doorCount) : null,
       doorTitlesCount: ownsOtherProperties ? num(doorTitlesCount) : null,
@@ -408,6 +415,8 @@ export default function CreateDealPage() {
       wellWater: hasWell,
       septic: hasSeptic,
       holdcoOnTitle,
+      lenderToPayPropertyTaxes,
+      borrowerToPayPropertyTaxes,
     }
   }
 
@@ -459,7 +468,9 @@ export default function CreateDealPage() {
       collateralTransfer, firstAndHeloc, heloc, fixedSecond, cosignorOccupying, cosignorNotOccupying, guarantor,
       bridgeLoanNeeded, purchasePlusImprovements, networthProgram, reverseMortgage, marriedOrCommonLaw,
       transunionBeingUsed, ownsOtherProperties, preQualification, spousalBuyout, refinancePlusImprovements,
-      newConstruction, recreationalProperty, hobbyFarm, hasWell, hasSeptic, holdcoOnTitle].some(Boolean)
+      newConstruction, recreationalProperty, hobbyFarm, hasWell, hasSeptic, holdcoOnTitle,
+      lenderToPayPropertyTaxes, borrowerToPayPropertyTaxes,
+      tdsIncludesChildSupportAlimony].some(Boolean)
 
   /** Inline error: a required field is empty AND the user already tried to leave/submit this step. */
   function invalid(section: Section, value: string | boolean): boolean {
@@ -1221,6 +1232,17 @@ export default function CreateDealPage() {
                   </div>
                 </div>
 
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="tdsIncludesChildSupportAlimony"
+                    checked={tdsIncludesChildSupportAlimony}
+                    onCheckedChange={(checked) => setTdsIncludesChildSupportAlimony(checked as boolean)}
+                  />
+                  <Label htmlFor="tdsIncludesChildSupportAlimony" className="text-sm font-normal cursor-pointer">
+                    {t("tdsIncludesChildSupportAlimony")}
+                  </Label>
+                </div>
+
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">{t("residencyStatusMulti")}</Label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -1588,6 +1610,16 @@ export default function CreateDealPage() {
                         ["recreationalProperty", recreationalProperty, setRecreationalProperty, "recreational"],
                         ["hasSeptic", hasSeptic, setHasSeptic, "septic"],
                         ["holdcoOnTitle", holdcoOnTitle, setHoldcoOnTitle, "holdcoOnTitle"],
+                        // Mutually exclusive in this UI only (client request) — no DB constraint.
+                        // Checking one clears the other; both may be left unchecked.
+                        ["lenderToPayPropertyTaxes", lenderToPayPropertyTaxes, (v: boolean) => {
+                          setLenderToPayPropertyTaxes(v)
+                          if (v) setBorrowerToPayPropertyTaxes(false)
+                        }, "lenderToPayPropertyTaxes"],
+                        ["borrowerToPayPropertyTaxes", borrowerToPayPropertyTaxes, (v: boolean) => {
+                          setBorrowerToPayPropertyTaxes(v)
+                          if (v) setLenderToPayPropertyTaxes(false)
+                        }, "borrowerToPayPropertyTaxes"],
                       ] as [string, boolean, (v: boolean) => void, string][]
                     ).map(([id, checked, set, labelKey]) => (
                       <div key={id} className="flex items-center gap-2">
