@@ -1222,6 +1222,8 @@
     "wellWater": "Eau de puits",
     "septic": "Fosse septique",
     "holdcoOnTitle": "HoldCo sur le titre de propriété",
+    "lenderToPayPropertyTaxes": "Prêteur responsable du paiement des taxes foncières",
+    "borrowerToPayPropertyTaxes": "Emprunteur responsable du paiement des taxes foncières",
     "generalNotes": "Notes générales",
     "generalNotesPlaceholder": "Ajoutez des notes supplémentaires sur la propriété...",
     "saveDraft": "Enregistrer le brouillon",
