@@ -57,6 +57,7 @@ export type DealDraftInput = {
   incomeTypes?: Enums["income_type"][]
   gds?: number | null
   tds?: number | null
+  tdsIncludesChildSupportAlimony?: boolean
   ownsOtherProperties?: boolean
   doorCount?: number | null
   doorTitlesCount?: number | null
@@ -130,6 +131,7 @@ function toDealColumns(input: DealDraftInput): Omit<DealInsert, "broker_id" | "b
     co_borrower_credit_score: input.coBorrowerCreditScore ?? null,
     gds: input.gds ?? null,
     tds: input.tds ?? null,
+    tds_includes_child_support_alimony: input.tdsIncludesChildSupportAlimony ?? false,
     owns_other_properties: input.ownsOtherProperties ?? false,
     door_count: input.doorCount ?? null,
     door_titles_count: input.doorTitlesCount ?? null,
@@ -308,6 +310,7 @@ export async function getDealDraft(supabase: DB, dealId: string): Promise<{ inpu
     incomeTypes: (d.deal_income_types ?? []).map((x) => x.income_type),
     gds: d.gds,
     tds: d.tds,
+    tdsIncludesChildSupportAlimony: d.tds_includes_child_support_alimony,
     ownsOtherProperties: d.owns_other_properties,
     doorCount: d.door_count,
     doorTitlesCount: d.door_titles_count,
@@ -632,6 +635,7 @@ export type LenderDealListItem = {
   incomeTypes: Enums["income_type"][]
   gds: number | null
   tds: number | null
+  tdsIncludesChildSupportAlimony: boolean
   foreignIncomeCountry: string | null
   residencyStatuses: Enums["residency_status"][]
   downPaymentSources: Enums["down_payment_source"][]
@@ -726,6 +730,7 @@ function mapOpenDealRow(d: OpenDealRow): LenderDealListItem {
     incomeTypes: d.income_types ?? [],
     gds: d.gds === null ? null : Number(d.gds),
     tds: d.tds === null ? null : Number(d.tds),
+    tdsIncludesChildSupportAlimony: d.tds_includes_child_support_alimony ?? false,
     foreignIncomeCountry: d.foreign_income_country,
     residencyStatuses: d.residency_statuses ?? [],
     downPaymentSources: d.down_payment_sources ?? [],

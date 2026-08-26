@@ -629,6 +629,7 @@ export type Database = {
           status: Database["public"]["Enums"]["deal_status"]
           submitted_at: string | null
           tds: number | null
+          tds_includes_child_support_alimony: boolean
           transaction_type:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -714,6 +715,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["deal_status"]
           submitted_at?: string | null
           tds?: number | null
+          tds_includes_child_support_alimony?: boolean
           transaction_type?:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -799,6 +801,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["deal_status"]
           submitted_at?: string | null
           tds?: number | null
+          tds_includes_child_support_alimony?: boolean
           transaction_type?:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -2000,6 +2003,7 @@ export type Database = {
           status: Database["public"]["Enums"]["deal_status"]
           submitted_at: string | null
           tds: number | null
+          tds_includes_child_support_alimony: boolean
           transaction_type:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -2311,6 +2315,7 @@ export type Database = {
           square_footage: number
           submitted_at: string
           tds: number
+          tds_includes_child_support_alimony: boolean
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2389,6 +2394,7 @@ export type Database = {
           square_footage: number
           submitted_at: string
           tds: number
+          tds_includes_child_support_alimony: boolean
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2531,6 +2537,7 @@ export type Database = {
           square_footage: number
           submitted_at: string
           tds: number
+          tds_includes_child_support_alimony: boolean
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2606,6 +2613,7 @@ export type Database = {
           square_footage: number
           submitted_at: string
           tds: number
+          tds_includes_child_support_alimony: boolean
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2766,6 +2774,7 @@ export type Database = {
           status: Database["public"]["Enums"]["deal_status"]
           submitted_at: string | null
           tds: number | null
+          tds_includes_child_support_alimony: boolean
           transaction_type:
             | Database["public"]["Enums"]["transaction_type"]
             | null

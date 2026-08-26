@@ -101,6 +101,7 @@ export function LenderDealDetailSections({ deal }: { deal: LenderDealListItem })
         <DealField label={t('cardIncomeType')} value={listLabel(LABELS.income_type, deal.incomeTypes)} />
         <DealField label={t('cardGds')} value={deal.gds === null ? dash : t('pctValue', { n: deal.gds })} />
         <DealField label={t('cardTds')} value={deal.tds === null ? dash : t('pctValue', { n: deal.tds })} />
+        <DealField label={t('cardTdsIncludesChildSupportAlimony')} value={boolLabel(deal.tdsIncludesChildSupportAlimony)} />
         <DealField label={t('cardForeignIncomeCountry')} value={textOr(deal.foreignIncomeCountry)} />
         <DealField label={t('cardResidencyStatus')} value={listLabel(LABELS.residency_status, deal.residencyStatuses)} />
         <DealField label={t('cardDownPaymentSource')} value={listLabel(LABELS.down_payment_source, deal.downPaymentSources)} />
