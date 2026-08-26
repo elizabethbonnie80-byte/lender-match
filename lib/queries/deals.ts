@@ -84,6 +84,7 @@ export type DealDraftInput = {
   hobbyFarm?: boolean
   wellWater?: boolean
   septic?: boolean
+  holdcoOnTitle?: boolean
 }
 
 /** Map the form input to the `deals` column set (identity + list fields handled separately). */
@@ -150,6 +151,7 @@ function toDealColumns(input: DealDraftInput): Omit<DealInsert, "broker_id" | "b
     hobby_farm: input.hobbyFarm ?? false,
     well_water: input.wellWater ?? false,
     septic: input.septic ?? false,
+    holdco_on_title: input.holdcoOnTitle ?? false,
   }
 }
 
@@ -328,6 +330,7 @@ export async function getDealDraft(supabase: DB, dealId: string): Promise<{ inpu
     hobbyFarm: d.hobby_farm,
     wellWater: d.well_water,
     septic: d.septic,
+    holdcoOnTitle: d.holdco_on_title,
   }
   return { input, status: d.status }
 }
@@ -645,6 +648,7 @@ export type LenderDealListItem = {
   recreationalProperty: boolean
   wellWater: boolean
   septic: boolean
+  holdcoOnTitle: boolean
   // programs / product options
   fthb: boolean
   networthProgram: boolean
@@ -731,6 +735,7 @@ function mapOpenDealRow(d: OpenDealRow): LenderDealListItem {
     recreationalProperty: d.recreational_property ?? false,
     wellWater: d.well_water ?? false,
     septic: d.septic ?? false,
+    holdcoOnTitle: d.holdco_on_title ?? false,
     fthb: d.fthb ?? false,
     networthProgram: d.networth_program ?? false,
     medicalProfessional: d.medical_professional ?? false,
@@ -843,6 +848,7 @@ function othersExcludedKeys(f: OpenDealFilters): string[] | undefined {
     [f.excludeHobbyFarm, "hobby_farm"],
     [f.excludeWellWater, "well_water"],
     [f.excludeSeptic, "septic"],
+    [f.excludeHoldcoOnTitle, "holdco_on_title"],
     // Round 3 flags ride the same deals-column key list (migration 43).
     [f.excludeReverseMortgage, "reverse_mortgage"],
     [f.excludeMarriedOrCommonLaw, "married_or_common_law"],

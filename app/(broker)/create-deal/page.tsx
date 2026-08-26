@@ -216,6 +216,7 @@ export default function CreateDealPage() {
   const [hasSeptic, setHasSeptic] = useState(false)
   const [recreationalProperty, setRecreationalProperty] = useState(false)
   const [hobbyFarm, setHobbyFarm] = useState(false)
+  const [holdcoOnTitle, setHoldcoOnTitle] = useState(false)
 
   // Round 3 Phase 3: required documents (consent form + photo ID). A deal cannot be submitted until
   // both are uploaded — the submit_deal RPC enforces it too (data-layer backstop).
@@ -307,6 +308,7 @@ export default function CreateDealPage() {
         setHasSeptic(!!input.septic)
         setRecreationalProperty(!!input.recreationalProperty)
         setHobbyFarm(!!input.hobbyFarm)
+        setHoldcoOnTitle(!!input.holdcoOnTitle)
       })
       .catch((err) => toast.error(err instanceof Error ? err.message : t("errDraftLoad")))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -399,6 +401,7 @@ export default function CreateDealPage() {
       hobbyFarm,
       wellWater: hasWell,
       septic: hasSeptic,
+      holdcoOnTitle,
     }
   }
 
@@ -450,7 +453,7 @@ export default function CreateDealPage() {
       collateralTransfer, firstAndHeloc, heloc, fixedSecond, cosignorOccupying, cosignorNotOccupying, guarantor,
       bridgeLoanNeeded, purchasePlusImprovements, networthProgram, reverseMortgage, marriedOrCommonLaw,
       transunionBeingUsed, ownsOtherProperties, preQualification,
-      newConstruction, recreationalProperty, hobbyFarm, hasWell, hasSeptic].some(Boolean)
+      newConstruction, recreationalProperty, hobbyFarm, hasWell, hasSeptic, holdcoOnTitle].some(Boolean)
 
   /** Inline error: a required field is empty AND the user already tried to leave/submit this step. */
   function invalid(section: Section, value: string | boolean): boolean {
@@ -1576,6 +1579,7 @@ export default function CreateDealPage() {
                         ["hasWell", hasWell, setHasWell, "wellWater"],
                         ["recreationalProperty", recreationalProperty, setRecreationalProperty, "recreational"],
                         ["hasSeptic", hasSeptic, setHasSeptic, "septic"],
+                        ["holdcoOnTitle", holdcoOnTitle, setHoldcoOnTitle, "holdcoOnTitle"],
                       ] as [string, boolean, (v: boolean) => void, string][]
                     ).map(([id, checked, set, labelKey]) => (
                       <div key={id} className="flex items-center gap-2">

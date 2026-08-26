@@ -66,6 +66,7 @@ export type FilterCriteria = {
   excludeHobbyFarm: boolean
   excludeWellWater: boolean
   excludeSeptic: boolean
+  excludeHoldcoOnTitle: boolean
   // Round 3 Create Deal fields replicated as criteria (migration 43) — filter-only, never scored.
   /** Checked = deals carrying this credit issue are NOT wanted (excluded). */
   creditIssuesExcluded: Enums["credit_issue"][]
@@ -129,6 +130,7 @@ export const EMPTY_FILTER_CRITERIA: FilterCriteria = {
   excludeHobbyFarm: false,
   excludeWellWater: false,
   excludeSeptic: false,
+  excludeHoldcoOnTitle: false,
   creditIssuesExcluded: [],
   downPaymentSourcesExcluded: [],
   excludeReverseMortgage: false,
@@ -180,7 +182,7 @@ export function countActiveFilters(f: FilterCriteria): number {
     f.excludeCosignorNotOccupying || f.excludeGuarantor || f.excludePrequal || f.excludeNewBuild ||
     f.excludeRecreational || f.excludeHobbyFarm || f.excludeWellWater || f.excludeSeptic ||
     f.excludeReverseMortgage || f.excludeMarriedOrCommonLaw || f.excludeSpouseNotOnApplication ||
-    f.excludeTransunion
+    f.excludeTransunion || f.excludeHoldcoOnTitle
   ) n++
   return n
 }
@@ -248,7 +250,7 @@ function summarize(f: SavedFilterInput): { count: number; preview: string } {
       f.excludeCosignorNotOccupying, f.excludeGuarantor, f.excludePrequal, f.excludeNewBuild,
       f.excludeRecreational, f.excludeHobbyFarm, f.excludeWellWater, f.excludeSeptic,
       f.excludeReverseMortgage, f.excludeMarriedOrCommonLaw, f.excludeSpouseNotOnApplication,
-      f.excludeTransunion,
+      f.excludeTransunion, f.excludeHoldcoOnTitle,
     ].filter(Boolean).length
   if (excludedCount > 0) parts.push(`${excludedCount} exclusion${excludedCount > 1 ? "s" : ""}`)
   return { count: parts.length, preview: parts.join(" · ") || "No criteria set" }
@@ -304,6 +306,7 @@ function rowToInput(r: Row): SavedFilterInput {
     excludeHobbyFarm: r.exclude_hobby_farm ?? false,
     excludeWellWater: r.exclude_well_water ?? false,
     excludeSeptic: r.exclude_septic ?? false,
+    excludeHoldcoOnTitle: r.exclude_holdco_on_title ?? false,
     creditIssuesExcluded: r.credit_issues ?? [],
     downPaymentSourcesExcluded: r.down_payment_sources ?? [],
     excludeReverseMortgage: r.exclude_reverse_mortgage ?? false,
@@ -368,6 +371,7 @@ function inputToColumns(input: SavedFilterInput) {
     exclude_hobby_farm: input.excludeHobbyFarm,
     exclude_well_water: input.excludeWellWater,
     exclude_septic: input.excludeSeptic,
+    exclude_holdco_on_title: input.excludeHoldcoOnTitle,
     credit_issues: input.creditIssuesExcluded.length ? input.creditIssuesExcluded : null,
     down_payment_sources: input.downPaymentSourcesExcluded.length ? input.downPaymentSourcesExcluded : null,
     exclude_reverse_mortgage: input.excludeReverseMortgage,
