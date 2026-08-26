@@ -222,6 +222,7 @@ const PROPERTY_FLAG_TABLE: [DealCol, Bi][] = [
   ["hobby_farm", ["Hobby Farm", "Ferme d'agrément"]],
   ["well_water", ["Well Water", "Eau de puits"]],
   ["septic", ["Septic", "Fosse septique"]],
+  ["holdco_on_title", ["HoldCo on title", "HoldCo sur le titre de propriété"]],
 ]
 
 // ── Builders ────────────────────────────────────────────────────────────────

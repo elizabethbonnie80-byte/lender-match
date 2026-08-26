@@ -635,6 +635,7 @@ export type Database = {
           transunion_being_used: boolean
           updated_at: string
           well_water: boolean
+          holdco_on_title: boolean
         }
         Insert: {
           accepted_offer_id?: string | null
@@ -717,6 +718,7 @@ export type Database = {
           transunion_being_used?: boolean
           updated_at?: string
           well_water?: boolean
+          holdco_on_title?: boolean
         }
         Update: {
           accepted_offer_id?: string | null
@@ -799,6 +801,7 @@ export type Database = {
           transunion_being_used?: boolean
           updated_at?: string
           well_water?: boolean
+          holdco_on_title?: boolean
         }
         Relationships: [
           {
@@ -1501,6 +1504,7 @@ export type Database = {
           exclude_spouse_not_on_application: boolean
           exclude_transunion: boolean
           exclude_well_water: boolean | null
+          exclude_holdco_on_title: boolean | null
           gds_max: number | null
           id: string
           income_types: Database["public"]["Enums"]["income_type"][] | null
@@ -1577,6 +1581,7 @@ export type Database = {
           exclude_spouse_not_on_application?: boolean
           exclude_transunion?: boolean
           exclude_well_water?: boolean | null
+          exclude_holdco_on_title?: boolean | null
           gds_max?: number | null
           id?: string
           income_types?: Database["public"]["Enums"]["income_type"][] | null
@@ -1653,6 +1658,7 @@ export type Database = {
           exclude_spouse_not_on_application?: boolean
           exclude_transunion?: boolean
           exclude_well_water?: boolean | null
+          exclude_holdco_on_title?: boolean | null
           gds_max?: number | null
           id?: string
           income_types?: Database["public"]["Enums"]["income_type"][] | null
@@ -1988,6 +1994,7 @@ export type Database = {
           transunion_being_used: boolean
           updated_at: string
           well_water: boolean
+          holdco_on_title: boolean
         }
         SetofOptions: {
           from: "*"
@@ -2293,6 +2300,7 @@ export type Database = {
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
+          holdco_on_title: boolean
         }[]
       }
       maturing_deals_for_lender: {
@@ -2368,6 +2376,7 @@ export type Database = {
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
+          holdco_on_title: boolean
         }[]
       }
       my_brokerage: { Args: never; Returns: string }
@@ -2507,6 +2516,7 @@ export type Database = {
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
+          holdco_on_title: boolean
         }[]
       }
       open_deals_for_lender: {
@@ -2579,6 +2589,7 @@ export type Database = {
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
+          holdco_on_title: boolean
         }[]
       }
       pending_legal_documents: {
@@ -2739,6 +2750,7 @@ export type Database = {
           transunion_being_used: boolean
           updated_at: string
           well_water: boolean
+          holdco_on_title: boolean
         }
         SetofOptions: {
           from: "*"

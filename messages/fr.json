@@ -1219,6 +1219,7 @@
     "newBuild": "Construction neuve",
     "wellWater": "Eau de puits",
     "septic": "Fosse septique",
+    "holdcoOnTitle": "HoldCo sur le titre de propriété",
     "generalNotes": "Notes générales",
     "generalNotesPlaceholder": "Ajoutez des notes supplémentaires sur la propriété...",
     "saveDraft": "Enregistrer le brouillon",
