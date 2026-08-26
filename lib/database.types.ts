@@ -2898,6 +2898,7 @@ export type Database = {
         | "duplex_semi_detached"
         | "apartment_low_rise"
         | "apartment_high_rise"
+        | "condo_conversion"
       faq_category:
         | "getting_started"
         | "deals_and_offers"
@@ -3175,6 +3176,7 @@ export const Constants = {
         "duplex_semi_detached",
         "apartment_low_rise",
         "apartment_high_rise",
+        "condo_conversion",
       ],
       faq_category: [
         "getting_started",
