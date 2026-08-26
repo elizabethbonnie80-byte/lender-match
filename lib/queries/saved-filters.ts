@@ -67,6 +67,8 @@ export type FilterCriteria = {
   excludeWellWater: boolean
   excludeSeptic: boolean
   excludeHoldcoOnTitle: boolean
+  excludeLenderToPayPropertyTaxes: boolean
+  excludeBorrowerToPayPropertyTaxes: boolean
   // Round 3 Create Deal fields replicated as criteria (migration 43) — filter-only, never scored.
   /** Checked = deals carrying this credit issue are NOT wanted (excluded). */
   creditIssuesExcluded: Enums["credit_issue"][]
@@ -133,6 +135,8 @@ export const EMPTY_FILTER_CRITERIA: FilterCriteria = {
   excludeWellWater: false,
   excludeSeptic: false,
   excludeHoldcoOnTitle: false,
+  excludeLenderToPayPropertyTaxes: false,
+  excludeBorrowerToPayPropertyTaxes: false,
   creditIssuesExcluded: [],
   downPaymentSourcesExcluded: [],
   excludeReverseMortgage: false,
@@ -186,7 +190,8 @@ export function countActiveFilters(f: FilterCriteria): number {
     f.excludeCosignorNotOccupying || f.excludeGuarantor || f.excludePrequal || f.excludeNewBuild ||
     f.excludeRecreational || f.excludeHobbyFarm || f.excludeWellWater || f.excludeSeptic ||
     f.excludeReverseMortgage || f.excludeMarriedOrCommonLaw || f.excludeSpouseNotOnApplication ||
-    f.excludeTransunion || f.excludeHoldcoOnTitle || f.excludeSpousalBuyout || f.excludeRefinancePlusImprovements
+    f.excludeTransunion || f.excludeHoldcoOnTitle || f.excludeSpousalBuyout || f.excludeRefinancePlusImprovements ||
+    f.excludeLenderToPayPropertyTaxes || f.excludeBorrowerToPayPropertyTaxes
   ) n++
   return n
 }
@@ -255,6 +260,7 @@ function summarize(f: SavedFilterInput): { count: number; preview: string } {
       f.excludeRecreational, f.excludeHobbyFarm, f.excludeWellWater, f.excludeSeptic,
       f.excludeReverseMortgage, f.excludeMarriedOrCommonLaw, f.excludeSpouseNotOnApplication,
       f.excludeTransunion, f.excludeHoldcoOnTitle, f.excludeSpousalBuyout, f.excludeRefinancePlusImprovements,
+      f.excludeLenderToPayPropertyTaxes, f.excludeBorrowerToPayPropertyTaxes,
     ].filter(Boolean).length
   if (excludedCount > 0) parts.push(`${excludedCount} exclusion${excludedCount > 1 ? "s" : ""}`)
   return { count: parts.length, preview: parts.join(" · ") || "No criteria set" }
@@ -311,6 +317,8 @@ function rowToInput(r: Row): SavedFilterInput {
     excludeWellWater: r.exclude_well_water ?? false,
     excludeSeptic: r.exclude_septic ?? false,
     excludeHoldcoOnTitle: r.exclude_holdco_on_title ?? false,
+    excludeLenderToPayPropertyTaxes: r.exclude_lender_to_pay_property_taxes ?? false,
+    excludeBorrowerToPayPropertyTaxes: r.exclude_borrower_to_pay_property_taxes ?? false,
     creditIssuesExcluded: r.credit_issues ?? [],
     downPaymentSourcesExcluded: r.down_payment_sources ?? [],
     excludeReverseMortgage: r.exclude_reverse_mortgage ?? false,
@@ -378,6 +386,8 @@ function inputToColumns(input: SavedFilterInput) {
     exclude_well_water: input.excludeWellWater,
     exclude_septic: input.excludeSeptic,
     exclude_holdco_on_title: input.excludeHoldcoOnTitle,
+    exclude_lender_to_pay_property_taxes: input.excludeLenderToPayPropertyTaxes,
+    exclude_borrower_to_pay_property_taxes: input.excludeBorrowerToPayPropertyTaxes,
     credit_issues: input.creditIssuesExcluded.length ? input.creditIssuesExcluded : null,
     down_payment_sources: input.downPaymentSourcesExcluded.length ? input.downPaymentSourcesExcluded : null,
     exclude_reverse_mortgage: input.excludeReverseMortgage,

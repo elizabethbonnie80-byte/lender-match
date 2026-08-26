@@ -630,6 +630,8 @@ export type Database = {
           submitted_at: string | null
           tds: number | null
           tds_includes_child_support_alimony: boolean
+          lender_to_pay_property_taxes: boolean
+          borrower_to_pay_property_taxes: boolean
           transaction_type:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -716,6 +718,8 @@ export type Database = {
           submitted_at?: string | null
           tds?: number | null
           tds_includes_child_support_alimony?: boolean
+          lender_to_pay_property_taxes?: boolean
+          borrower_to_pay_property_taxes?: boolean
           transaction_type?:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -802,6 +806,8 @@ export type Database = {
           submitted_at?: string | null
           tds?: number | null
           tds_includes_child_support_alimony?: boolean
+          lender_to_pay_property_taxes?: boolean
+          borrower_to_pay_property_taxes?: boolean
           transaction_type?:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -1514,6 +1520,8 @@ export type Database = {
           exclude_transunion: boolean
           exclude_well_water: boolean | null
           exclude_holdco_on_title: boolean | null
+          exclude_lender_to_pay_property_taxes: boolean | null
+          exclude_borrower_to_pay_property_taxes: boolean | null
           exclude_spousal_buyout: boolean | null
           exclude_refinance_plus_improvements: boolean | null
           gds_max: number | null
@@ -1593,6 +1601,8 @@ export type Database = {
           exclude_transunion?: boolean
           exclude_well_water?: boolean | null
           exclude_holdco_on_title?: boolean | null
+          exclude_lender_to_pay_property_taxes?: boolean | null
+          exclude_borrower_to_pay_property_taxes?: boolean | null
           exclude_spousal_buyout?: boolean | null
           exclude_refinance_plus_improvements?: boolean | null
           gds_max?: number | null
@@ -1672,6 +1682,8 @@ export type Database = {
           exclude_transunion?: boolean
           exclude_well_water?: boolean | null
           exclude_holdco_on_title?: boolean | null
+          exclude_lender_to_pay_property_taxes?: boolean | null
+          exclude_borrower_to_pay_property_taxes?: boolean | null
           exclude_spousal_buyout?: boolean | null
           exclude_refinance_plus_improvements?: boolean | null
           gds_max?: number | null
@@ -2004,6 +2016,8 @@ export type Database = {
           submitted_at: string | null
           tds: number | null
           tds_includes_child_support_alimony: boolean
+          lender_to_pay_property_taxes: boolean
+          borrower_to_pay_property_taxes: boolean
           transaction_type:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -2316,6 +2330,8 @@ export type Database = {
           submitted_at: string
           tds: number
           tds_includes_child_support_alimony: boolean
+          lender_to_pay_property_taxes: boolean
+          borrower_to_pay_property_taxes: boolean
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2395,6 +2411,8 @@ export type Database = {
           submitted_at: string
           tds: number
           tds_includes_child_support_alimony: boolean
+          lender_to_pay_property_taxes: boolean
+          borrower_to_pay_property_taxes: boolean
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2538,6 +2556,8 @@ export type Database = {
           submitted_at: string
           tds: number
           tds_includes_child_support_alimony: boolean
+          lender_to_pay_property_taxes: boolean
+          borrower_to_pay_property_taxes: boolean
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2614,6 +2634,8 @@ export type Database = {
           submitted_at: string
           tds: number
           tds_includes_child_support_alimony: boolean
+          lender_to_pay_property_taxes: boolean
+          borrower_to_pay_property_taxes: boolean
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2775,6 +2797,8 @@ export type Database = {
           submitted_at: string | null
           tds: number | null
           tds_includes_child_support_alimony: boolean
+          lender_to_pay_property_taxes: boolean
+          borrower_to_pay_property_taxes: boolean
           transaction_type:
             | Database["public"]["Enums"]["transaction_type"]
             | null

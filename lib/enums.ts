@@ -230,6 +230,10 @@ const PROPERTY_FLAG_TABLE: [DealCol, Bi][] = [
   ["well_water", ["Well Water", "Eau de puits"]],
   ["septic", ["Septic", "Fosse septique"]],
   ["holdco_on_title", ["HoldCo on title", "HoldCo sur le titre de propriété"]],
+  // Property Tax Payment Preference (approved 2026-08-26): mutual exclusivity is Create Deal UI
+  // behaviour only, not a DB constraint — see app/(broker)/create-deal/page.tsx.
+  ["lender_to_pay_property_taxes", ["Lender to pay property taxes", "Prêteur responsable du paiement des taxes foncières"]],
+  ["borrower_to_pay_property_taxes", ["Borrower to pay property taxes", "Emprunteur responsable du paiement des taxes foncières"]],
 ]
 
 // ── Builders ────────────────────────────────────────────────────────────────

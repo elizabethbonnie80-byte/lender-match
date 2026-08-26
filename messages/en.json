@@ -1222,6 +1222,8 @@
     "wellWater": "Well Water",
     "septic": "Septic",
     "holdcoOnTitle": "HoldCo on title",
+    "lenderToPayPropertyTaxes": "Lender to pay property taxes",
+    "borrowerToPayPropertyTaxes": "Borrower to pay property taxes",
     "generalNotes": "General Notes",
     "generalNotesPlaceholder": "Add any additional property notes...",
     "saveDraft": "Save Draft",
