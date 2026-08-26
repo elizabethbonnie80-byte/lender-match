@@ -2922,6 +2922,7 @@ export type Database = {
         | "short_term_disability"
         | "workers_comp"
         | "foreign_income"
+        | "foster_care_income"
       invoice_status: "pending" | "paid" | "cancelled"
       legal_doc_type: "privacy_policy" | "terms_and_conditions"
       location_type: "urban" | "rural"
@@ -3200,6 +3201,7 @@ export const Constants = {
         "short_term_disability",
         "workers_comp",
         "foreign_income",
+        "foster_care_income",
       ],
       invoice_status: ["pending", "paid", "cancelled"],
       legal_doc_type: ["privacy_policy", "terms_and_conditions"],

@@ -102,6 +102,8 @@ const INCOME_TYPE: Record<Enums["income_type"], Bi> = {
   short_term_disability: ["Short-Term Disability", "Invalidité de courte durée"],
   workers_comp: ["Workers' Compensation", "Indemnisation des accidentés du travail"],
   foreign_income: ["Foreign Income", "Revenu étranger"],
+  // Round 4 (approved 2026-08-25): new income_type enum value, additive-only.
+  foster_care_income: ["Foster Care Income", "Revenu de famille d’accueil"],
 }
 
 const RESIDENCY_STATUS: Record<Enums["residency_status"], Bi> = {
