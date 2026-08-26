@@ -1283,6 +1283,8 @@
     "checkIfNo": "Cochez si non",
     "spouseNotOnApplicationHint": "Veuillez inclure des notes dans la section crédit concernant le crédit du conjoint et pourquoi il ne figure pas sur la demande.",
     "reverseMortgage": "Prêt hypothécaire inversé",
+    "spousalBuyout": "Rachat de la part du conjoint",
+    "refinancePlusImprovements": "Refinancement plus rénovations",
     "assetsLiquidValue": "Valeur totale des actifs (actifs liquides seulement)",
     "assetsLiquidValuePlaceholder": "Entrez la valeur des actifs liquides",
     "assetsTotalValue": "Valeur totale de tous les actifs, y compris les actifs non liquides",

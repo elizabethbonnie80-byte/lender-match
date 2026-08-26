@@ -48,6 +48,8 @@ export type DealDraftInput = {
   marriedOrCommonLaw?: boolean
   spouseNotOnApplication?: boolean
   reverseMortgage?: boolean
+  spousalBuyout?: boolean
+  refinancePlusImprovements?: boolean
   // qualifying
   primaryCreditScore?: number | null
   coBorrowerCreditScore?: number | null
@@ -122,6 +124,8 @@ function toDealColumns(input: DealDraftInput): Omit<DealInsert, "broker_id" | "b
     married_or_common_law: input.marriedOrCommonLaw ?? false,
     spouse_not_on_application: input.spouseNotOnApplication ?? false,
     reverse_mortgage: input.reverseMortgage ?? false,
+    spousal_buyout: input.spousalBuyout ?? false,
+    refinance_plus_improvements: input.refinancePlusImprovements ?? false,
     primary_credit_score: input.primaryCreditScore ?? null,
     co_borrower_credit_score: input.coBorrowerCreditScore ?? null,
     gds: input.gds ?? null,
@@ -296,6 +300,8 @@ export async function getDealDraft(supabase: DB, dealId: string): Promise<{ inpu
     marriedOrCommonLaw: d.married_or_common_law,
     spouseNotOnApplication: d.spouse_not_on_application,
     reverseMortgage: d.reverse_mortgage,
+    spousalBuyout: d.spousal_buyout,
+    refinancePlusImprovements: d.refinance_plus_improvements,
     primaryCreditScore: d.primary_credit_score,
     coBorrowerCreditScore: d.co_borrower_credit_score,
     creditIssues: (d.deal_credit_issues ?? []).map((x) => x.credit_issue),
@@ -665,6 +671,8 @@ export type LenderDealListItem = {
   cosignorNotOccupying: boolean
   guarantor: boolean
   reverseMortgage: boolean
+  spousalBuyout: boolean
+  refinancePlusImprovements: boolean
   // assets / titles / bureau
   assetsLiquidValue: number | null
   assetsTotalValue: number | null
@@ -751,6 +759,8 @@ function mapOpenDealRow(d: OpenDealRow): LenderDealListItem {
     cosignorNotOccupying: d.cosignor_not_occupying ?? false,
     guarantor: d.guarantor ?? false,
     reverseMortgage: d.reverse_mortgage ?? false,
+    spousalBuyout: d.spousal_buyout ?? false,
+    refinancePlusImprovements: d.refinance_plus_improvements ?? false,
     assetsLiquidValue: d.assets_liquid_value === null ? null : Number(d.assets_liquid_value),
     assetsTotalValue: d.assets_total_value === null ? null : Number(d.assets_total_value),
     doorTitlesCount: d.door_titles_count,
@@ -851,6 +861,8 @@ function othersExcludedKeys(f: OpenDealFilters): string[] | undefined {
     [f.excludeHoldcoOnTitle, "holdco_on_title"],
     // Round 3 flags ride the same deals-column key list (migration 43).
     [f.excludeReverseMortgage, "reverse_mortgage"],
+    [f.excludeSpousalBuyout, "spousal_buyout"],
+    [f.excludeRefinancePlusImprovements, "refinance_plus_improvements"],
     [f.excludeMarriedOrCommonLaw, "married_or_common_law"],
     [f.excludeSpouseNotOnApplication, "spouse_not_on_application"],
     [f.excludeTransunion, "transunion_being_used"],
