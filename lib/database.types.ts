@@ -635,6 +635,9 @@ export type Database = {
           transunion_being_used: boolean
           updated_at: string
           well_water: boolean
+          holdco_on_title: boolean
+          spousal_buyout: boolean
+          refinance_plus_improvements: boolean
         }
         Insert: {
           accepted_offer_id?: string | null
@@ -717,6 +720,9 @@ export type Database = {
           transunion_being_used?: boolean
           updated_at?: string
           well_water?: boolean
+          holdco_on_title?: boolean
+          spousal_buyout?: boolean
+          refinance_plus_improvements?: boolean
         }
         Update: {
           accepted_offer_id?: string | null
@@ -799,6 +805,9 @@ export type Database = {
           transunion_being_used?: boolean
           updated_at?: string
           well_water?: boolean
+          holdco_on_title?: boolean
+          spousal_buyout?: boolean
+          refinance_plus_improvements?: boolean
         }
         Relationships: [
           {
@@ -1501,6 +1510,9 @@ export type Database = {
           exclude_spouse_not_on_application: boolean
           exclude_transunion: boolean
           exclude_well_water: boolean | null
+          exclude_holdco_on_title: boolean | null
+          exclude_spousal_buyout: boolean | null
+          exclude_refinance_plus_improvements: boolean | null
           gds_max: number | null
           id: string
           income_types: Database["public"]["Enums"]["income_type"][] | null
@@ -1577,6 +1589,9 @@ export type Database = {
           exclude_spouse_not_on_application?: boolean
           exclude_transunion?: boolean
           exclude_well_water?: boolean | null
+          exclude_holdco_on_title?: boolean | null
+          exclude_spousal_buyout?: boolean | null
+          exclude_refinance_plus_improvements?: boolean | null
           gds_max?: number | null
           id?: string
           income_types?: Database["public"]["Enums"]["income_type"][] | null
@@ -1653,6 +1668,9 @@ export type Database = {
           exclude_spouse_not_on_application?: boolean
           exclude_transunion?: boolean
           exclude_well_water?: boolean | null
+          exclude_holdco_on_title?: boolean | null
+          exclude_spousal_buyout?: boolean | null
+          exclude_refinance_plus_improvements?: boolean | null
           gds_max?: number | null
           id?: string
           income_types?: Database["public"]["Enums"]["income_type"][] | null
@@ -1988,6 +2006,9 @@ export type Database = {
           transunion_being_used: boolean
           updated_at: string
           well_water: boolean
+          holdco_on_title: boolean
+          spousal_buyout: boolean
+          refinance_plus_improvements: boolean
         }
         SetofOptions: {
           from: "*"
@@ -2293,6 +2314,9 @@ export type Database = {
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
+          holdco_on_title: boolean
+          spousal_buyout: boolean
+          refinance_plus_improvements: boolean
         }[]
       }
       maturing_deals_for_lender: {
@@ -2368,6 +2392,9 @@ export type Database = {
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
+          holdco_on_title: boolean
+          spousal_buyout: boolean
+          refinance_plus_improvements: boolean
         }[]
       }
       my_brokerage: { Args: never; Returns: string }
@@ -2507,6 +2534,9 @@ export type Database = {
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
+          holdco_on_title: boolean
+          spousal_buyout: boolean
+          refinance_plus_improvements: boolean
         }[]
       }
       open_deals_for_lender: {
@@ -2579,6 +2609,9 @@ export type Database = {
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
+          holdco_on_title: boolean
+          spousal_buyout: boolean
+          refinance_plus_improvements: boolean
         }[]
       }
       pending_legal_documents: {
@@ -2739,6 +2772,9 @@ export type Database = {
           transunion_being_used: boolean
           updated_at: string
           well_water: boolean
+          holdco_on_title: boolean
+          spousal_buyout: boolean
+          refinance_plus_improvements: boolean
         }
         SetofOptions: {
           from: "*"
@@ -2862,6 +2898,7 @@ export type Database = {
         | "duplex_semi_detached"
         | "apartment_low_rise"
         | "apartment_high_rise"
+        | "condo_conversion"
       faq_category:
         | "getting_started"
         | "deals_and_offers"
@@ -2886,6 +2923,7 @@ export type Database = {
         | "short_term_disability"
         | "workers_comp"
         | "foreign_income"
+        | "foster_care_income"
       invoice_status: "pending" | "paid" | "cancelled"
       legal_doc_type: "privacy_policy" | "terms_and_conditions"
       location_type: "urban" | "rural"
@@ -3138,6 +3176,7 @@ export const Constants = {
         "duplex_semi_detached",
         "apartment_low_rise",
         "apartment_high_rise",
+        "condo_conversion",
       ],
       faq_category: [
         "getting_started",
@@ -3164,6 +3203,7 @@ export const Constants = {
         "short_term_disability",
         "workers_comp",
         "foreign_income",
+        "foster_care_income",
       ],
       invoice_status: ["pending", "paid", "cancelled"],
       legal_doc_type: ["privacy_policy", "terms_and_conditions"],

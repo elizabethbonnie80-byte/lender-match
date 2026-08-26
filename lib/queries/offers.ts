@@ -146,7 +146,7 @@ export async function getDealFull(supabase: DB, dealId: string): Promise<LenderD
   const { data, error } = await supabase
     .from("deals")
     .select(
-      "id, deal_number, created_at, city, province, location_type, dwelling_type, property_value, square_footage, acres, general_notes, closing_date, closing_date_flexible, cof_date, mortgage_product, mortgage_position, loan_amount, ltv, amortization_years, insured, previously_declined, previously_declined_reason, primary_credit_score, co_borrower_credit_score, gds, tds, foreign_income_country, owns_other_properties, door_count, credit_notes, income_notes, prequal, down_payment_notes, occupancy, new_build, hobby_farm, recreational_property, well_water, septic, fthb, networth_program, medical_professional, new_to_canada, purchase_plus_improvements, collateral_transfer, cashback, bridge_loan_needed, first_and_heloc, heloc, fixed_second, cosignor_occupying, cosignor_not_occupying, guarantor, reverse_mortgage, assets_liquid_value, assets_total_value, door_titles_count, transunion_being_used, married_or_common_law, spouse_not_on_application, no_lender_exceptions_required, purpose, transaction_type, deal_income_types(income_type), deal_residency_statuses(residency), deal_credit_issues(credit_issue), deal_down_payment_sources(down_payment_source)",
+      "id, deal_number, created_at, city, province, location_type, dwelling_type, property_value, square_footage, acres, general_notes, closing_date, closing_date_flexible, cof_date, mortgage_product, mortgage_position, loan_amount, ltv, amortization_years, insured, previously_declined, previously_declined_reason, primary_credit_score, co_borrower_credit_score, gds, tds, foreign_income_country, owns_other_properties, door_count, credit_notes, income_notes, prequal, down_payment_notes, occupancy, new_build, hobby_farm, recreational_property, well_water, septic, holdco_on_title, fthb, networth_program, medical_professional, new_to_canada, purchase_plus_improvements, collateral_transfer, cashback, bridge_loan_needed, first_and_heloc, heloc, fixed_second, cosignor_occupying, cosignor_not_occupying, guarantor, reverse_mortgage, spousal_buyout, refinance_plus_improvements, assets_liquid_value, assets_total_value, door_titles_count, transunion_being_used, married_or_common_law, spouse_not_on_application, no_lender_exceptions_required, purpose, transaction_type, deal_income_types(income_type), deal_residency_statuses(residency), deal_credit_issues(credit_issue), deal_down_payment_sources(down_payment_source)",
     )
     .eq("id", dealId)
     .maybeSingle()
@@ -199,6 +199,7 @@ export async function getDealFull(supabase: DB, dealId: string): Promise<LenderD
     recreationalProperty: data.recreational_property ?? false,
     wellWater: data.well_water ?? false,
     septic: data.septic ?? false,
+    holdcoOnTitle: data.holdco_on_title ?? false,
     fthb: data.fthb ?? false,
     networthProgram: data.networth_program ?? false,
     medicalProfessional: data.medical_professional ?? false,
@@ -214,6 +215,8 @@ export async function getDealFull(supabase: DB, dealId: string): Promise<LenderD
     cosignorNotOccupying: data.cosignor_not_occupying ?? false,
     guarantor: data.guarantor ?? false,
     reverseMortgage: data.reverse_mortgage ?? false,
+    spousalBuyout: data.spousal_buyout ?? false,
+    refinancePlusImprovements: data.refinance_plus_improvements ?? false,
     assetsLiquidValue: data.assets_liquid_value === null ? null : Number(data.assets_liquid_value),
     assetsTotalValue: data.assets_total_value === null ? null : Number(data.assets_total_value),
     doorTitlesCount: data.door_titles_count,
