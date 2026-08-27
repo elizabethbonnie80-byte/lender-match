@@ -60,6 +60,12 @@ export function LenderDealDetailSections({ deal }: { deal: LenderDealListItem })
         <DealField label={t('cardProvince')} value={enumLabel(LABELS.province, deal.province)} />
         <DealField label={t('cardLocationType')} value={enumLabel(LABELS.location_type, deal.locationType)} />
         <DealField label={t('cardDwellingType')} value={enumLabel(LABELS.dwelling_type, deal.dwellingType)} />
+        {deal.dwellingType === 'mobile_home' && (
+          <>
+            <DealField label={t('cardMobileHomeYearBuilt')} value={deal.mobileHomeYearBuilt === null ? dash : String(deal.mobileHomeYearBuilt)} />
+            <DealField label={t('cardMobileHomeCsaSealYear')} value={deal.mobileHomeCsaSealYear === null ? dash : String(deal.mobileHomeCsaSealYear)} />
+          </>
+        )}
         <DealField label={t('cardPropertyValue')} value={deal.propertyValue === null ? dash : `$${Math.round(deal.propertyValue).toLocaleString('en-US')}`} />
         <DealField
           label={t('cardSquareFootage')}

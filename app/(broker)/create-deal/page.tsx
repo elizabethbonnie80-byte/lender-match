@@ -91,6 +91,19 @@ function num(value: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+const CURRENT_YEAR = new Date().getFullYear()
+/** Digits only, max 4 characters — used by Year Built / CSA Seal Year. Does not clamp or otherwise
+ * alter an out-of-range value; see isFutureYear for the inline validity check. No arbitrary minimum
+ * year is enforced (none exists elsewhere in this codebase). */
+function sanitizeYear(raw: string): string {
+  return raw.replace(/[^\d]/g, "").slice(0, 4)
+}
+
+/** True once a full 4-digit year has been entered and it's later than the current calendar year. */
+function isFutureYear(value: string): boolean {
+  return value.length === 4 && Number(value) > CURRENT_YEAR
+}
+
 /** Toggle a value in/out of an array — for "check all that apply" multi-selects. */
 function toggleIn<T>(arr: T[], value: T): T[] {
   return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value]
@@ -222,6 +235,11 @@ export default function CreateDealPage() {
   const [holdcoOnTitle, setHoldcoOnTitle] = useState(false)
   const [lenderToPayPropertyTaxes, setLenderToPayPropertyTaxes] = useState(false)
   const [borrowerToPayPropertyTaxes, setBorrowerToPayPropertyTaxes] = useState(false)
+  // Mobile Home / CSA Seal (approved 2026-08-27): only shown when dwellingType === "mobile_home";
+  // mobileHomeCsaSealYear is nested one level deeper, shown only when mobileHomeHasCsaSeal is checked.
+  const [mobileHomeYearBuilt, setMobileHomeYearBuilt] = useState("")
+  const [mobileHomeHasCsaSeal, setMobileHomeHasCsaSeal] = useState(false)
+  const [mobileHomeCsaSealYear, setMobileHomeCsaSealYear] = useState("")
 
   // Round 3 Phase 3: required documents (consent form + photo ID). A deal cannot be submitted until
   // both are uploaded — the submit_deal RPC enforces it too (data-layer backstop).
@@ -319,6 +337,9 @@ export default function CreateDealPage() {
         setHoldcoOnTitle(!!input.holdcoOnTitle)
         setLenderToPayPropertyTaxes(!!input.lenderToPayPropertyTaxes)
         setBorrowerToPayPropertyTaxes(!!input.borrowerToPayPropertyTaxes)
+        setMobileHomeYearBuilt(input.mobileHomeYearBuilt != null ? String(input.mobileHomeYearBuilt) : "")
+        setMobileHomeHasCsaSeal(!!input.mobileHomeHasCsaSeal)
+        setMobileHomeCsaSealYear(input.mobileHomeCsaSealYear != null ? String(input.mobileHomeCsaSealYear) : "")
       })
       .catch((err) => toast.error(err instanceof Error ? err.message : t("errDraftLoad")))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -417,6 +438,11 @@ export default function CreateDealPage() {
       holdcoOnTitle,
       lenderToPayPropertyTaxes,
       borrowerToPayPropertyTaxes,
+      // Mobile Home / CSA Seal: hidden fields are never persisted, even if UI state still holds a
+      // stale value from before the dwelling type (or the checkbox) was changed.
+      mobileHomeYearBuilt: dwellingType === "mobile_home" ? num(mobileHomeYearBuilt) : null,
+      mobileHomeHasCsaSeal: dwellingType === "mobile_home" ? mobileHomeHasCsaSeal : false,
+      mobileHomeCsaSealYear: dwellingType === "mobile_home" && mobileHomeHasCsaSeal ? num(mobileHomeCsaSealYear) : null,
     }
   }
 
@@ -451,6 +477,11 @@ export default function CreateDealPage() {
         return (!!propertyAddress.trim() || preQualification)
           && !!city.trim() && !!province && !!location && !!propertyValue.trim() && !!squareFootage.trim() && !!dwellingType
           && hasDoc("consent") && hasDoc("photo_id") && !mismatchedDoc()
+          // Mobile Home / CSA Seal: a future year blocks Submit, but only while the field is actually
+          // visible — a stale value left behind after switching dwelling type away from Mobile Home
+          // (or unchecking Has CSA seal?) is never persisted, so it must never block Submit either.
+          && (dwellingType !== "mobile_home" || !isFutureYear(mobileHomeYearBuilt))
+          && (dwellingType !== "mobile_home" || !mobileHomeHasCsaSeal || !isFutureYear(mobileHomeCsaSealYear))
     }
   }
 
@@ -459,7 +490,7 @@ export default function CreateDealPage() {
     [clientFirstName, clientLastName, closingDate, cofDate, loanAmount, ltv, amortization, creditScore,
       coBorrowerCreditScore, gds, tds, foreignIncomeCountry, creditNotes, qualifyingNotes, downPaymentNotes,
       propertyAddress, city, propertyValue, squareFootage, acres, propertyNotes,
-      doorTitlesCount, assetsLiquidValue, assetsTotalValue]
+      doorTitlesCount, assetsLiquidValue, assetsTotalValue, mobileHomeYearBuilt, mobileHomeCsaSealYear]
       .some((v) => v.trim() !== "") ||
     [occupancyType, transactionPurpose, transactionType, mortgageProduct, mortgagePosition,
       province, location, dwellingType].some((v) => v !== "") ||
@@ -469,7 +500,7 @@ export default function CreateDealPage() {
       bridgeLoanNeeded, purchasePlusImprovements, networthProgram, reverseMortgage, marriedOrCommonLaw,
       transunionBeingUsed, ownsOtherProperties, preQualification, spousalBuyout, refinancePlusImprovements,
       newConstruction, recreationalProperty, hobbyFarm, hasWell, hasSeptic, holdcoOnTitle,
-      lenderToPayPropertyTaxes, borrowerToPayPropertyTaxes,
+      lenderToPayPropertyTaxes, borrowerToPayPropertyTaxes, mobileHomeHasCsaSeal,
       tdsIncludesChildSupportAlimony].some(Boolean)
 
   /** Inline error: a required field is empty AND the user already tried to leave/submit this step. */
@@ -1583,6 +1614,50 @@ export default function CreateDealPage() {
                   </Select>
                   <FieldError show={invalid("property", dwellingType)} />
                 </div>
+
+                {dwellingType === "mobile_home" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="mobileHomeYearBuilt">{t("mobileHomeYearBuilt")}</Label>
+                      <Input
+                        id="mobileHomeYearBuilt"
+                        type="number"
+                        placeholder={t("phMobileHomeYearBuilt")}
+                        value={mobileHomeYearBuilt}
+                        onChange={(e) => setMobileHomeYearBuilt(sanitizeYear(e.target.value))}
+                        className={`bg-muted/50 ${errCls(isFutureYear(mobileHomeYearBuilt))}`}
+                      />
+                      {isFutureYear(mobileHomeYearBuilt) && (
+                        <p className="text-xs text-destructive mt-1">{t("yearCannotBeFuture")}</p>
+                      )}
+                    </div>
+                    <div className="space-y-2 flex flex-col justify-end">
+                      <div className="flex items-center gap-2 h-10">
+                        <Checkbox id="mobileHomeHasCsaSeal" checked={mobileHomeHasCsaSeal}
+                          onCheckedChange={(c) => setMobileHomeHasCsaSeal(c as boolean)} />
+                        <Label htmlFor="mobileHomeHasCsaSeal" className="text-sm font-normal cursor-pointer">
+                          {t("mobileHomeHasCsaSeal")}
+                        </Label>
+                      </div>
+                    </div>
+                    {mobileHomeHasCsaSeal && (
+                      <div className="space-y-2">
+                        <Label htmlFor="mobileHomeCsaSealYear">{t("mobileHomeCsaSealYear")}</Label>
+                        <Input
+                          id="mobileHomeCsaSealYear"
+                          type="number"
+                          placeholder={t("phMobileHomeCsaSealYear")}
+                          value={mobileHomeCsaSealYear}
+                          onChange={(e) => setMobileHomeCsaSealYear(sanitizeYear(e.target.value))}
+                          className={`bg-muted/50 ${errCls(isFutureYear(mobileHomeCsaSealYear))}`}
+                        />
+                        {isFutureYear(mobileHomeCsaSealYear) && (
+                          <p className="text-xs text-destructive mt-1">{t("yearCannotBeFuture")}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="propertyNotes">

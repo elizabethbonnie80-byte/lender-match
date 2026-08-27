@@ -632,6 +632,9 @@ export type Database = {
           tds_includes_child_support_alimony: boolean
           lender_to_pay_property_taxes: boolean
           borrower_to_pay_property_taxes: boolean
+          mobile_home_year_built: number | null
+          mobile_home_has_csa_seal: boolean
+          mobile_home_csa_seal_year: number | null
           transaction_type:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -720,6 +723,9 @@ export type Database = {
           tds_includes_child_support_alimony?: boolean
           lender_to_pay_property_taxes?: boolean
           borrower_to_pay_property_taxes?: boolean
+          mobile_home_year_built?: number | null
+          mobile_home_has_csa_seal?: boolean
+          mobile_home_csa_seal_year?: number | null
           transaction_type?:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -808,6 +814,9 @@ export type Database = {
           tds_includes_child_support_alimony?: boolean
           lender_to_pay_property_taxes?: boolean
           borrower_to_pay_property_taxes?: boolean
+          mobile_home_year_built?: number | null
+          mobile_home_has_csa_seal?: boolean
+          mobile_home_csa_seal_year?: number | null
           transaction_type?:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -1522,6 +1531,7 @@ export type Database = {
           exclude_holdco_on_title: boolean | null
           exclude_lender_to_pay_property_taxes: boolean | null
           exclude_borrower_to_pay_property_taxes: boolean | null
+          mobile_home_csa_seal_year_min: number | null
           exclude_spousal_buyout: boolean | null
           exclude_refinance_plus_improvements: boolean | null
           gds_max: number | null
@@ -1603,6 +1613,7 @@ export type Database = {
           exclude_holdco_on_title?: boolean | null
           exclude_lender_to_pay_property_taxes?: boolean | null
           exclude_borrower_to_pay_property_taxes?: boolean | null
+          mobile_home_csa_seal_year_min?: number | null
           exclude_spousal_buyout?: boolean | null
           exclude_refinance_plus_improvements?: boolean | null
           gds_max?: number | null
@@ -1684,6 +1695,7 @@ export type Database = {
           exclude_holdco_on_title?: boolean | null
           exclude_lender_to_pay_property_taxes?: boolean | null
           exclude_borrower_to_pay_property_taxes?: boolean | null
+          mobile_home_csa_seal_year_min?: number | null
           exclude_spousal_buyout?: boolean | null
           exclude_refinance_plus_improvements?: boolean | null
           gds_max?: number | null
@@ -2018,6 +2030,9 @@ export type Database = {
           tds_includes_child_support_alimony: boolean
           lender_to_pay_property_taxes: boolean
           borrower_to_pay_property_taxes: boolean
+          mobile_home_year_built: number | null
+          mobile_home_has_csa_seal: boolean
+          mobile_home_csa_seal_year: number | null
           transaction_type:
             | Database["public"]["Enums"]["transaction_type"]
             | null
@@ -2247,6 +2262,7 @@ export type Database = {
           p_ltv_min?: number
           p_max_door_titles?: number
           p_max_doors?: number
+          p_mobile_home_csa_seal_year_min?: number
           p_mortgage_position?: Database["public"]["Enums"]["mortgage_position"]
           p_mortgage_product?: Database["public"]["Enums"]["mortgage_product"]
           p_occupancy?: Database["public"]["Enums"]["occupancy_type"]
@@ -2332,6 +2348,9 @@ export type Database = {
           tds_includes_child_support_alimony: boolean
           lender_to_pay_property_taxes: boolean
           borrower_to_pay_property_taxes: boolean
+          mobile_home_year_built: number | null
+          mobile_home_has_csa_seal: boolean
+          mobile_home_csa_seal_year: number | null
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2413,6 +2432,9 @@ export type Database = {
           tds_includes_child_support_alimony: boolean
           lender_to_pay_property_taxes: boolean
           borrower_to_pay_property_taxes: boolean
+          mobile_home_year_built: number | null
+          mobile_home_has_csa_seal: boolean
+          mobile_home_csa_seal_year: number | null
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2476,6 +2498,7 @@ export type Database = {
           p_ltv_min?: number
           p_max_door_titles?: number
           p_max_doors?: number
+          p_mobile_home_csa_seal_year_min?: number
           p_mortgage_position?: Database["public"]["Enums"]["mortgage_position"]
           p_mortgage_product?: Database["public"]["Enums"]["mortgage_product"]
           p_occupancy?: Database["public"]["Enums"]["occupancy_type"]
@@ -2558,6 +2581,9 @@ export type Database = {
           tds_includes_child_support_alimony: boolean
           lender_to_pay_property_taxes: boolean
           borrower_to_pay_property_taxes: boolean
+          mobile_home_year_built: number | null
+          mobile_home_has_csa_seal: boolean
+          mobile_home_csa_seal_year: number | null
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2636,6 +2662,9 @@ export type Database = {
           tds_includes_child_support_alimony: boolean
           lender_to_pay_property_taxes: boolean
           borrower_to_pay_property_taxes: boolean
+          mobile_home_year_built: number | null
+          mobile_home_has_csa_seal: boolean
+          mobile_home_csa_seal_year: number | null
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transunion_being_used: boolean
           well_water: boolean
@@ -2799,6 +2828,9 @@ export type Database = {
           tds_includes_child_support_alimony: boolean
           lender_to_pay_property_taxes: boolean
           borrower_to_pay_property_taxes: boolean
+          mobile_home_year_built: number | null
+          mobile_home_has_csa_seal: boolean
+          mobile_home_csa_seal_year: number | null
           transaction_type:
             | Database["public"]["Enums"]["transaction_type"]
             | null
