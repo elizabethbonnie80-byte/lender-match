@@ -90,6 +90,9 @@ export type DealDraftInput = {
   holdcoOnTitle?: boolean
   lenderToPayPropertyTaxes?: boolean
   borrowerToPayPropertyTaxes?: boolean
+  mobileHomeYearBuilt?: number | null
+  mobileHomeHasCsaSeal?: boolean
+  mobileHomeCsaSealYear?: number | null
 }
 
 /** Map the form input to the `deals` column set (identity + list fields handled separately). */
@@ -162,6 +165,9 @@ function toDealColumns(input: DealDraftInput): Omit<DealInsert, "broker_id" | "b
     holdco_on_title: input.holdcoOnTitle ?? false,
     lender_to_pay_property_taxes: input.lenderToPayPropertyTaxes ?? false,
     borrower_to_pay_property_taxes: input.borrowerToPayPropertyTaxes ?? false,
+    mobile_home_year_built: input.mobileHomeYearBuilt ?? null,
+    mobile_home_has_csa_seal: input.mobileHomeHasCsaSeal ?? false,
+    mobile_home_csa_seal_year: input.mobileHomeCsaSealYear ?? null,
   }
 }
 
@@ -346,6 +352,9 @@ export async function getDealDraft(supabase: DB, dealId: string): Promise<{ inpu
     holdcoOnTitle: d.holdco_on_title,
     lenderToPayPropertyTaxes: d.lender_to_pay_property_taxes,
     borrowerToPayPropertyTaxes: d.borrower_to_pay_property_taxes,
+    mobileHomeYearBuilt: d.mobile_home_year_built,
+    mobileHomeHasCsaSeal: d.mobile_home_has_csa_seal,
+    mobileHomeCsaSealYear: d.mobile_home_csa_seal_year,
   }
   return { input, status: d.status }
 }
@@ -667,6 +676,9 @@ export type LenderDealListItem = {
   holdcoOnTitle: boolean
   lenderToPayPropertyTaxes: boolean
   borrowerToPayPropertyTaxes: boolean
+  mobileHomeYearBuilt: number | null
+  mobileHomeHasCsaSeal: boolean
+  mobileHomeCsaSealYear: number | null
   // programs / product options
   fthb: boolean
   networthProgram: boolean
@@ -759,6 +771,9 @@ function mapOpenDealRow(d: OpenDealRow): LenderDealListItem {
     holdcoOnTitle: d.holdco_on_title ?? false,
     lenderToPayPropertyTaxes: d.lender_to_pay_property_taxes ?? false,
     borrowerToPayPropertyTaxes: d.borrower_to_pay_property_taxes ?? false,
+    mobileHomeYearBuilt: d.mobile_home_year_built,
+    mobileHomeHasCsaSeal: d.mobile_home_has_csa_seal ?? false,
+    mobileHomeCsaSealYear: d.mobile_home_csa_seal_year,
     fthb: d.fthb ?? false,
     networthProgram: d.networth_program ?? false,
     medicalProfessional: d.medical_professional ?? false,
@@ -844,6 +859,7 @@ export async function listOpenDealsFiltered(supabase: DB, f: OpenDealFilters): P
     p_assets_total_min: f.assetsTotalMin ?? undefined,
     p_max_door_titles: f.maxDoorTitles ?? undefined,
     p_require_no_exceptions: f.requireNoExceptions || undefined,
+    p_mobile_home_csa_seal_year_min: f.mobileHomeCsaSealYearMin ?? undefined,
   })
   if (error) throw new Error(error.message)
   return (data ?? []).map(mapOpenDealRow)
@@ -961,6 +977,7 @@ export async function listMaturingDealsFiltered(supabase: DB, f: OpenDealFilters
     p_assets_total_min: f.assetsTotalMin ?? undefined,
     p_max_door_titles: f.maxDoorTitles ?? undefined,
     p_require_no_exceptions: f.requireNoExceptions || undefined,
+    p_mobile_home_csa_seal_year_min: f.mobileHomeCsaSealYearMin ?? undefined,
   })
   if (error) throw new Error(error.message)
   return (data ?? []).map(mapMaturingRow)

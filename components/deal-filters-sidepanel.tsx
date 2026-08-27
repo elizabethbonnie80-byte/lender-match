@@ -305,6 +305,11 @@ export function DealFiltersSidepanel({
             <ExcludeCheckboxGrid options={enums.DWELLING_TYPE_OPTIONS} excluded={draft.dwellingTypesExcluded}
               onChange={(v) => patch('dwellingTypesExcluded', v)} />
 
+            {/* Mobile Home / CSA Seal (approved 2026-08-27): null-safe minimum — a mobile home with no
+                CSA Seal Year on file, or a non-mobile-home deal, is never excluded by this. */}
+            <NumberField label={t('fMobileHomeCsaSealYearMin')} value={draft.mobileHomeCsaSealYearMin}
+              onChange={(v) => patch('mobileHomeCsaSealYearMin', v)} placeholder={t('min')} />
+
             <SectionTitle hint={t('fIncomeTypeHint')}>{t('fIncomeType')}</SectionTitle>
             <ExcludeCheckboxGrid options={enums.INCOME_TYPE_OPTIONS} excluded={draft.incomeTypesExcluded}
               onChange={(v) => patch('incomeTypesExcluded', v)} />
