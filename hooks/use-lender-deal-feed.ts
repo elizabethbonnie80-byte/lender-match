@@ -93,6 +93,9 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
   // server-side via fetchAll(filterId); creation/editing lives in Settings.
   const [dbFilters, setDbFilters] = useState<SavedFilterRow[]>([])
   const [activeFilterId, setActiveFilterId] = useState<string | null>(null)
+  // True once the initial saved-filters fetch has settled (success or failure) — lets a caller (the
+  // New Deals onboarding popup) distinguish "confirmed zero" from "still loading, currently []".
+  const [filtersLoaded, setFiltersLoaded] = useState(false)
 
   // Row selection (bulk actions)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -112,6 +115,7 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
     listSavedFilters(supabase)
       .then(setDbFilters)
       .catch(() => setDbFilters([]))
+      .finally(() => setFiltersLoaded(true))
   }, [supabase])
 
   // Fetch the feed SERVER-SIDE: the ad-hoc Filters panel (fetchFiltered) takes precedence; otherwise a
@@ -342,7 +346,7 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
     // search + filters
     searchTerm, setSearchTerm, showFilters, setShowFilters,
     filters, activeFilterCount, applyFilters, clearFilters, handleSaveFilter,
-    dbFilters, activeFilterId, toggleSavedFilter,
+    dbFilters, activeFilterId, toggleSavedFilter, filtersLoaded,
     // selection
     selectedIds, setSelectedIds, toggleSelect, toggleSelectAll,
     pendingDeals, allSelected, someSelected, bulkSelected,
