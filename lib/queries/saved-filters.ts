@@ -85,6 +85,10 @@ export type FilterCriteria = {
   maxDoorTitles: number | null
   /** Only show deals whose "No lender exceptions required" box is checked (all 4 notes empty). */
   requireNoExceptions: boolean
+  /** Mobile Home / CSA Seal (2026-08-27): minimum accepted CSA seal year for mobile home deals.
+   * Null-safe on the deal side — a deal with no CSA Seal Year on file, or that isn't a mobile home,
+   * is never excluded by this. See saved_filter_matches for the exact predicate. */
+  mobileHomeCsaSealYearMin: number | null
 }
 
 export const EMPTY_FILTER_CRITERIA: FilterCriteria = {
@@ -149,6 +153,7 @@ export const EMPTY_FILTER_CRITERIA: FilterCriteria = {
   assetsTotalMin: null,
   maxDoorTitles: null,
   requireNoExceptions: false,
+  mobileHomeCsaSealYearMin: null,
 }
 
 /** Number of distinct criteria groups set on an ad-hoc FilterCriteria, for a "Filters (N)" badge.
@@ -183,6 +188,7 @@ export function countActiveFilters(f: FilterCriteria): number {
   if (f.assetsTotalMin !== null) n++
   if (f.maxDoorTitles !== null) n++
   if (f.requireNoExceptions) n++
+  if (f.mobileHomeCsaSealYearMin !== null) n++
   if (
     f.excludeFthb || f.excludeNewToCanada || f.excludeNetworthProgram || f.excludeMedicalProfessional ||
     f.excludeCollateralTransfer || f.excludeCashback || f.excludeBridgeLoan || f.excludePurchasePlusImprovements ||
@@ -246,6 +252,7 @@ function summarize(f: SavedFilterInput): { count: number; preview: string } {
   if (f.assetsLiquidMin !== null) parts.push(`Liquid ≥ $${(f.assetsLiquidMin / 1000).toFixed(0)}k`)
   if (f.assetsTotalMin !== null) parts.push(`Assets ≥ $${(f.assetsTotalMin / 1000).toFixed(0)}k`)
   if (f.requireNoExceptions) parts.push("No exceptions only")
+  if (f.mobileHomeCsaSealYearMin !== null) parts.push(`CSA seal ≥ ${f.mobileHomeCsaSealYearMin}`)
   const excludedCount =
     f.dwellingTypesExcluded.length +
     f.incomeTypesExcluded.length +
@@ -331,6 +338,7 @@ function rowToInput(r: Row): SavedFilterInput {
     assetsTotalMin: r.assets_total_min === null ? null : Number(r.assets_total_min),
     maxDoorTitles: r.max_door_titles,
     requireNoExceptions: r.require_no_exceptions ?? false,
+    mobileHomeCsaSealYearMin: r.mobile_home_csa_seal_year_min,
   }
 }
 
@@ -400,6 +408,7 @@ function inputToColumns(input: SavedFilterInput) {
     assets_total_min: input.assetsTotalMin,
     max_door_titles: input.maxDoorTitles,
     require_no_exceptions: input.requireNoExceptions,
+    mobile_home_csa_seal_year_min: input.mobileHomeCsaSealYearMin,
   }
 }
 

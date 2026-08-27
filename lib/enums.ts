@@ -234,6 +234,10 @@ const PROPERTY_FLAG_TABLE: [DealCol, Bi][] = [
   // behaviour only, not a DB constraint — see app/(broker)/create-deal/page.tsx.
   ["lender_to_pay_property_taxes", ["Lender to pay property taxes", "Prêteur responsable du paiement des taxes foncières"]],
   ["borrower_to_pay_property_taxes", ["Borrower to pay property taxes", "Emprunteur responsable du paiement des taxes foncières"]],
+  // Mobile Home / CSA Seal (approved 2026-08-27): shown on the lender card only when true, same as
+  // every other flag here — the underlying checkbox is dwelling_type = mobile_home specific, but the
+  // display convention doesn't change.
+  ["mobile_home_has_csa_seal", ["Has CSA Seal", "Possède un sceau CSA"]],
 ]
 
 // ── Builders ────────────────────────────────────────────────────────────────
