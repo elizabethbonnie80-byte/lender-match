@@ -1119,6 +1119,8 @@
     "lenderName": "Lender Name",
     "selectBrokerage": "Select your brokerage",
     "selectLender": "Select Lender",
+    "orgNotListedPre": "Not on the list? Email us at ",
+    "orgNotListedPost": " to get added.",
     "password": "Password",
     "confirmPassword": "Confirm Password",
     "agreePre": "I agree to the ",

@@ -12,6 +12,7 @@ import { PasswordInput } from "@/components/ui/password-input"
 import { Toaster, toast } from "sonner"
 import { Mail, Phone, ArrowRight, Clock, KeyRound } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { SUPPORT_EMAIL } from "@/lib/brand"
 import { AuthHeader } from "@/components/auth-header"
 import { useT } from "@/components/i18n-provider"
 import {
@@ -370,6 +371,13 @@ export default function SignUpPage() {
                       </SelectContent>
                     </Select>
                     {errors.organizationId && <p className="text-xs text-destructive">{errors.organizationId}</p>}
+                    <p className="text-xs text-muted-foreground">
+                      {t("orgNotListedPre")}
+                      <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">
+                        {SUPPORT_EMAIL}
+                      </a>
+                      {t("orgNotListedPost")}
+                    </p>
                   </div>
                 )}
 
