@@ -1119,6 +1119,8 @@
     "lenderName": "Nom du prêteur",
     "selectBrokerage": "Sélectionnez votre cabinet",
     "selectLender": "Sélectionnez votre prêteur",
+    "orgNotListedPre": "Pas sur la liste? Écrivez-nous à ",
+    "orgNotListedPost": " pour l'ajouter.",
     "password": "Mot de passe",
     "confirmPassword": "Confirmer le mot de passe",
     "agreePre": "J’accepte les ",
