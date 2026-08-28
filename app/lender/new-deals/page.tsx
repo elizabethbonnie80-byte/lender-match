@@ -1,6 +1,6 @@
 'use client'
 
-import type { KeyboardEvent } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import Link from 'next/link'
 import { LenderHeader } from '@/components/lender-header'
 import { listOpenDealsForLender, listOpenDealsFiltered, type LenderDealListItem } from '@/lib/queries/deals'
@@ -28,6 +28,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Search,
   SlidersHorizontal,
@@ -81,7 +89,7 @@ export default function NewDealsPage() {
     loading, loadError, visibleDeals, paginated: paginatedDeals,
     searchTerm, setSearchTerm, showFilters, setShowFilters,
     filters, activeFilterCount, applyFilters, clearFilters, handleSaveFilter,
-    dbFilters, activeFilterId, toggleSavedFilter,
+    dbFilters, activeFilterId, toggleSavedFilter, filtersLoaded,
     selectedIds, setSelectedIds, toggleSelect, toggleSelectAll,
     pendingDeals, allSelected, someSelected, bulkSelected, lenderStatus,
     collapsedIds, toggleCollapsed,
@@ -100,6 +108,18 @@ export default function NewDealsPage() {
   })
 
   const newThisWeekCount = visibleDeals.filter((d) => isNewDeal(d.submittedAt)).length
+
+  // Onboarding "set your lending criteria" popup — New Deals only (not Maturing Deals), per-visit
+  // (never persisted). Source of truth is `saved_filters` via the hook's `dbFilters`/`filtersLoaded`:
+  // `filtersLoaded` gates it so it can't flash before the initial fetch settles, and `dismissed` only
+  // suppresses it for this mounted page visit — a fresh login/navigation re-derives it from the DB,
+  // so a lender who still has zero saved filters sees it again every time.
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false)
+  const showOnboarding = filtersLoaded && dbFilters.length === 0 && !onboardingDismissed
+  const handleSetFiltersNow = () => {
+    setOnboardingDismissed(true)
+    setShowFilters(true)
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -500,6 +520,22 @@ export default function NewDealsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Onboarding "set your lending criteria" popup — shown only while filtersLoaded is true and
+          dbFilters is confirmed empty (see the derivation above). Dismissing it just closes this
+          dialog for the current page visit; it re-derives from the DB on every mount, so it comes
+          back on a future login/visit until the lender actually saves a filter. */}
+      <Dialog open={showOnboarding} onOpenChange={(open) => { if (!open) setOnboardingDismissed(true) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('onboardingFiltersTitle')}</DialogTitle>
+            <DialogDescription>{t('onboardingFiltersMessage')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={handleSetFiltersNow}>{t('setFiltersNow')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Make Offer dialog (shared component: form + anti-contact + make_offer) */}
       <MakeOfferDialog dealIds={offerTarget} prefillProduct={offerPrefillProduct} onClose={() => setOfferTarget(null)} onSuccess={onOfferSent} />
