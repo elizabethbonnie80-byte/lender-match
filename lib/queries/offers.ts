@@ -20,7 +20,14 @@ export type MakeOfferInput = {
   lenderFeePct?: number | null
 }
 
-/** Submit an offer (atomic RPC: insert + flip deal to offer_received + notify broker). */
+/**
+ * Submit an offer (atomic RPC: insert + flip deal to offer_received + notify broker).
+ *
+ * One offer ever per lender institution per deal (2026-08-28): make_offer raises the sentinel
+ * 'DUPLICATE_INSTITUTION_OFFER' when another user at the same institution already has (or had, even
+ * if withdrawn/declined) an offer here — rethrown as-is so the caller can show a translated message
+ * instead of the raw RPC text (same pattern as admin.ts's DUPLICATE_NAME).
+ */
 export async function makeOffer(supabase: DB, input: MakeOfferInput) {
   const { data, error } = await supabase.rpc("make_offer", {
     p_deal_id: input.dealId,
@@ -33,7 +40,7 @@ export async function makeOffer(supabase: DB, input: MakeOfferInput) {
     p_comments: input.comments ?? undefined,
     p_lender_fee_pct: input.lenderFeePct ?? undefined,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(error.message.includes("DUPLICATE_INSTITUTION_OFFER") ? "DUPLICATE_INSTITUTION_OFFER" : error.message)
   return data
 }
 
@@ -323,7 +330,7 @@ export type SubmittedOfferItem = {
   conditions: string[]
   offerDate: string
   expiryDate: string
-  status: "Pending" | "Accepted" | "Declined"
+  status: "Pending" | "Accepted" | "Declined" | "Withdrawn"
   // Raw offer fields, kept for the Round 3 "Edit Offer" prefill (pending offers only).
   mortgageProduct: Enums["mortgage_product"]
   rateLockDays: number
@@ -333,6 +340,17 @@ export type SubmittedOfferItem = {
   comments: string | null
   /** Round 3: sent by the lender's standing auto-offer at deal submit, not typed by hand (migration 47). */
   isAuto: boolean
+  /**
+   * One offer per lender institution per deal (2026-08-28): true only for the user who actually
+   * created this offer. Other users at the same institution can see the row (it's their
+   * institution's one offer on this deal) but cannot edit, withdraw, or message the broker about it
+   * — all three stay creator-only. Messaging is gated here deliberately: send_deal_message keys a
+   * lender's chat thread on `lender_id = auth.uid()`, not institution, so a non-creator would open a
+   * SEPARATE thread rather than reach the creator's conversation — confusing, and broader than the
+   * narrow read-only visibility this feature approved. Never exposes WHO the creator is, just
+   * whether the viewer is them.
+   */
+  canManage: boolean
 }
 
 // Round 3: the lender portal shows a switched-away offer as plain "Declined" (the broker's switch
@@ -342,6 +360,7 @@ const OFFER_STATUS_LABEL: Record<Enums["offer_status"], SubmittedOfferItem["stat
   accepted: "Accepted",
   declined: "Declined",
   switched: "Declined",
+  withdrawn: "Withdrawn",
 }
 
 function dwellingToPropertyType(d: Enums["dwelling_type"] | null): string {
@@ -368,9 +387,15 @@ function dwellingToPropertyType(d: Enums["dwelling_type"] | null): string {
 }
 
 /**
- * The current lender's own offers, each joined to its deal. RLS: offers_lender_own (own offers) +
- * deals_lender_offered (deal readable because they offered). The deals embed needs the FK hint
- * because deals↔offers has two relationships (offers.deal_id and deals.accepted_offer_id).
+ * Every offer belonging to the current lender's INSTITUTION, each joined to its deal — not just the
+ * signed-in user's own offers (2026-08-28: one offer per institution per deal, so a colleague's offer
+ * is "ours" too). RLS: offers_lender_own + offers_institution_read (own offers, or any offer from the
+ * same institution) and deals_lender_offered + deals_institution_offered (deal readable either because
+ * this user offered, or because their institution did). The deals embed needs the FK hint because
+ * deals↔offers has two relationships (offers.deal_id and deals.accepted_offer_id).
+ *
+ * Falls back to the old per-user filter if the signed-in profile somehow has no institution (should
+ * never happen for an approved lender) rather than returning nothing.
  */
 export async function listSubmittedOffers(supabase: DB): Promise<SubmittedOfferItem[]> {
   const {
@@ -379,13 +404,17 @@ export async function listSubmittedOffers(supabase: DB): Promise<SubmittedOfferI
   } = await supabase.auth.getUser()
   if (userErr || !user) throw new Error("You must be signed in.")
 
-  const { data, error } = await supabase
+  const { data: profile } = await supabase.from("profiles").select("lender_institution_id").eq("id", user.id).single()
+
+  let query = supabase
     .from("offers")
     .select(
-      "id, deal_id, status, rate, rate_lock_days, commission_bps, commitment_turn_time_days, doc_review_turn_time_days, lender_fee_pct, mortgage_product, comments, created_at, is_auto, deals!offers_deal_id_fkey(deal_number, province, city, dwelling_type, loan_amount, ltv, property_value, purpose, insured, closing_date, amortization_years)",
+      "id, deal_id, lender_id, status, rate, rate_lock_days, commission_bps, commitment_turn_time_days, doc_review_turn_time_days, lender_fee_pct, mortgage_product, comments, created_at, is_auto, deals!offers_deal_id_fkey(deal_number, province, city, dwelling_type, loan_amount, ltv, property_value, purpose, insured, closing_date, amortization_years)",
     )
-    .eq("lender_id", user.id)
-    .order("created_at", { ascending: false })
+  query = profile?.lender_institution_id
+    ? query.eq("lender_institution_id", profile.lender_institution_id)
+    : query.eq("lender_id", user.id)
+  const { data, error } = await query.order("created_at", { ascending: false })
   if (error) throw new Error(error.message)
 
   return (data ?? []).map((o) => {
@@ -422,13 +451,19 @@ export async function listSubmittedOffers(supabase: DB): Promise<SubmittedOfferI
       lenderFeePct: o.lender_fee_pct === null ? null : Number(o.lender_fee_pct),
       comments: o.comments,
       isAuto: o.is_auto ?? false,
+      canManage: o.lender_id === user.id,
     }
   })
 }
 
-/** Withdraw a pending offer (hard-deletes it — RLS offers_lender_withdraw allows delete when pending). */
+/**
+ * Withdraw a pending offer (2026-08-28: withdraw_offer RPC sets status = 'withdrawn' — no longer a
+ * hard delete). Retaining the row, rather than deleting it, is what lets the one-offer-per-institution
+ * rule stay permanent through a withdrawal: a deleted row would free the institution's slot back up.
+ * Creator-only and pending-only, same as the old offers_lender_withdraw policy this replaces.
+ */
 export async function withdrawOffer(supabase: DB, offerId: string) {
-  const { error } = await supabase.from("offers").delete().eq("id", offerId)
+  const { error } = await supabase.rpc("withdraw_offer", { p_offer_id: offerId })
   if (error) throw new Error(error.message)
 }
 

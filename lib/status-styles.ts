@@ -37,6 +37,7 @@ export function offerStatusStyle(status: OfferStatus): string {
     case 'declined':
       return 'bg-gray-100 text-gray-800'
     case 'switched':
+    case 'withdrawn':
       return 'bg-slate-100 text-slate-600'
     default: // pending
       return 'bg-yellow-100 text-yellow-800'

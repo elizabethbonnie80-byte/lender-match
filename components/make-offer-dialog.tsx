@@ -200,7 +200,8 @@ export function MakeOfferDialog({
       setAttempted(false)
       onSuccess(ids, msg)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errorGeneric"))
+      const message = err instanceof Error ? err.message : t("errorGeneric")
+      setError(message === "DUPLICATE_INSTITUTION_OFFER" ? t("errDuplicateInstitutionOffer") : message)
     } finally {
       setSubmitting(false)
     }

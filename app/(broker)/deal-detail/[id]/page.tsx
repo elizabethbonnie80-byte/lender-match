@@ -37,6 +37,7 @@ const OFFER_STATUS_KEY: Record<DealOffer['status'], string> = {
   accepted: 'Accepted',
   declined: 'Declined',
   switched: 'Switched',
+  withdrawn: 'Withdrawn',
 }
 
 function fmtDate(dateString: string | null, locale: string) {
@@ -358,7 +359,7 @@ export default function DealDetailPage() {
                           <div
                             key={offer.id}
                             className={`bg-card border rounded-lg p-6 transition-all ${
-                              offer.status === 'declined'
+                              offer.status === 'declined' || offer.status === 'withdrawn'
                                 ? 'opacity-60 border-red-200'
                                 : 'border-border hover:border-primary/50'
                             }`}
@@ -428,6 +429,11 @@ export default function DealDetailPage() {
                               <div className="flex items-center gap-2 text-red-600 text-sm">
                                 <X className="h-4 w-4" />
                                 {t('offerDeclined')}
+                              </div>
+                            ) : offer.status === 'withdrawn' ? (
+                              <div className="flex items-center gap-2 text-red-600 text-sm">
+                                <X className="h-4 w-4" />
+                                {t('offerWithdrawn')}
                               </div>
                             ) : deal.prequal ? (
                               // accept_offer refuses an unconverted prequal (the invoice needs a closing

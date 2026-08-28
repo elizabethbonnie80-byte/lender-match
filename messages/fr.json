@@ -110,7 +110,8 @@
     "Pending": "En attente",
     "Accepted": "Acceptée",
     "Declined": "Refusée",
-    "Switched": "Remplacée"
+    "Switched": "Remplacée",
+    "Withdrawn": "Retirée"
   },
   "newDeals": {
     "title": "Nouveaux dossiers",
@@ -459,7 +460,7 @@
     "messageBrokerBtn": "Message au courtier",
     "close": "Fermer",
     "withdrawTitle": "Retirer cette offre?",
-    "withdrawDesc": "L'offre sera marquée comme retirée. Le courtier ne pourra plus l'accepter. Cette action est irréversible — vous devrez soumettre une nouvelle offre si vous changez d'avis.",
+    "withdrawDesc": "L'offre sera retirée de façon permanente. Le courtier ne pourra plus l'accepter, et votre institution ne pourra plus soumettre une nouvelle offre sur ce dossier. Cette action est irréversible.",
     "cancel": "Annuler",
     "confirmWithdraw": "Oui, retirer l'offre",
     "messageTitle": "Message au courtier — {deal}",
@@ -518,6 +519,7 @@
     "noOffersBody": "Les prêteurs n'ont pas encore soumis d'offre sur ce dossier.",
     "submitted": "Soumise le {date}",
     "offerDeclined": "Cette offre a été refusée",
+    "offerWithdrawn": "Cette offre a été retirée",
     "acceptOffer": "Accepter l'offre",
     "acceptTitle": "Confirmer la sélection de l'offre",
     "acceptBody": "Vous êtes sur le point d’accepter cette offre. Les autres offres en attente seront refusées et l’identité du prêteur sera révélée. Vous pouvez encore changer de prêteur jusqu’à 2 fois par mois civil.",
@@ -992,6 +994,7 @@
     "sentOne": "Offre envoyée pour 1 dossier.",
     "sentMany": "Offre envoyée pour {count} dossiers.",
     "errorGeneric": "Impossible d’envoyer l’offre.",
+    "errDuplicateInstitutionOffer": "Votre institution prêteuse a déjà soumis une offre sur ce dossier.",
     "fillRequired": "Veuillez remplir les champs obligatoires (*) avant de continuer.",
     "fieldRequired": "Ce champ est obligatoire",
     "lenderFeePct": "% de frais du prêteur, le cas échéant",

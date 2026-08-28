@@ -4,7 +4,7 @@ import { dealStatusStyle, offerStatusStyle } from '@/lib/status-styles'
 // The enum values as stored in the DB (Database['public']['Enums']). Kept literal here so a schema
 // change that drops/renames a status surfaces as a failing test rather than a silent gray fallback.
 const DEAL_STATUSES = ['draft', 'submitted', 'offer_received', 'accepted', 'confirmed', 'funded', 'expired', 'cancelled'] as const
-const OFFER_STATUSES = ['pending', 'accepted', 'declined', 'switched'] as const
+const OFFER_STATUSES = ['pending', 'accepted', 'declined', 'switched', 'withdrawn'] as const
 
 describe('dealStatusStyle', () => {
   it('returns bg + text classes for every deal status', () => {
