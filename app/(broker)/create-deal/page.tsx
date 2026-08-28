@@ -410,7 +410,9 @@ export default function CreateDealPage() {
       doorCount: ownsOtherProperties ? num(doorCount) : null,
       doorTitlesCount: ownsOtherProperties ? num(doorTitlesCount) : null,
       residencyStatuses,
-      downPaymentSources,
+      // Round 4: Source of Down Payment / Down Payment Notes only apply to a Purchase — hidden values
+      // are never persisted, even though UI state keeps them if Purpose is switched back.
+      downPaymentSources: transactionPurpose === "purchase" ? downPaymentSources : [],
       // Saved whether or not Networth is checked — the fields are always available (2026-07-20 #4).
       assetsLiquidValue: num(assetsLiquidValue),
       assetsTotalValue: num(assetsTotalValue),
@@ -419,7 +421,7 @@ export default function CreateDealPage() {
       foreignIncomeCountry,
       creditNotes,
       incomeNotes: qualifyingNotes,
-      downPaymentNotes,
+      downPaymentNotes: transactionPurpose === "purchase" ? downPaymentNotes : "",
       propertyAddress,
       city,
       province: province || null,
@@ -449,6 +451,11 @@ export default function CreateDealPage() {
   // ── Required-field gating (mirrors Bubble's red-asterisk fields) ──────────────
   const SECTION_ORDER: Section[] = ["client", "deal", "qualifying", "property"]
 
+  // Round 4: Source of Down Payment only applies to a Purchase, so a stale "foreign_funds" selection
+  // left over from an earlier Purchase edit must not make Foreign Income required once Purpose has
+  // switched to Refinance/Renewal — even though downPaymentSources itself is preserved in UI state.
+  const needsForeignCountry = (transactionPurpose === "purchase" && downPaymentSources.includes("foreign_funds")) || incomeTypes.includes("foreign_income")
+
   /** Whether a step's REQUIRED fields are all filled. Drafts ignore this; advancing/submitting doesn't. */
   function sectionComplete(section: Section): boolean {
     switch (section) {
@@ -461,13 +468,11 @@ export default function CreateDealPage() {
         // Round 3 Phase 3: a prequal has no closing date yet — it gets one at "Move to Live Deal".
         return (!!closingDate || preQualification) && !!mortgageProduct && !!mortgagePosition && !!loanAmount.trim() && !!ltv.trim()
           && !!amortization.trim() && (!previouslyDeclined || !!previouslyDeclinedReason.trim())
-      case "qualifying": {
-        const needsForeignCountry = downPaymentSources.includes("foreign_funds") || incomeTypes.includes("foreign_income")
+      case "qualifying":
         return !!creditScore.trim() && !!gds.trim() && !!tds.trim() && residencyStatuses.length > 0
           && (!(marriedOrCommonLaw && spouseNotOnApplication) || !!creditNotes.trim())
           && (!networthProgram || (!!assetsLiquidValue.trim() && !!assetsTotalValue.trim()))
           && (!needsForeignCountry || !!foreignIncomeCountry.trim())
-      }
       case "property":
         // Round 3 Phase 3 (OQ#41 / client feedback #7): no property address ⇒ the deal must be a
         // prequal. submit_deal enforces the same rule at the data layer.
@@ -546,7 +551,10 @@ export default function CreateDealPage() {
     const checks: [string | null | undefined, Database["public"]["Enums"]["alert_source"], string][] = [
       [creditNotes, "deal_credit_notes", "labelCreditNotes"],
       [qualifyingNotes, "deal_income_notes", "labelIncomeNotes"],
-      [downPaymentNotes, "deal_down_payment_notes", "labelDownPaymentNotes"],
+      // Round 4: scan what will actually be submitted, not stale hidden state — a Refinance/Renewal
+      // deal never saves Down Payment Notes, so leftover Purchase-mode text must not be able to
+      // block submission here.
+      [transactionPurpose === "purchase" ? downPaymentNotes : "", "deal_down_payment_notes", "labelDownPaymentNotes"],
       [propertyNotes, "deal_general_notes", "labelGeneralNotes"],
     ]
     for (const [text, source, labelKey] of checks) {
@@ -1296,38 +1304,43 @@ export default function CreateDealPage() {
                   )}
                 </div>
 
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">{t("downPaymentSourceMulti")}</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {DOWN_PAYMENT_SOURCE_OPTIONS.map((o) => (
-                      <div key={o.value} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`down-payment-source-${o.value}`}
-                          checked={downPaymentSources.includes(o.value)}
-                          onCheckedChange={() => setDownPaymentSources((prev) => toggleIn(prev, o.value))}
-                        />
-                        <Label htmlFor={`down-payment-source-${o.value}`} className="text-sm font-normal cursor-pointer leading-tight">
-                          {o.label}
-                        </Label>
-                      </div>
-                    ))}
+                {/* Round 4: Source of Down Payment only applies to a Purchase — a Refinance/Renewal
+                    doesn't have a new down payment. UI state is preserved so switching Purpose back
+                    to Purchase restores whatever was checked; the payload clears it below instead. */}
+                {transactionPurpose === "purchase" && (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">{t("downPaymentSourceMulti")}</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {DOWN_PAYMENT_SOURCE_OPTIONS.map((o) => (
+                        <div key={o.value} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`down-payment-source-${o.value}`}
+                            checked={downPaymentSources.includes(o.value)}
+                            onCheckedChange={() => setDownPaymentSources((prev) => toggleIn(prev, o.value))}
+                          />
+                          <Label htmlFor={`down-payment-source-${o.value}`} className="text-sm font-normal cursor-pointer leading-tight">
+                            {o.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="foreignIncomeCountry">
-                      {t("foreignIncomeCountry")}
-                      {(downPaymentSources.includes("foreign_funds") || incomeTypes.includes("foreign_income")) && <Req />}
+                      {transactionPurpose === "purchase" ? t("foreignIncomeCountry") : t("foreignIncomeOnly")}
+                      {(needsForeignCountry) && <Req />}
                     </Label>
                     <Input
                       id="foreignIncomeCountry"
                       placeholder={t("foreignIncomeCountryPlaceholder")}
                       value={foreignIncomeCountry}
                       onChange={(e) => setForeignIncomeCountry(e.target.value)}
-                      className={`bg-muted/50 ${errCls(invalid("qualifying", !(downPaymentSources.includes("foreign_funds") || incomeTypes.includes("foreign_income")) || foreignIncomeCountry))}`}
+                      className={`bg-muted/50 ${errCls(invalid("qualifying", !needsForeignCountry || foreignIncomeCountry))}`}
                     />
-                    <FieldError show={invalid("qualifying", !(downPaymentSources.includes("foreign_funds") || incomeTypes.includes("foreign_income")) || foreignIncomeCountry)} />
+                    <FieldError show={invalid("qualifying", !needsForeignCountry || foreignIncomeCountry)} />
                   </div>
                 </div>
 
@@ -1447,19 +1460,23 @@ export default function CreateDealPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="downPaymentNotes">
-                    {t("downPaymentNotes")}
-                    <InfoHint title={t("infoDownPaymentNotesTitle")} text={t("infoDownPaymentNotes")} ariaLabel={t("infoButtonLabel")} />
-                  </Label>
-                  <Textarea
-                    id="downPaymentNotes"
-                    placeholder={t("downPaymentNotesPlaceholder")}
-                    value={downPaymentNotes}
-                    onChange={(e) => onNoteChange(setDownPaymentNotes, e.target.value, [creditNotes, qualifyingNotes, propertyNotes])}
-                    className="bg-muted/50 min-h-20"
-                  />
-                </div>
+                {/* Round 4: Down Payment Notes only applies to a Purchase, same as Source of Down
+                    Payment above — UI state preserved, payload/anti-contact-scan cleared below. */}
+                {transactionPurpose === "purchase" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="downPaymentNotes">
+                      {t("downPaymentNotes")}
+                      <InfoHint title={t("infoDownPaymentNotesTitle")} text={t("infoDownPaymentNotes")} ariaLabel={t("infoButtonLabel")} />
+                    </Label>
+                    <Textarea
+                      id="downPaymentNotes"
+                      placeholder={t("downPaymentNotesPlaceholder")}
+                      value={downPaymentNotes}
+                      onChange={(e) => onNoteChange(setDownPaymentNotes, e.target.value, [creditNotes, qualifyingNotes, propertyNotes])}
+                      className="bg-muted/50 min-h-20"
+                    />
+                  </div>
+                )}
 
                 <div className="flex justify-between pt-4 border-t border-border">
                   <Button type="button" variant="outline" onClick={() => setActiveSection("deal")}>

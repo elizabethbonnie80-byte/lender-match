@@ -108,9 +108,16 @@ export function LenderDealDetailSections({ deal }: { deal: LenderDealListItem })
         <DealField label={t('cardGds')} value={deal.gds === null ? dash : t('pctValue', { n: deal.gds })} />
         <DealField label={t('cardTds')} value={deal.tds === null ? dash : t('pctValue', { n: deal.tds })} />
         <DealField label={t('cardTdsIncludesChildSupportAlimony')} value={boolLabel(deal.tdsIncludesChildSupportAlimony)} />
-        <DealField label={t('cardForeignIncomeCountry')} value={textOr(deal.foreignIncomeCountry)} />
+        {/* Round 4: Down Payment Source/Notes only apply to a Purchase; Refinance/Renewal has no new
+            down payment, so "Foreign Income Country" also drops the down-payment framing there. */}
+        <DealField
+          label={deal.purpose === 'purchase' ? t('cardForeignIncomeCountry') : t('cardForeignIncomeOnly')}
+          value={textOr(deal.foreignIncomeCountry)}
+        />
         <DealField label={t('cardResidencyStatus')} value={listLabel(LABELS.residency_status, deal.residencyStatuses)} />
-        <DealField label={t('cardDownPaymentSource')} value={listLabel(LABELS.down_payment_source, deal.downPaymentSources)} />
+        {deal.purpose === 'purchase' && (
+          <DealField label={t('cardDownPaymentSource')} value={listLabel(LABELS.down_payment_source, deal.downPaymentSources)} />
+        )}
         <DealField label={t('cardOwnsOtherProperties')} value={boolLabel(deal.ownsOtherProperties)} />
         <DealField label={t('cardHowManyDoors')} value={numOr(deal.doorCount)} />
         <DealField label={t('cardDoorTitles')} value={numOr(deal.doorTitlesCount)} />
@@ -119,7 +126,9 @@ export function LenderDealDetailSections({ deal }: { deal: LenderDealListItem })
         <DealField label={t('cardNoLenderExceptions')} value={boolLabel(deal.noLenderExceptionsRequired)} />
         <DealField label={t('cardCreditNotes')} value={textOr(deal.creditNotes)} />
         <DealField label={t('cardIncomeNotes')} value={textOr(deal.incomeNotes)} />
-        <DealField label={t('cardDownPaymentNotes')} value={textOr(deal.downPaymentNotes)} />
+        {deal.purpose === 'purchase' && (
+          <DealField label={t('cardDownPaymentNotes')} value={textOr(deal.downPaymentNotes)} />
+        )}
       </DealSection>
     </>
   )
