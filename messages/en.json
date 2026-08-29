@@ -110,7 +110,8 @@
     "Pending": "Pending",
     "Accepted": "Accepted",
     "Declined": "Declined",
-    "Switched": "Switched"
+    "Switched": "Switched",
+    "Withdrawn": "Withdrawn"
   },
   "newDeals": {
     "title": "New Deals",
@@ -459,7 +460,7 @@
     "messageBrokerBtn": "Message Broker",
     "close": "Close",
     "withdrawTitle": "Withdraw this offer?",
-    "withdrawDesc": "The offer will be marked as withdrawn. The broker will no longer be able to accept it. This action cannot be undone — you would need to submit a new offer if you change your mind.",
+    "withdrawDesc": "The offer will be permanently withdrawn. The broker will no longer be able to accept it, and your institution will not be able to submit another offer on this deal. This action cannot be undone.",
     "cancel": "Cancel",
     "confirmWithdraw": "Yes, withdraw offer",
     "messageTitle": "Message broker — {deal}",
@@ -518,6 +519,7 @@
     "noOffersBody": "Lenders haven't submitted offers on this deal.",
     "submitted": "Submitted {date}",
     "offerDeclined": "This offer has been declined",
+    "offerWithdrawn": "This offer has been withdrawn",
     "acceptOffer": "Accept Offer",
     "acceptTitle": "Confirm Offer Selection",
     "acceptBody": "You're about to accept this offer. Other pending offers will be declined, the lender's identity will be revealed. You can still switch lenders up to 2 times per calendar month.",
@@ -992,6 +994,7 @@
     "sentOne": "Offer sent for 1 deal.",
     "sentMany": "Offer sent for {count} deals.",
     "errorGeneric": "Could not send the offer.",
+    "errDuplicateInstitutionOffer": "Your lending institution has already submitted an offer on this deal.",
     "fillRequired": "Please fill in the required fields (*) before continuing.",
     "fieldRequired": "This field is required",
     "lenderFeePct": "Lender Fee % if applicable",

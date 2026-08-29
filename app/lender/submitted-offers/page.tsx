@@ -85,6 +85,7 @@ function statusCfg(status: OfferStatus) {
     case 'Pending':   return { cls: offerStatusStyle('pending'),  icon: <Clock className="h-3 w-3" /> }
     case 'Accepted':  return { cls: offerStatusStyle('accepted'), icon: <CheckCircle className="h-3 w-3" /> }
     case 'Declined':  return { cls: offerStatusStyle('declined'), icon: <XCircle className="h-3 w-3" /> }
+    case 'Withdrawn': return { cls: offerStatusStyle('withdrawn'), icon: <Trash2 className="h-3 w-3" /> }
   }
 }
 
@@ -254,7 +255,7 @@ function OfferDetailDialog({
           {/* Dialog actions */}
           <div className="flex items-center justify-between pt-2 border-t border-border">
             <div className="flex gap-2">
-              {isActive(offer.status) && (
+              {isActive(offer.status) && offer.canManage && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -264,14 +265,16 @@ function OfferDetailDialog({
                   <Trash2 className="h-3.5 w-3.5" /> {t('withdrawBtn')}
                 </Button>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => { onClose(); onMessage(offer.id) }}
-              >
-                <MessageSquare className="h-3.5 w-3.5" /> {t('messageBrokerBtn')}
-              </Button>
+              {offer.canManage && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => { onClose(); onMessage(offer.id) }}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" /> {t('messageBrokerBtn')}
+                </Button>
+              )}
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>{t('close')}</Button>
           </div>
@@ -487,6 +490,7 @@ export default function SubmittedOffersPage() {
                 <SelectItem value="Pending">{tf('Pending')}</SelectItem>
                 <SelectItem value="Accepted">{tf('Accepted')}</SelectItem>
                 <SelectItem value="Declined">{tf('Declined')}</SelectItem>
+                <SelectItem value="Withdrawn">{tf('Withdrawn')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -639,9 +643,9 @@ export default function SubmittedOffersPage() {
                                 label={t('colActions')}
                                 actions={[
                                   { label: t('viewDetails'), icon: <Eye className="h-4 w-4" />, onSelect: () => setDetailOffer(offer) },
-                                  active && { label: t('editOffer'), icon: <Pencil className="h-4 w-4" />, onSelect: () => openEdit(offer) },
-                                  { label: t('messageBroker'), icon: <MessageSquare className="h-4 w-4" />, onSelect: () => { setMessageTarget(offer.id); setMessageText('') } },
-                                  active && { label: t('withdrawBtn'), icon: <Trash2 className="h-4 w-4" />, destructive: true, onSelect: () => setWithdrawTarget(offer.id) },
+                                  active && offer.canManage && { label: t('editOffer'), icon: <Pencil className="h-4 w-4" />, onSelect: () => openEdit(offer) },
+                                  offer.canManage && { label: t('messageBroker'), icon: <MessageSquare className="h-4 w-4" />, onSelect: () => { setMessageTarget(offer.id); setMessageText('') } },
+                                  active && offer.canManage && { label: t('withdrawBtn'), icon: <Trash2 className="h-4 w-4" />, destructive: true, onSelect: () => setWithdrawTarget(offer.id) },
                                 ]}
                               />
                             </div>

@@ -1274,6 +1274,7 @@ export type Database = {
           is_auto: boolean
           lender_fee_pct: number | null
           lender_id: string
+          lender_institution_id: string | null
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
           offer_number: number
           rate: number
@@ -1296,6 +1297,7 @@ export type Database = {
           is_auto?: boolean
           lender_fee_pct?: number | null
           lender_id: string
+          lender_institution_id?: string | null
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
           offer_number: number
           rate: number
@@ -1318,6 +1320,7 @@ export type Database = {
           is_auto?: boolean
           lender_fee_pct?: number | null
           lender_id?: string
+          lender_institution_id?: string | null
           mortgage_product?: Database["public"]["Enums"]["mortgage_product"]
           offer_number?: number
           rate?: number
@@ -1345,6 +1348,13 @@ export type Database = {
             columns: ["lender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_lender_institution_id_fkey"
+            columns: ["lender_institution_id"]
+            isOneToOne: false
+            referencedRelation: "lender_institutions"
             referencedColumns: ["id"]
           },
         ]
@@ -2460,6 +2470,7 @@ export type Database = {
         }[]
       }
       my_institution: { Args: never; Returns: string }
+      my_institution_offered_on: { Args: { p_deal_id: string }; Returns: boolean }
       my_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -2901,6 +2912,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      withdraw_offer: { Args: { p_offer_id: string }; Returns: undefined }
     }
     Enums: {
       alert_detection: "regex" | "ai"
@@ -3024,7 +3036,7 @@ export type Database = {
         | "rental_2_4_units"
         | "second_home"
       offer_decline_reason: "broker_rejected" | "auto_on_accept"
-      offer_status: "pending" | "accepted" | "declined" | "switched"
+      offer_status: "pending" | "accepted" | "declined" | "switched" | "withdrawn"
       province:
         | "alberta"
         | "british_columbia"
@@ -3308,7 +3320,7 @@ export const Constants = {
         "second_home",
       ],
       offer_decline_reason: ["broker_rejected", "auto_on_accept"],
-      offer_status: ["pending", "accepted", "declined", "switched"],
+      offer_status: ["pending", "accepted", "declined", "switched", "withdrawn"],
       province: [
         "alberta",
         "british_columbia",
