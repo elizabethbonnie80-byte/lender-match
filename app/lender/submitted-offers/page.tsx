@@ -432,6 +432,7 @@ export default function SubmittedOffersPage() {
     setEditTarget({
       offerId: offer.id,
       dealId: offer.dealId,
+      overrideBps: offer.overrideBps,
       values: {
         mortgageProduct: offer.mortgageProduct,
         rate: String(offer.offeredRate),

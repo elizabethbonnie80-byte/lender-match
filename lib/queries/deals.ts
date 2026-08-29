@@ -614,6 +614,20 @@ export function platformBpsFor(product: Enums["mortgage_product"]): number {
 }
 
 /**
+ * The actual bps the platform will charge — mirrors the SQL `effective_platform_bps()` for a
+ * client-side preview: a brokerage's admin-set override (2026-08-29), when present, replaces the
+ * term-based calculation entirely; otherwise falls back to platformBpsFor(product) exactly as before.
+ * ⚠️ Keep this in step with the SQL — every "what will I be charged" preview (Make Offer dialog,
+ * broker net-commission display) must agree with what accept_offer actually invoices.
+ */
+export function effectivePlatformBpsFor(
+  overrideBps: number | null | undefined,
+  product: Enums["mortgage_product"],
+): number {
+  return overrideBps ?? platformBpsFor(product)
+}
+
+/**
  * Full-detail card shape the lender New Deals page renders — every non-identity deals field
  * (property/deal/qualifying information), matching the client's reference layout. Enum fields keep
  * the raw DB value (labels are resolved client-side via useEnums().LABELS, so they stay bilingual).
@@ -706,6 +720,15 @@ export type LenderDealListItem = {
   marriedOrCommonLaw: boolean
   spouseNotOnApplication: boolean
   noLenderExceptionsRequired: boolean
+  /**
+   * Brokerage invoice fee override (2026-08-29), null when this brokerage uses standard term-based
+   * pricing. Never the brokerage's identity/id — just the bps value, so a lender can price an offer
+   * accurately without learning which brokerage the deal is from (anonymity — migration 53's note on
+   * why brokerage_id itself is never returned to a lender). Optional: only populated by the feed RPCs
+   * (open/maturing deals); getDealFull doesn't need it, since neither the New Deals/Maturing preview
+   * nor the "Full Deal Record" section it backs computes a commission preview.
+   */
+  overrideBps?: number | null
 }
 
 /**
@@ -798,6 +821,7 @@ function mapOpenDealRow(d: OpenDealRow): LenderDealListItem {
     marriedOrCommonLaw: d.married_or_common_law ?? false,
     spouseNotOnApplication: d.spouse_not_on_application ?? false,
     noLenderExceptionsRequired: d.no_lender_exceptions_required ?? false,
+    overrideBps: d.override_bps,
   }
 }
 

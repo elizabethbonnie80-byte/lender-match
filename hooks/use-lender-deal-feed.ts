@@ -39,6 +39,8 @@ export type FeedDeal = {
   mortgageProduct: Enums['mortgage_product'] | null
   // Round 3 Phase 3: no address/closing date yet — the card carries a PREQUAL badge.
   prequal?: boolean
+  // Brokerage invoice fee override (2026-08-29) — read here for the bulk-selection consistency check.
+  overrideBps?: number | null
 }
 
 type Translate = (key: string, vars?: Record<string, string | number>) => string
@@ -340,6 +342,16 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
       ? deals.find((d) => d.id === offerTarget[0])?.mortgageProduct ?? null
       : null
 
+  // Brokerage invoice fee override (2026-08-29): a bulk selection (New Deals) can span brokerages
+  // with different — or no — overrides. The preview is only accurate for ALL targeted deals when
+  // they agree on the SAME override value (including "none" for every one of them, the common case).
+  // offerBpsConsistent tells the dialog whether it's safe to show one specific number at all;
+  // offerOverrideBps is that shared value when it is (arbitrary/unused otherwise).
+  const targetedOverrides = (offerTarget ?? [])
+    .map((id) => deals.find((d) => d.id === id)?.overrideBps ?? null)
+  const offerBpsConsistent = new Set(targetedOverrides).size <= 1
+  const offerOverrideBps = offerBpsConsistent ? (targetedOverrides[0] ?? null) : null
+
   return {
     // data
     deals, loading, loadError, visibleDeals, paginated,
@@ -354,7 +366,7 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
     // pagination
     currentPage, setCurrentPage, totalPages, startIndex,
     // dialogs + actions
-    offerTarget, setOfferTarget, handleMakeOffer, onOfferSent, offerPrefillProduct,
+    offerTarget, setOfferTarget, handleMakeOffer, onOfferSent, offerPrefillProduct, offerOverrideBps, offerBpsConsistent,
     declineTarget, setDeclineTarget, confirmDecline,
     messageTarget, setMessageTarget, messageText, setMessageText,
     messageSending, messageShowError, setMessageShowError, sendMessage,

@@ -104,6 +104,9 @@ export type BrokerDealDetail = {
   /** Non-null once "Move to Live Deal" ran. Either flag means the offers on this deal were placed on
    *  a pre-qualification, which is what the broker-facing prequal disclaimer is keyed off. */
   prequalConvertedAt: string | null
+  /** Brokerage invoice fee override (2026-08-29), null = standard term-based pricing. Feeds the
+   *  broker's net-commission display so it always agrees with what accept_offer will invoice. */
+  overrideBps: number | null
 }
 
 /** The broker's own deal with the borrower identity (RLS lets the owner read deal_identities). */
@@ -111,7 +114,7 @@ export async function getBrokerDealDetail(supabase: DB, dealId: string): Promise
   const { data, error } = await supabase
     .from("deals")
     .select(
-      "id, deal_number, status, city, province, loan_amount, ltv, mortgage_product, amortization_years, closing_date, accepted_offer_id, lender_confirmed, prequal, prequal_converted_at, deal_identities(borrower_first_name, borrower_last_name, property_address)",
+      "id, deal_number, status, city, province, loan_amount, ltv, mortgage_product, amortization_years, closing_date, accepted_offer_id, lender_confirmed, prequal, prequal_converted_at, deal_identities(borrower_first_name, borrower_last_name, property_address), brokerages!deals_brokerage_id_fkey(invoice_bps)",
     )
     .eq("id", dealId)
     .maybeSingle()
@@ -119,6 +122,7 @@ export async function getBrokerDealDetail(supabase: DB, dealId: string): Promise
   if (!data) return null
 
   const ident = Array.isArray(data.deal_identities) ? data.deal_identities[0] : data.deal_identities
+  const brokerage = Array.isArray(data.brokerages) ? data.brokerages[0] : data.brokerages
   const name = [ident?.borrower_first_name, ident?.borrower_last_name].filter(Boolean).join(" ")
   return {
     id: data.id,
@@ -137,6 +141,7 @@ export async function getBrokerDealDetail(supabase: DB, dealId: string): Promise
     lenderConfirmed: data.lender_confirmed,
     prequal: data.prequal ?? false,
     prequalConvertedAt: data.prequal_converted_at,
+    overrideBps: brokerage?.invoice_bps ?? null,
   }
 }
 
@@ -351,6 +356,13 @@ export type SubmittedOfferItem = {
    * whether the viewer is them.
    */
   canManage: boolean
+  /**
+   * Brokerage invoice fee override (2026-08-29), null when this deal's brokerage uses standard
+   * term-based pricing. Feeds the Edit Offer dialog's "Final Commission Amount" preview so it always
+   * agrees with what accept_offer will actually invoice. Never the brokerage's identity/id, just the
+   * bps value — deals!offers_deal_id_fkey's own select never includes brokerage_id (anonymity).
+   */
+  overrideBps: number | null
 }
 
 // Round 3: the lender portal shows a switched-away offer as plain "Declined" (the broker's switch
@@ -409,7 +421,7 @@ export async function listSubmittedOffers(supabase: DB): Promise<SubmittedOfferI
   let query = supabase
     .from("offers")
     .select(
-      "id, deal_id, lender_id, status, rate, rate_lock_days, commission_bps, commitment_turn_time_days, doc_review_turn_time_days, lender_fee_pct, mortgage_product, comments, created_at, is_auto, deals!offers_deal_id_fkey(deal_number, province, city, dwelling_type, loan_amount, ltv, property_value, purpose, insured, closing_date, amortization_years)",
+      "id, deal_id, lender_id, status, rate, rate_lock_days, commission_bps, commitment_turn_time_days, doc_review_turn_time_days, lender_fee_pct, mortgage_product, comments, created_at, is_auto, deals!offers_deal_id_fkey(deal_number, province, city, dwelling_type, loan_amount, ltv, property_value, purpose, insured, closing_date, amortization_years, brokerages!deals_brokerage_id_fkey(invoice_bps))",
     )
   query = profile?.lender_institution_id
     ? query.eq("lender_institution_id", profile.lender_institution_id)
@@ -419,6 +431,7 @@ export async function listSubmittedOffers(supabase: DB): Promise<SubmittedOfferI
 
   return (data ?? []).map((o) => {
     const d = Array.isArray(o.deals) ? o.deals[0] : o.deals
+    const brokerage = Array.isArray(d?.brokerages) ? d.brokerages[0] : d?.brokerages
     const created = new Date(o.created_at)
     const expiry = new Date(created)
     expiry.setDate(expiry.getDate() + o.rate_lock_days)
@@ -452,6 +465,7 @@ export async function listSubmittedOffers(supabase: DB): Promise<SubmittedOfferI
       comments: o.comments,
       isAuto: o.is_auto ?? false,
       canManage: o.lender_id === user.id,
+      overrideBps: brokerage?.invoice_bps ?? null,
     }
   })
 }
