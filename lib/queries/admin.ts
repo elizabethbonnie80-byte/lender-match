@@ -197,15 +197,35 @@ export type AdminOrg = {
   name: string
   isActive: boolean
   createdAt: string
+  /**
+   * Brokerages only (2026-08-29). null = standard term-based invoice pricing (platform_bps_for);
+   * 3/4/5 = an admin-set override, used for every NEW invoice on a deal from this brokerage. Always
+   * undefined for lender_institutions, which has no such column.
+   */
+  invoiceBps?: number | null
 }
 
 /**
  * Every organization of one kind, INCLUDING inactive ones (the signup dropdowns use the active-only
  * readers in lib/queries/lookups.ts). Writes below are plain inserts/updates — the `lookup_write` /
  * `inst_write` RLS policies are already `for all … using (is_admin())`, so no RPC is needed.
+ *
+ * The two tables' column sets diverged once brokerages gained `invoice_bps` — branch by table so each
+ * query keeps its own precise generated type instead of forcing one shape onto both.
  */
 export async function listOrganizations(supabase: DB, table: OrgTable): Promise<AdminOrg[]> {
-  const { data, error } = await supabase.from(table).select("id, name, is_active, created_at").order("name")
+  if (table === "brokerages") {
+    const { data, error } = await supabase.from("brokerages").select("id, name, is_active, created_at, invoice_bps").order("name")
+    if (error) throw new Error(error.message)
+    return (data ?? []).map((o) => ({
+      id: o.id,
+      name: o.name,
+      isActive: o.is_active,
+      createdAt: o.created_at,
+      invoiceBps: o.invoice_bps,
+    }))
+  }
+  const { data, error } = await supabase.from("lender_institutions").select("id, name, is_active, created_at").order("name")
   if (error) throw new Error(error.message)
   return (data ?? []).map((o) => ({
     id: o.id,
@@ -213,6 +233,16 @@ export async function listOrganizations(supabase: DB, table: OrgTable): Promise<
     isActive: o.is_active,
     createdAt: o.created_at,
   }))
+}
+
+/**
+ * Set (or clear, with `null`) a brokerage's invoice fee override. Brokerages only — the column
+ * doesn't exist on lender_institutions. Never touches any existing invoice: accept_offer reads this
+ * value only at the moment a NEW invoice is created (see migration 76).
+ */
+export async function setBrokerageInvoiceBps(supabase: DB, brokerageId: string, bps: 3 | 4 | 5 | null) {
+  const { error } = await supabase.from("brokerages").update({ invoice_bps: bps }).eq("id", brokerageId)
+  if (error) throw new Error(error.message)
 }
 
 /** `name` is UNIQUE on both tables — surface the duplicate as a friendly error, not a raw PG one. */

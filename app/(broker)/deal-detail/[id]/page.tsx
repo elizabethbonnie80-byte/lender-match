@@ -21,7 +21,7 @@ import {
   type DealOffer,
   type AcceptedLender,
 } from '@/lib/queries/offers'
-import { platformBpsFor, type LenderDealListItem } from '@/lib/queries/deals'
+import { effectivePlatformBpsFor, type LenderDealListItem } from '@/lib/queries/deals'
 import { offerStatusStyle } from '@/lib/status-styles'
 import { getPendingSurveyForDeal, type PendingSurvey } from '@/lib/queries/surveys'
 import { SurveyDialog } from '@/components/survey-dialog'
@@ -61,12 +61,14 @@ export default function DealDetailPage() {
   const dateLocale = useLocale() === 'fr' ? 'fr-CA' : 'en-US'
   const fmt = (d: string | null) => fmtDate(d, dateLocale)
 
+  const [deal, setDeal] = useState<BrokerDealDetail | null>(null)
+
   // Client 2026-07-25 (B-24): "it's showing the full commission to the broker, not the commission they
   // will receive … the lender offered 110 but the platform charged 5 so 105 should be showing."
-  // Display only — the stored offer stays gross because the invoice is computed from it.
-  const netBps = (o: DealOffer) => o.commissionBps - platformBpsFor(o.mortgageProduct)
-
-  const [deal, setDeal] = useState<BrokerDealDetail | null>(null)
+  // Display only — the stored offer stays gross because the invoice is computed from it. Uses the
+  // deal's brokerage override (2026-08-29) when set, same effectivePlatformBpsFor as the lender's own
+  // Make Offer preview, so this always agrees with what accept_offer will actually invoice.
+  const netBps = (o: DealOffer) => o.commissionBps - effectivePlatformBpsFor(deal?.overrideBps, o.mortgageProduct)
   const [fullDeal, setFullDeal] = useState<LenderDealListItem | null>(null)
   const [offers, setOffers] = useState<DealOffer[]>([])
   const [lender, setLender] = useState<AcceptedLender | null>(null)

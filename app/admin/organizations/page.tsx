@@ -6,18 +6,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RowActions } from '@/components/row-actions'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { Toaster, toast } from 'sonner'
-import { Building2, Plus, Pencil, Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { Building2, Plus, Pencil, Eye, EyeOff, CheckCircle, Percent } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useT } from '@/components/i18n-provider'
 import {
   listOrganizations, createOrganization, renameOrganization, setOrganizationActive,
-  type AdminOrg, type OrgTable,
+  setBrokerageInvoiceBps, type AdminOrg, type OrgTable,
 } from '@/lib/queries/admin'
+
+/** The invoice-fee dialog's own value space: 'standard' clears the override (null). */
+type BpsChoice = 'standard' | '3' | '4' | '5'
 
 /**
  * Admin: add / rename / deactivate brokerages and lender institutions (client feedback 2026-07-20 #9).
@@ -41,6 +45,8 @@ export default function OrganizationsPage() {
   const [saving, setSaving] = useState(false)
   const [renameTarget, setRenameTarget] = useState<AdminOrg | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [bpsTarget, setBpsTarget] = useState<AdminOrg | null>(null)
+  const [bpsValue, setBpsValue] = useState<BpsChoice>('standard')
 
   const load = useCallback(async (which: OrgTable) => {
     setOrgs(await listOrganizations(supabase, which))
@@ -106,6 +112,28 @@ export default function OrganizationsPage() {
     }
   }
 
+  /**
+   * Brokerage invoice fee override (2026-08-29): only ever changes brokerages.invoice_bps, consulted
+   * solely by accept_offer at the moment a NEW invoice is created — never touches an existing invoice.
+   */
+  const doSetBps = async () => {
+    if (!bpsTarget) return
+    setSaving(true)
+    try {
+      const bps = bpsValue === 'standard' ? null : (Number(bpsValue) as 3 | 4 | 5)
+      await setBrokerageInvoiceBps(supabase, bpsTarget.id, bps)
+      await load(table)
+      toast.success(bps === null
+        ? t('orgBpsClearedToast', { name: bpsTarget.name })
+        : t('orgBpsSetToast', { name: bpsTarget.name, bps }))
+      setBpsTarget(null)
+    } catch (err) {
+      toast.error(errMessage(err, t('orgSaveErr')))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <AdminHeader />
@@ -154,6 +182,9 @@ export default function OrganizationsPage() {
                   <tr>
                     <th className="px-6 py-3 text-left font-semibold text-foreground">{t('orgColName')}</th>
                     <th className="px-6 py-3 text-left font-semibold text-foreground">{t('colStatus')}</th>
+                    {table === 'brokerages' && (
+                      <th className="px-6 py-3 text-left font-semibold text-foreground">{t('orgColInvoiceFee')}</th>
+                    )}
                     <th className="px-6 py-3 text-left font-semibold text-foreground">{t('orgColCreated')}</th>
                     <th className="px-6 py-3 text-center font-semibold text-foreground">{t('colActions')}</th>
                   </tr>
@@ -173,6 +204,17 @@ export default function OrganizationsPage() {
                           </span>
                         )}
                       </td>
+                      {table === 'brokerages' && (
+                        <td className="px-6 py-4">
+                          {o.invoiceBps ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <Percent className="h-3.5 w-3.5" /> {t('orgBpsOverrideBadge', { bps: o.invoiceBps })}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">{t('orgBpsStandard')}</span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-6 py-4 text-muted-foreground">{o.createdAt.slice(0, 10)}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center">
@@ -185,6 +227,11 @@ export default function OrganizationsPage() {
                                 label: t('orgRename'),
                                 icon: <Pencil className="h-4 w-4" />,
                                 onSelect: () => { setRenameTarget(o); setRenameValue(o.name) },
+                              },
+                              table === 'brokerages' && {
+                                label: t('orgSetBps'),
+                                icon: <Percent className="h-4 w-4" />,
+                                onSelect: () => { setBpsTarget(o); setBpsValue(o.invoiceBps ? (String(o.invoiceBps) as BpsChoice) : 'standard') },
                               },
                               o.isActive
                                 ? {
@@ -250,6 +297,35 @@ export default function OrganizationsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameTarget(null)} disabled={saving}>{t('cancel')}</Button>
             <Button onClick={doRename} disabled={saving} className={renameValue.trim() ? '' : 'opacity-50'}>
+              {saving ? t('orgSaving') : t('orgSave')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Set Invoice Fee (brokerages only) — never touches an existing invoice; consulted only the
+          next time accept_offer creates a new one for this brokerage. */}
+      <Dialog open={!!bpsTarget} onOpenChange={(o) => { if (!o) setBpsTarget(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('orgBpsTitle', { name: bpsTarget?.name ?? '' })}</DialogTitle>
+            <DialogDescription>{t('orgBpsDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="org-bps">{t('orgColInvoiceFee')}</Label>
+            <Select value={bpsValue} onValueChange={(v) => setBpsValue(v as BpsChoice)}>
+              <SelectTrigger id="org-bps" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">{t('orgBpsStandardOption')}</SelectItem>
+                <SelectItem value="3">{t('orgBpsOption', { bps: 3 })}</SelectItem>
+                <SelectItem value="4">{t('orgBpsOption', { bps: 4 })}</SelectItem>
+                <SelectItem value="5">{t('orgBpsOption', { bps: 5 })}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBpsTarget(null)} disabled={saving}>{t('cancel')}</Button>
+            <Button onClick={doSetBps} disabled={saving}>
               {saving ? t('orgSaving') : t('orgSave')}
             </Button>
           </DialogFooter>

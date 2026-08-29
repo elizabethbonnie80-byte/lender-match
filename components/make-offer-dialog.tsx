@@ -20,7 +20,7 @@ import { makeOffer, editOffer } from "@/lib/queries/offers"
 import { scanContact } from "@/lib/queries/anti-contact"
 import { useT } from "@/components/i18n-provider"
 import { useEnums } from "@/lib/use-enums"
-import { productTermYears, platformBpsFor } from "@/lib/queries/deals"
+import { productTermYears, effectivePlatformBpsFor } from "@/lib/queries/deals"
 import { BRAND, LEGAL_ENTITY } from "@/lib/brand"
 import type { Database } from "@/lib/database.types"
 
@@ -78,6 +78,8 @@ export type OfferEditTarget = {
   offerId: string
   dealId: string
   values: OfferFormValues
+  /** The offer's deal's brokerage invoice fee override (2026-08-29), null if standard pricing. */
+  overrideBps: number | null
 }
 
 /**
@@ -90,7 +92,9 @@ export type OfferEditTarget = {
  *
  * Round 3 prefill: a new offer starts from the lender's remembered last response (comments always
  * cleared); `prefillProduct` (the target deal's own product, when a single deal is targeted) wins
- * over the remembered product.
+ * over the remembered product. `overrideBps` (same single-deal-only rule, or `edit.overrideBps` when
+ * editing) feeds the same "Final Commission Amount" preview so it always agrees with what
+ * accept_offer will actually invoice — never a separate calculation.
  *
  * Validation mirrors the Create Deal wizard: every field is required except the comments — required
  * fields carry a red asterisk and, once the lender tries to send while incomplete, show a red border +
@@ -100,12 +104,23 @@ export function MakeOfferDialog({
   dealIds,
   edit = null,
   prefillProduct = null,
+  overrideBps = null,
+  bpsConsistent = true,
   onClose,
   onSuccess,
 }: {
   dealIds: string[] | null
   edit?: OfferEditTarget | null
   prefillProduct?: MortgageProduct | null
+  /** Brokerage invoice fee override for a NEW offer (ignored when editing — edit.overrideBps wins). */
+  overrideBps?: number | null
+  /**
+   * False only for a BULK New Deals selection spanning brokerages that don't all agree on the same
+   * effective bps (2026-08-29) — showing one specific "Final Commission Amount" in that case would be
+   * accurate for some targeted deals and wrong for others. Always true for a single deal or an edit,
+   * since there's only ever one deal's rate to agree with itself.
+   */
+  bpsConsistent?: boolean
   onClose: () => void
   onSuccess: (ids: string[], message: string) => void
 }) {
@@ -118,6 +133,8 @@ export function MakeOfferDialog({
   const isEdit = edit !== null
   const open = isEdit || dealIds !== null
   const count = dealIds?.length ?? 0
+  const effectiveOverrideBps = isEdit ? edit.overrideBps : overrideBps
+  const effectiveBpsConsistent = isEdit ? true : bpsConsistent
 
   // Initialize the form when the dialog opens: the offer being edited, or (new offer) the
   // remembered last response overlaid with the target deal's product.
@@ -292,33 +309,41 @@ export function MakeOfferDialog({
 
         {form.mortgageProduct && form.commissionBps.trim() !== "" && !Number.isNaN(Number(form.commissionBps)) && (
           <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
-            {(() => {
-              const grossBps = Number(form.commissionBps)
-              const product = form.mortgageProduct as MortgageProduct
-              const platformBps = platformBpsFor(product)
-              const netBps = Math.max(0, grossBps - platformBps)
-              // An open mortgage has no term, so it takes a label that doesn't name one — the years
-              // map carries a placeholder 0 for it, which would read "0-yr term" next to the fee.
-              const termYears = productTermYears(product)
-              // Two label/amount rows rather than three spans on one line: the fee label is long
-              // enough to wrap in the dialog's width, which used to squeeze the amounts together.
-              return (
-                <div className="space-y-1.5 text-sm">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-muted-foreground">
-                      {termYears === null
-                        ? t("platformDeductionNoTerm", { brand: BRAND })
-                        : t("platformDeduction", { brand: BRAND, term: termYears })}
-                    </span>
-                    <span className="text-destructive whitespace-nowrap">-{platformBps} bps</span>
+            {effectiveBpsConsistent ? (
+              (() => {
+                const grossBps = Number(form.commissionBps)
+                const product = form.mortgageProduct as MortgageProduct
+                const platformBps = effectivePlatformBpsFor(effectiveOverrideBps, product)
+                const netBps = Math.max(0, grossBps - platformBps)
+                // An open mortgage has no term, so it takes a label that doesn't name one — the years
+                // map carries a placeholder 0 for it, which would read "0-yr term" next to the fee.
+                const termYears = productTermYears(product)
+                // Two label/amount rows rather than three spans on one line: the fee label is long
+                // enough to wrap in the dialog's width, which used to squeeze the amounts together.
+                return (
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-muted-foreground">
+                        {termYears === null
+                          ? t("platformDeductionNoTerm", { brand: BRAND })
+                          : t("platformDeduction", { brand: BRAND, term: termYears })}
+                      </span>
+                      <span className="text-destructive whitespace-nowrap">-{platformBps} bps</span>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3 border-t border-border pt-1.5">
+                      <span className="font-semibold text-foreground">{t("finalCommissionAmount")}</span>
+                      <span className="font-semibold text-foreground whitespace-nowrap">{netBps} bps</span>
+                    </div>
                   </div>
-                  <div className="flex items-baseline justify-between gap-3 border-t border-border pt-1.5">
-                    <span className="font-semibold text-foreground">{t("finalCommissionAmount")}</span>
-                    <span className="font-semibold text-foreground whitespace-nowrap">{netBps} bps</span>
-                  </div>
-                </div>
-              )
-            })()}
+                )
+              })()
+            ) : (
+              // Bulk selection spans deals whose effective platform bps don't all agree (2026-08-29) —
+              // showing one specific number here would be accurate for some targeted deals and wrong
+              // for others, so no number is shown at all rather than risk a misleading preview. Each
+              // deal still gets its own correctly-priced invoice on acceptance regardless.
+              <p className="text-sm text-muted-foreground">{t("bpsVariesAcrossDeals")}</p>
+            )}
             <p className="text-xs text-muted-foreground">{t("commissionFinePrint", { entity: LEGAL_ENTITY })}</p>
           </div>
         )}

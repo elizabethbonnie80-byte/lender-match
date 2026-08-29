@@ -255,18 +255,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          invoice_bps: number | null
           is_active: boolean
           name: string
         }
         Insert: {
           created_at?: string
           id?: string
+          invoice_bps?: number | null
           is_active?: boolean
           name: string
         }
         Update: {
           created_at?: string
           id?: string
+          invoice_bps?: number | null
           is_active?: boolean
           name?: string
         }
@@ -2077,6 +2080,13 @@ export type Database = {
           storage_path: string
         }[]
       }
+      effective_platform_bps: {
+        Args: {
+          p_brokerage_id: string
+          p_product: Database["public"]["Enums"]["mortgage_product"]
+        }
+        Returns: number
+      }
       edit_offer: {
         Args: {
           p_comments?: string
@@ -2367,6 +2377,7 @@ export type Database = {
           holdco_on_title: boolean
           spousal_buyout: boolean
           refinance_plus_improvements: boolean
+          override_bps: number | null
         }[]
       }
       maturing_deals_for_lender: {
@@ -2451,6 +2462,7 @@ export type Database = {
           holdco_on_title: boolean
           spousal_buyout: boolean
           refinance_plus_improvements: boolean
+          override_bps: number | null
         }[]
       }
       my_brokerage: { Args: never; Returns: string }
@@ -2601,6 +2613,7 @@ export type Database = {
           holdco_on_title: boolean
           spousal_buyout: boolean
           refinance_plus_improvements: boolean
+          override_bps: number | null
         }[]
       }
       open_deals_for_lender: {
@@ -2682,6 +2695,7 @@ export type Database = {
           holdco_on_title: boolean
           spousal_buyout: boolean
           refinance_plus_improvements: boolean
+          override_bps: number | null
         }[]
       }
       pending_legal_documents: {
