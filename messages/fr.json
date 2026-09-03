@@ -21,7 +21,13 @@
     "previous": "Précédent",
     "next": "Suivant",
     "fieldRequired": "Ce champ est obligatoire.",
-    "requiredFieldsNote": "Champs obligatoires"
+    "requiredFieldsNote": "Champs obligatoires",
+    "liveStatus": "Actif",
+    "liveMaturingStatus": "Actif – à échéance",
+    "offerReceivedStatus": "Offre reçue",
+    "offersReceivedStatus": "Offres reçues",
+    "viewLenderDeclines": "Voir les refus des prêteurs",
+    "lenderDeclinesModalTitle": "Prêteurs ayant refusé ce dossier"
   },
   "dealRoom": {
     "title": "Salle des dossiers",

@@ -107,6 +107,9 @@ export type BrokerDealDetail = {
   /** Brokerage invoice fee override (2026-08-29), null = standard term-based pricing. Feeds the
    *  broker's net-commission display so it always agrees with what accept_offer will invoice. */
   overrideBps: number | null
+  /** Full ISO timestamp (2026-08-30) — feeds the same brokerLiveStatusKey() the Deal Room list uses,
+   *  so the broker-facing status header agrees between the two pages. */
+  createdAt: string
 }
 
 /** The broker's own deal with the borrower identity (RLS lets the owner read deal_identities). */
@@ -114,7 +117,7 @@ export async function getBrokerDealDetail(supabase: DB, dealId: string): Promise
   const { data, error } = await supabase
     .from("deals")
     .select(
-      "id, deal_number, status, city, province, loan_amount, ltv, mortgage_product, amortization_years, closing_date, accepted_offer_id, lender_confirmed, prequal, prequal_converted_at, deal_identities(borrower_first_name, borrower_last_name, property_address), brokerages!deals_brokerage_id_fkey(invoice_bps)",
+      "id, deal_number, status, city, province, loan_amount, ltv, mortgage_product, amortization_years, closing_date, created_at, accepted_offer_id, lender_confirmed, prequal, prequal_converted_at, deal_identities(borrower_first_name, borrower_last_name, property_address), brokerages!deals_brokerage_id_fkey(invoice_bps)",
     )
     .eq("id", dealId)
     .maybeSingle()
@@ -137,6 +140,7 @@ export async function getBrokerDealDetail(supabase: DB, dealId: string): Promise
     mortgageProduct: data.mortgage_product,
     amortizationYears: data.amortization_years === null ? null : Number(data.amortization_years),
     closingDate: data.closing_date,
+    createdAt: data.created_at ?? "",
     acceptedOfferId: data.accepted_offer_id,
     lenderConfirmed: data.lender_confirmed,
     prequal: data.prequal ?? false,

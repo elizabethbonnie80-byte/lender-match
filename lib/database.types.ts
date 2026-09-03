@@ -1924,6 +1924,10 @@ export type Database = {
         Args: { p_deal_id: string; p_lender: string }
         Returns: Record<string, unknown>
       }
+      broker_deal_declines: {
+        Args: { p_deal_id: string }
+        Returns: string[]
+      }
       cancel_invoice: {
         Args: { p_invoice_id: string; p_reason: string }
         Returns: {

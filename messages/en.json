@@ -21,7 +21,13 @@
     "previous": "Previous",
     "next": "Next",
     "fieldRequired": "This field is required.",
-    "requiredFieldsNote": "Required fields"
+    "requiredFieldsNote": "Required fields",
+    "liveStatus": "Live",
+    "liveMaturingStatus": "Live – Maturing",
+    "offerReceivedStatus": "Offer Received",
+    "offersReceivedStatus": "Offers Received",
+    "viewLenderDeclines": "View lender declines",
+    "lenderDeclinesModalTitle": "Lenders who declined this deal"
   },
   "dealRoom": {
     "title": "Deal Room",

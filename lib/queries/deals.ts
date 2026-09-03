@@ -457,9 +457,19 @@ export type BrokerDealListItem = {
   clientName: string
   status: Enums["deal_status"]
   createdDate: string
+  /** Full ISO timestamp (2026-08-30) — createdDate above is display-truncated to a date, which isn't
+   *  precise enough for the 48-hour Live/Live-Maturing boundary. Same value, kept separate. */
+  createdAt: string
   closingDate: string
   amount: number
+  /** Historical: every offer EVER made on this deal, regardless of status (unchanged — Edit/Delete
+   *  row-action gating and the "Total Offers" summary tile both rely on this exact meaning). */
   offersCount: number
+  /** Round 4 (2026-08-30): offers currently in status = 'pending' only. A withdrawn offer no longer
+   *  counts here even though it still counts in offersCount above — this is what drives the
+   *  broker-facing Live / Live-Maturing / Offer(s) Received wording, never offersCount or deal.status
+   *  (deal.status flips to offer_received permanently on the first offer and never reverts). */
+  pendingOffersCount: number
   /** Which broker submitted the deal — only meaningfully populated for a broker-admin's brokerage-wide view. */
   submittedByBrokerId: string
   submittedByName: string
@@ -495,11 +505,14 @@ export async function listBrokerDeals(
   const isBrokerAdmin = !!profile.is_broker_admin
 
   // Disambiguate the offers embed: `deals` has two FKs to `offers` (offers.deal_id and
-  // deals.accepted_offer_id), so PostgREST needs the explicit constraint name for the count.
+  // deals.accepted_offer_id), so PostgREST needs the explicit constraint name.
+  // Round 4 (2026-08-30): fetches each offer's `status` (not a `count()` aggregate) so both the
+  // historical offersCount AND the pending-only pendingOffersCount can be derived client-side from
+  // the same single embed — see BrokerDealListItem for why the two must stay distinct.
   let query = supabase
     .from("deals")
     .select(
-      "id, deal_number, status, created_at, closing_date, loan_amount, broker_id, prequal, deal_identities(borrower_first_name, borrower_last_name), offers!offers_deal_id_fkey(count), profiles!deals_broker_id_fkey(first_name, last_name)",
+      "id, deal_number, status, created_at, closing_date, loan_amount, broker_id, prequal, deal_identities(borrower_first_name, borrower_last_name), offers!offers_deal_id_fkey(status), profiles!deals_broker_id_fkey(first_name, last_name)",
     )
     .order("created_at", { ascending: false })
   query = isBrokerAdmin && profile.brokerage_id
@@ -511,7 +524,9 @@ export async function listBrokerDeals(
   const deals = (data ?? []).map((d) => {
     const ident = Array.isArray(d.deal_identities) ? d.deal_identities[0] : d.deal_identities
     const name = [ident?.borrower_first_name, ident?.borrower_last_name].filter(Boolean).join(" ")
-    const offersCount = Array.isArray(d.offers) ? (d.offers[0]?.count ?? 0) : 0
+    const dealOffers = d.offers ?? []
+    const offersCount = dealOffers.length
+    const pendingOffersCount = dealOffers.filter((o) => o.status === "pending").length
     const broker = Array.isArray(d.profiles) ? d.profiles[0] : d.profiles
     return {
       id: d.id,
@@ -519,9 +534,11 @@ export async function listBrokerDeals(
       clientName: name || "—",
       status: d.status,
       createdDate: d.created_at ? d.created_at.slice(0, 10) : "",
+      createdAt: d.created_at ?? "",
       closingDate: d.closing_date ?? "",
       amount: Number(d.loan_amount ?? 0),
       offersCount,
+      pendingOffersCount,
       submittedByBrokerId: d.broker_id,
       submittedByName: [broker?.first_name, broker?.last_name].filter(Boolean).join(" ") || "—",
       prequal: d.prequal ?? false,
@@ -533,6 +550,18 @@ export async function listBrokerDeals(
     }
   })
   return { deals, isBrokerAdmin }
+}
+
+/**
+ * Distinct lender institution names that actively declined this deal (Round 4, 2026-08-30) — empty
+ * unless the deal has reached the 2-day age threshold AND currently has zero pending offers, enforced
+ * INSIDE the broker_deal_declines RPC itself (never trust the client's own gating). Institution names
+ * only, deduplicated — never a lender user's identity.
+ */
+export async function getBrokerDeclinedInstitutions(supabase: DB, dealId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc("broker_deal_declines", { p_deal_id: dealId })
+  if (error) throw new Error(error.message)
+  return data ?? []
 }
 
 /**

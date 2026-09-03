@@ -30,8 +30,12 @@ import { Search, ChevronLeft, ChevronRight, Eye, FileText, Pencil, Trash2, Clipb
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { listBrokerDeals, deleteDeal, convertPrequalToLive, type BrokerDealListItem } from '@/lib/queries/deals'
+import {
+  listBrokerDeals, deleteDeal, convertPrequalToLive, getBrokerDeclinedInstitutions,
+  type BrokerDealListItem,
+} from '@/lib/queries/deals'
 import { dealStatusStyle } from '@/lib/status-styles'
+import { brokerLiveStatusKey, BROKER_LIVE_STATUS_LABEL_KEY } from '@/lib/age-windows'
 import { listPendingSurveys, type PendingSurvey } from '@/lib/queries/surveys'
 import { SurveyDialog } from '@/components/survey-dialog'
 import { UnreadBanner } from '@/components/unread-banner'
@@ -90,6 +94,36 @@ export default function DealRoomPage() {
       active = false
     }
   }, [supabase, refreshSurveys])
+
+  // Round 4 (2026-08-30): "View lender declines" — only fetched for deals that already look like
+  // candidates (matured + zero pending offers) client-side, since the RPC re-verifies both conditions
+  // itself regardless and there's no point calling it for every deal in the list. A failed/empty call
+  // means no link renders — fails closed, never assumes declines exist.
+  const [declinesByDeal, setDeclinesByDeal] = useState<Record<string, string[]>>({})
+  const [declinesTarget, setDeclinesTarget] = useState<Deal | null>(null)
+
+  useEffect(() => {
+    const candidates = deals.filter(
+      (d) =>
+        (d.status === 'submitted' || d.status === 'offer_received') &&
+        d.pendingOffersCount === 0 &&
+        brokerLiveStatusKey(d.createdAt, d.pendingOffersCount) === 'live_maturing',
+    )
+    if (candidates.length === 0) return
+    let active = true
+    Promise.all(
+      candidates.map((d) =>
+        getBrokerDeclinedInstitutions(supabase, d.id)
+          .then((names) => [d.id, names] as const)
+          .catch(() => [d.id, []] as const),
+      ),
+    ).then((results) => {
+      if (active) setDeclinesByDeal((prev) => ({ ...prev, ...Object.fromEntries(results) }))
+    })
+    return () => {
+      active = false
+    }
+  }, [deals, supabase])
 
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState<SortBy>('date')
@@ -373,20 +407,45 @@ export default function DealRoomPage() {
                           <td className="px-6 py-4 text-sm text-foreground">{deal.submittedByName}</td>
                         )}
                         <td className="px-6 py-4 text-sm">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${dealStatusStyle(deal.status)}`}>
-                            {DEAL_STATUS_LABEL[deal.status]}
-                          </span>
-                          {/* Round 3 Phase 3: a prequal still needs an address + closing date */}
-                          {deal.prequal && (
-                            <span className="ml-1.5 px-2 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-800">
-                              {t('prequalBadge')}
-                            </span>
-                          )}
-                          {/* Client 2026-07-27: past 15 days a prequal is off the lender queues but
-                              still the broker's — say so, or "Submitted" reads as still circulating. */}
-                          {deal.lenderQueueClosed && (
-                            <p className="mt-1.5 text-xs text-muted-foreground">{t('prequalQueueClosed')}</p>
-                          )}
+                          {(() => {
+                            // Round 4: display-only broker wording for submitted/offer_received —
+                            // never touches deal.status or the shared DEAL_STATUS_LABEL table (Admin
+                            // and every other surface keep "Submitted"/"Offer Received" untouched).
+                            const liveKey =
+                              deal.status === 'submitted' || deal.status === 'offer_received'
+                                ? brokerLiveStatusKey(deal.createdAt, deal.pendingOffersCount)
+                                : null
+                            const declineNames = declinesByDeal[deal.id] ?? []
+                            return (
+                              <>
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${dealStatusStyle(deal.status)}`}>
+                                  {liveKey ? tc(BROKER_LIVE_STATUS_LABEL_KEY[liveKey]) : DEAL_STATUS_LABEL[deal.status]}
+                                </span>
+                                {/* Round 3 Phase 3: a prequal still needs an address + closing date */}
+                                {deal.prequal && (
+                                  <span className="ml-1.5 px-2 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-800">
+                                    {t('prequalBadge')}
+                                  </span>
+                                )}
+                                {/* Client 2026-07-27: past 15 days a prequal is off the lender queues but
+                                    still the broker's — say so, or "Submitted" reads as still circulating. */}
+                                {deal.lenderQueueClosed && (
+                                  <p className="mt-1.5 text-xs text-muted-foreground">{t('prequalQueueClosed')}</p>
+                                )}
+                                {/* Round 4: only rendered once the RPC-verified decline list is actually
+                                    non-empty — never shown speculatively. */}
+                                {liveKey === 'live_maturing' && declineNames.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeclinesTarget(deal)}
+                                    className="mt-1.5 block text-xs font-medium text-destructive hover:underline"
+                                  >
+                                    {tc('viewLenderDeclines')}
+                                  </button>
+                                )}
+                              </>
+                            )
+                          })()}
                         </td>
                         <td className="px-6 py-4 text-sm text-foreground">{deal.createdDate}</td>
                         <td className="px-6 py-4 text-sm text-foreground">{deal.closingDate}</td>
@@ -606,6 +665,23 @@ export default function DealRoomPage() {
                   {converting ? t('converting') : t('convertConfirm')}
                 </Button>
               </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Round 4 (2026-08-30): declining lender institutions — names only, already RPC-verified. */}
+        <Dialog open={!!declinesTarget} onOpenChange={(o) => { if (!o) setDeclinesTarget(null) }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>{tc('lenderDeclinesModalTitle')}</DialogTitle>
+            </DialogHeader>
+            <ul className="space-y-1.5 py-1">
+              {(declinesTarget ? declinesByDeal[declinesTarget.id] ?? [] : []).map((name) => (
+                <li key={name} className="text-sm text-foreground">{name}</li>
+              ))}
+            </ul>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeclinesTarget(null)}>{t('cancel')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

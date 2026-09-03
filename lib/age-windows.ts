@@ -34,3 +34,41 @@ export function isNewDeal(submittedAt: string): boolean {
 export function isLenderQueueClosed(submittedAt: string): boolean {
   return ageInDays(submittedAt) >= LENDER_QUEUE_MAX_AGE_DAYS
 }
+
+/**
+ * Broker-facing status wording (Round 4, approved 2026-08-30) for a deal still in `submitted` /
+ * `offer_received` — draft/accepted/confirmed/funded/expired/cancelled keep their existing labels,
+ * decided by the caller before calling this. Deliberately reuses NEW_DEAL_MAX_AGE_DAYS / isNewDeal —
+ * the SAME 2-day boundary the lender-side Maturing Deals feed uses off `deals.created_at` — but adds
+ * a genuinely separate condition (zero CURRENTLY PENDING offers) that lender Maturing Deals does NOT
+ * require: that feed is a per-lender relevance window (it only hides a deal once THIS lender's own
+ * institution has offered), not a deal-wide "nobody has offered" signal. Reusing the age constant
+ * while keeping the offer condition separate avoids inventing a second competing definition of
+ * "maturing" for the two audiences, which mean genuinely different things.
+ *
+ * `pendingOffersCount` must be the count of offers with status = 'pending' specifically — NOT
+ * deals.status (which flips to 'offer_received' permanently on the first offer and never reverts,
+ * including after a withdrawal) and NOT a raw count(*) of the offers table (which still includes
+ * withdrawn rows, since withdrawal is a retained status, not a delete). A deal whose only offer was
+ * later withdrawn must read as "live"/"live_maturing" again, not "offer(s)_received".
+ */
+export type BrokerLiveStatusKey = "live" | "live_maturing" | "offer_received" | "offers_received"
+
+export function brokerLiveStatusKey(createdAt: string, pendingOffersCount: number): BrokerLiveStatusKey {
+  if (pendingOffersCount === 0) {
+    return isNewDeal(createdAt) ? "live" : "live_maturing"
+  }
+  return pendingOffersCount === 1 ? "offer_received" : "offers_received"
+}
+
+/**
+ * `common` namespace translation keys for each BrokerLiveStatusKey — exported once here (rather than
+ * redefined per page) so the Deal Room list and Deal Detail page cannot silently drift apart on which
+ * key maps to which wording.
+ */
+export const BROKER_LIVE_STATUS_LABEL_KEY: Record<BrokerLiveStatusKey, string> = {
+  live: "liveStatus",
+  live_maturing: "liveMaturingStatus",
+  offer_received: "offerReceivedStatus",
+  offers_received: "offersReceivedStatus",
+}

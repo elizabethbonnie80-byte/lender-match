@@ -21,10 +21,18 @@ import {
   type DealOffer,
   type AcceptedLender,
 } from '@/lib/queries/offers'
-import { effectivePlatformBpsFor, type LenderDealListItem } from '@/lib/queries/deals'
+import { effectivePlatformBpsFor, getBrokerDeclinedInstitutions, type LenderDealListItem } from '@/lib/queries/deals'
+import { brokerLiveStatusKey, BROKER_LIVE_STATUS_LABEL_KEY, type BrokerLiveStatusKey } from '@/lib/age-windows'
 import { offerStatusStyle } from '@/lib/status-styles'
 import { getPendingSurveyForDeal, type PendingSurvey } from '@/lib/queries/surveys'
 import { SurveyDialog } from '@/components/survey-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { LenderDealDetailSections, DealSection, DealField } from '@/components/lender-deal-sections'
 import { ClipboardList } from 'lucide-react'
 import { useEnums } from '@/lib/use-enums'
@@ -57,6 +65,7 @@ export default function DealDetailPage() {
   const supabase = createClient()
   const t = useT('dealDetail')
   const tf = useT('feed')
+  const tc = useT('common')
   const { LABELS, DEAL_STATUS_LABEL } = useEnums()
   const dateLocale = useLocale() === 'fr' ? 'fr-CA' : 'en-US'
   const fmt = (d: string | null) => fmtDate(d, dateLocale)
@@ -76,6 +85,32 @@ export default function DealDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [switches, setSwitches] = useState({ used: 0, max: MAX_SWITCHES_PER_MONTH })
+
+  // Round 4 (2026-08-30): SAME definition as the Deal Room list — pending offers only, never
+  // offersCount/deal.status (which never reverts after a withdrawal) — so this page's header agrees
+  // with what the broker just saw in the list. offers is already fetched for the offer cards below,
+  // so no new query is needed just for this count.
+  const pendingOffersCount = offers.filter((o) => o.status === 'pending').length
+  const liveKey: BrokerLiveStatusKey | null =
+    deal && (deal.status === 'submitted' || deal.status === 'offer_received')
+      ? brokerLiveStatusKey(deal.createdAt, pendingOffersCount)
+      : null
+
+  // "View lender declines" — prefetched (like the Deal Room list) as soon as the deal looks like a
+  // candidate, so the link only ever renders when declineNames is actually non-empty; the RPC
+  // re-verifies age + zero-pending itself regardless of what this page believes.
+  const [declinesOpen, setDeclinesOpen] = useState(false)
+  const [declineNames, setDeclineNames] = useState<string[]>([])
+
+  useEffect(() => {
+    if (liveKey !== 'live_maturing') return
+    let active = true
+    getBrokerDeclinedInstitutions(supabase, dealId)
+      .then((names) => { if (active) setDeclineNames(names) })
+      .catch(() => { if (active) setDeclineNames([]) })
+    return () => { active = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveKey, dealId, supabase])
 
   // Confirm-accept modal
   const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null)
@@ -174,9 +209,21 @@ export default function DealDetailPage() {
                 <h1 className="text-3xl font-bold text-foreground mb-2">{deal.dealNumber}</h1>
                 <p className="text-muted-foreground">{deal.clientName}</p>
               </div>
-              <span className="px-4 py-2 rounded-full text-sm font-medium bg-primary/10 text-primary">
-                {DEAL_STATUS_LABEL[deal.status]}
-              </span>
+              <div className="flex flex-col items-end gap-1.5">
+                <span className="px-4 py-2 rounded-full text-sm font-medium bg-primary/10 text-primary">
+                  {liveKey ? tc(BROKER_LIVE_STATUS_LABEL_KEY[liveKey]) : DEAL_STATUS_LABEL[deal.status]}
+                </span>
+                {/* Round 4 (2026-08-30): only rendered once the RPC-verified list is non-empty. */}
+                {liveKey === 'live_maturing' && declineNames.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setDeclinesOpen(true)}
+                    className="text-xs font-medium text-destructive hover:underline"
+                  >
+                    {tc('viewLenderDeclines')}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Closing survey prompt (created by the cron job once the deal reaches its closing date) */}
@@ -514,6 +561,23 @@ export default function DealDetailPage() {
             }}
           />
         )}
+
+        {/* Round 4 (2026-08-30): declining lender institutions — names only, already RPC-verified. */}
+        <Dialog open={declinesOpen} onOpenChange={setDeclinesOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>{tc('lenderDeclinesModalTitle')}</DialogTitle>
+            </DialogHeader>
+            <ul className="space-y-1.5 py-1">
+              {declineNames.map((name) => (
+                <li key={name} className="text-sm text-foreground">{name}</li>
+              ))}
+            </ul>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeclinesOpen(false)}>{t('cancel')}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   )
