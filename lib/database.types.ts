@@ -218,6 +218,54 @@ export type Database = {
           },
         ]
       }
+      broker_block_audit: {
+        Row: {
+          action: string
+          broker_id: string | null
+          broker_name: string
+          brokerage_name: string | null
+          created_at: string
+          id: string
+          institution_id: string | null
+          institution_name: string
+        }
+        Insert: {
+          action: string
+          broker_id?: string | null
+          broker_name: string
+          brokerage_name?: string | null
+          created_at?: string
+          id?: string
+          institution_id?: string | null
+          institution_name: string
+        }
+        Update: {
+          action?: string
+          broker_id?: string | null
+          broker_name?: string
+          brokerage_name?: string | null
+          created_at?: string
+          id?: string
+          institution_id?: string | null
+          institution_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_block_audit_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_block_audit_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "lender_institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_blocked_institutions: {
         Row: {
           broker_id: string
@@ -1907,6 +1955,7 @@ export type Database = {
         }[]
       }
       admin_analytics: { Args: never; Returns: Json }
+      admin_block_activity: { Args: never; Returns: Json }
       admin_lender_ratings: {
         Args: never
         Returns: {
@@ -1923,6 +1972,10 @@ export type Database = {
       best_match_for: {
         Args: { p_deal_id: string; p_lender: string }
         Returns: Record<string, unknown>
+      }
+      block_lender_institution: {
+        Args: { p_institution_id: string }
+        Returns: undefined
       }
       broker_deal_declines: {
         Args: { p_deal_id: string }

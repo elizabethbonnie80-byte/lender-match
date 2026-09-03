@@ -12,6 +12,7 @@ import {
   listBlockedInstitutions,
   blockInstitution,
   unblockInstitution,
+  MAX_BLOCKED_INSTITUTIONS,
   type Org,
 } from '@/lib/queries/blocks'
 import { Toaster } from 'sonner'
@@ -83,6 +84,9 @@ export default function SettingsPage() {
           loading={loading}
           onBlock={onBlock}
           onUnblock={onUnblock}
+          maxBlocked={MAX_BLOCKED_INSTITUTIONS}
+          limitHelperText={t('blockLimitHelper', { max: MAX_BLOCKED_INSTITUTIONS })}
+          limitReachedText={t('blockLimitReached', { max: MAX_BLOCKED_INSTITUTIONS })}
         />
 
         {/* Notifications (wired) */}

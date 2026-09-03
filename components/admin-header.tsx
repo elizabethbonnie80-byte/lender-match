@@ -38,6 +38,8 @@ const NAV: NavEntry[] = [
       { key: 'penalties', href: '/admin/penalties' },
       // Client 2026-07-28 (B-17): admin-only viewer for the consent PDF + photo ID.
       { key: 'documents', href: '/admin/documents' },
+      // Round 4 (2026-09-03): monitor the 5-per-broker block cap + block/unblock history.
+      { key: 'blockActivity', href: '/admin/block-activity' },
     ],
   },
   {

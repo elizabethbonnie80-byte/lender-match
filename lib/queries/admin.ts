@@ -630,3 +630,62 @@ export async function listAllDealDocuments(supabase: DB): Promise<AdminDealDocum
     }
   })
 }
+
+// ── Broker block/unblock monitoring (Round 4, 2026-09-03) ───────────────────────
+// Admin-only view of the 5-per-broker lender-institution block cap: who's currently blocking whom,
+// and the recent block/unblock history (broker_block_audit, written only by a database trigger — see
+// migration 20260903000078). One aggregate RPC call, same shape as getAnalytics() above.
+
+export type BlockActivitySummaryRow = {
+  brokerId: string
+  brokerName: string
+  brokerageName: string | null
+  blockedCount: number
+  blockedInstitutions: string[]
+}
+
+export type BlockActivityEvent = {
+  id: string
+  /** Null once the broker's profile has since been deleted — broker_name is the reliable field. */
+  brokerId: string | null
+  brokerName: string
+  brokerageName: string | null
+  /** Null once the institution has since been deleted — institution_name is the reliable field. */
+  institutionId: string | null
+  institutionName: string
+  action: "blocked" | "unblocked"
+  createdAt: string
+}
+
+export type BlockActivity = {
+  summary: BlockActivitySummaryRow[]
+  events: BlockActivityEvent[]
+}
+
+export async function getBlockActivity(supabase: DB): Promise<BlockActivity> {
+  const { data, error } = await supabase.rpc("admin_block_activity")
+  if (error) throw new Error(error.message)
+  const raw = (data as unknown as {
+    summary: { broker_id: string; broker_name: string; brokerage_name: string | null; blocked_count: number; blocked_institutions: string[] }[]
+    events: { id: string; broker_id: string | null; broker_name: string; brokerage_name: string | null; institution_id: string | null; institution_name: string; action: "blocked" | "unblocked"; created_at: string }[]
+  }) ?? { summary: [], events: [] }
+  return {
+    summary: raw.summary.map((s) => ({
+      brokerId: s.broker_id,
+      brokerName: s.broker_name,
+      brokerageName: s.brokerage_name,
+      blockedCount: s.blocked_count,
+      blockedInstitutions: s.blocked_institutions,
+    })),
+    events: raw.events.map((e) => ({
+      id: e.id,
+      brokerId: e.broker_id,
+      brokerName: e.broker_name,
+      brokerageName: e.brokerage_name,
+      institutionId: e.institution_id,
+      institutionName: e.institution_name,
+      action: e.action,
+      createdAt: e.created_at,
+    })),
+  }
+}

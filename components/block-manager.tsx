@@ -49,6 +49,9 @@ export function BlockManager({
   loading,
   onBlock,
   onUnblock,
+  maxBlocked,
+  limitHelperText,
+  limitReachedText,
 }: {
   t: Tf
   title: string
@@ -59,6 +62,15 @@ export function BlockManager({
   loading: boolean
   onBlock: (id: string) => Promise<void>
   onUnblock: (id: string) => Promise<void>
+  /** Round 4: when set, caps how many can be blocked and drives the "N of max" / limit-reached UI.
+   *  Omitted by the lender's brokerage-blocking usage, which stays unlimited exactly as before. */
+  maxBlocked?: number
+  /** Shown under the intro, only when `maxBlocked` is set (e.g. "You may block up to 5..."). */
+  limitHelperText?: string
+  /** Shown next to the (disabled) add control once at the cap, and used as the toast message if a
+   *  BLOCK_LIMIT_REACHED error ever reaches the client despite the control being disabled (stale
+   *  browser state, another tab/session). */
+  limitReachedText?: string
 }) {
   const [selected, setSelected] = useState('')
   const [pendingBlock, setPendingBlock] = useState<Org | null>(null)
@@ -68,6 +80,7 @@ export function BlockManager({
   const blockedSet = new Set(blockedIds)
   const available = orgs.filter((o) => !blockedSet.has(o.id))
   const blocked = orgs.filter((o) => blockedSet.has(o.id))
+  const atLimit = maxBlocked !== undefined && blocked.length >= maxBlocked
 
   const onSelect = (id: string) => {
     setSelected(id)
@@ -82,7 +95,8 @@ export function BlockManager({
       await onBlock(pendingBlock.id)
       toast.success(t('blockedToast', { name: pendingBlock.name }))
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('blockDesc'))
+      const msg = e instanceof Error ? e.message : t('blockDesc')
+      toast.error(msg === 'BLOCK_LIMIT_REACHED' ? (limitReachedText ?? msg) : msg)
     } finally {
       setPendingBlock(null)
       setSelected('')
@@ -107,12 +121,15 @@ export function BlockManager({
   return (
     <>
       <Section title={title}>
-        <p className="text-sm text-muted-foreground mb-5">{intro}</p>
+        <div className="mb-5">
+          <p className="text-sm text-muted-foreground">{intro}</p>
+          {limitHelperText && <p className="text-sm text-muted-foreground mt-1">{limitHelperText}</p>}
+        </div>
 
         <div className="flex gap-3 items-end mb-6">
           <div className="flex-1 space-y-2">
             <Label htmlFor="block-select">{addLabel}</Label>
-            <Select value={selected} onValueChange={onSelect} disabled={loading}>
+            <Select value={selected} onValueChange={onSelect} disabled={loading || atLimit}>
               <SelectTrigger id="block-select" className="bg-muted/50">
                 <SelectValue placeholder={t('blockPlaceholder')} />
               </SelectTrigger>
@@ -131,6 +148,9 @@ export function BlockManager({
                 )}
               </SelectContent>
             </Select>
+            {atLimit && limitReachedText && (
+              <p className="text-xs font-medium text-destructive">{limitReachedText}</p>
+            )}
           </div>
         </div>
 
@@ -142,7 +162,9 @@ export function BlockManager({
         ) : (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
-              {t('blockedList', { count: blocked.length })}
+              {maxBlocked !== undefined
+                ? t('blockedListLimited', { count: blocked.length, max: maxBlocked })
+                : t('blockedList', { count: blocked.length })}
             </p>
             {blocked.map((o) => (
               <div key={o.id} className="flex items-center justify-between px-4 py-3 bg-muted/50 border border-border rounded-lg">

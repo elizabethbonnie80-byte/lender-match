@@ -58,13 +58,20 @@ async function main() {
   check(`baseline: lender sees the broker's open deal (${DEAL})`, await lenderSees(lender), "run seed-maturing first")
 
   // ── A) Broker blocks the lender's institution → hidden from that lender ──
-  const { error: aErr } = await broker
-    .from("broker_blocked_institutions")
-    .insert({ broker_id: brokerId, institution_id: institutionId })
-  check("broker can block an institution (RLS with_check)", !aErr, aErr?.message)
+  // Round 4 (2026-09-03): blocking now goes through block_lender_institution() — direct inserts are
+  // RLS-denied (see the negative check below) so the cap can't be bypassed from the client.
+  const { error: aErr } = await broker.rpc("block_lender_institution", { p_institution_id: institutionId })
+  check("broker can block an institution (via block_lender_institution RPC)", !aErr, aErr?.message)
   check("blocked-by-broker: the deal is hidden from the lender", !(await lenderSees(lender)))
   await broker.from("broker_blocked_institutions").delete().eq("institution_id", institutionId)
   check("after broker unblock: the deal is visible again", await lenderSees(lender))
+
+  // A direct client-side insert must now be rejected (RLS has no INSERT policy on this table any
+  // more — block_lender_institution() is the only path, so the 5-per-broker cap can't be bypassed).
+  const { error: directInsert } = await broker
+    .from("broker_blocked_institutions")
+    .insert({ broker_id: brokerId, institution_id: institutionId })
+  check("a direct insert bypassing the RPC is RLS-denied", !!directInsert)
 
   // ── B) Lender blocks the brokerage → hidden from the lender ──
   const { error: bErr } = await lender
@@ -75,7 +82,7 @@ async function main() {
   await lender.from("lender_blocked_brokerages").delete().eq("brokerage_id", brokerageId)
   check("after lender unblock: the deal is visible again", await lenderSees(lender))
 
-  // A lender cannot forge a block for someone else (RLS with_check on the owner column).
+  // A lender cannot forge a block for someone else either (no INSERT policy at all any more).
   const { error: forge } = await lender
     .from("broker_blocked_institutions")
     .insert({ broker_id: brokerId, institution_id: institutionId })
