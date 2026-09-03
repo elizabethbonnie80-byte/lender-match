@@ -680,9 +680,6 @@ export default function DealRoomPage() {
                 <li key={name} className="text-sm text-foreground">{name}</li>
               ))}
             </ul>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDeclinesTarget(null)}>{t('cancel')}</Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </main>

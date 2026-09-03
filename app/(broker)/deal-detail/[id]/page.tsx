@@ -29,7 +29,6 @@ import { SurveyDialog } from '@/components/survey-dialog'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -573,9 +572,6 @@ export default function DealDetailPage() {
                 <li key={name} className="text-sm text-foreground">{name}</li>
               ))}
             </ul>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDeclinesOpen(false)}>{t('cancel')}</Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </main>
