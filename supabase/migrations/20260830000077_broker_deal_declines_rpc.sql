@@ -28,9 +28,11 @@ declare
   d deals%rowtype;
   v_pending_count integer;
 begin
-  -- Anon guard: migration 06_grants.sql's `alter default privileges ... grant execute on functions
-  -- to anon` means every new function is anon-callable unless explicitly revoked (see the revoke
-  -- below). Without this explicit null check, an anonymous auth.uid() makes
+  -- Anon guard: Postgres grants EXECUTE to PUBLIC on every newly created function by default
+  -- (independent of migration 06_grants.sql's own explicit anon/authenticated/service_role grants),
+  -- and every role — anon included — implicitly inherits PUBLIC's privileges. Revoking EXECUTE from
+  -- `anon` alone would therefore be a no-op unless PUBLIC's own grant is revoked too (see the revoke
+  -- below, which does both). Without this explicit null check, an anonymous auth.uid() makes
   -- `d.broker_id <> auth.uid()` evaluate to NULL, and a NULL IF-condition is treated as false in
   -- PL/pgSQL — silently skipping the ownership check below. This makes the failure explicit and
   -- keeps it correct even if the grant is ever loosened again.
@@ -73,5 +75,5 @@ begin
   );
 end $$;
 
+revoke execute on function broker_deal_declines(uuid) from public, anon;
 grant execute on function broker_deal_declines(uuid) to authenticated;
-revoke execute on function broker_deal_declines(uuid) from anon;
