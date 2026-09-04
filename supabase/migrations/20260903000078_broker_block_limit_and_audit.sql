@@ -19,23 +19,31 @@
 --    written is the trigger below (security definer, bypasses RLS), so this cannot be tampered with
 --    or bypassed from the client, and ordinary brokers/lenders have zero direct visibility into it.
 --
---    broker_id / institution_id are nullable with ON DELETE SET NULL, NOT cascade: this table is
---    meant to survive the records it references (profiles/lender_institutions are "retire, never
---    delete" by convention anyway — see CLAUDE.md — but the audit trail should not depend on nobody
---    ever deleting one). broker_name / brokerage_name / institution_name are SNAPSHOTS taken by the
---    trigger at the moment of the event, not a live join — so a historical row stays fully readable
---    (who did what, and to which institution) even if the underlying profile/institution is later
---    deleted, and — as a side effect — a later rename doesn't retroactively rewrite what an old event
---    says, which is the more correct behavior for an audit log regardless. broker_name/institution_name
---    are NOT NULL because the trigger only ever fires from a real block_blocked_institutions row,
---    whose own (still-cascading) FKs guarantee the referenced profile/institution existed at that
---    instant; brokerage_name stays nullable, matching the existing left-join pattern elsewhere.
+--    broker_id / institution_id are PLAIN uuid columns — deliberately NO foreign key at all, not even
+--    ON DELETE SET NULL. Reasoning (found during review): when a profiles/lender_institutions row is
+--    deleted, its ON DELETE CASCADE into broker_blocked_institutions fires this same trigger via the
+--    cascade, and by that point the parent row has already been removed by an earlier command in the
+--    SAME transaction — Postgres's own-writes visibility rules make it invisible to a fresh SELECT
+--    from inside the trigger, so a live name lookup (see below) can return nothing at exactly the
+--    moment it's needed. A "fix" of ON DELETE SET NULL on THIS table doesn't touch that problem at
+--    all (it only decides what happens to broker_block_audit's columns, not whether the trigger can
+--    read the vanishing parent row) — the trigger still needs a fallback regardless. Once a fallback
+--    exists, an FK constraint (in any ON DELETE mode) adds nothing but risk, so it's dropped: these
+--    columns are immutable snapshots, written once at insert and never touched again by anything.
+--    broker_name / brokerage_name / institution_name are the actual point — snapshots taken by the
+--    trigger at the moment of the event, not a live join, so a historical row stays fully readable
+--    (who did what, to which institution) even after the underlying profile/institution is deleted,
+--    and a later rename doesn't retroactively rewrite what an old event said either. broker_name and
+--    institution_name are NOT NULL and always populated — the trigger below falls back to a
+--    "Deleted …" placeholder embedding the id on the rare cascade-delete path where a live lookup
+--    finds nothing, so the insert can never fail; the ordinary manual block/unblock path (the
+--    broker's own profile still exists) is completely unaffected and always gets the real name.
 -- ============================================================================
 
 create table broker_block_audit (
   id uuid primary key default gen_random_uuid(),
-  broker_id uuid references profiles(id) on delete set null,
-  institution_id uuid references lender_institutions(id) on delete set null,
+  broker_id uuid not null,
+  institution_id uuid not null,
   broker_name text not null,
   brokerage_name text,
   institution_name text not null,
@@ -60,7 +68,11 @@ create policy block_audit_admin_read on broker_block_audit for select to authent
 --    fires for a genuine state change either way.
 --
 --    Snapshots broker_name/brokerage_name/institution_name from the CURRENT profiles/brokerages/
---    lender_institutions rows at the moment of the event (see the table comment above for why).
+--    lender_institutions rows at the moment of the event (see the table comment above for why). On
+--    the cascade-delete path (parent profiles/lender_institutions row itself being deleted) that live
+--    lookup finds nothing — see the table comment for exactly why — so it falls back to a "Deleted …"
+--    placeholder embedding the id, guaranteeing the NOT NULL insert below can never fail and a
+--    broker/institution deletion is never blocked by this trigger.
 --
 --    security definer (not the default invoker-rights trigger behavior) so it can write to
 --    broker_block_audit even when the triggering statement itself ran as the broker's own
@@ -86,6 +98,12 @@ begin
     where p.id = v_broker_id;
 
   select li.name into v_institution_name from lender_institutions li where li.id = v_institution_id;
+
+  -- Fallback for the cascade-delete path: the parent row was deleted by an earlier command in this
+  -- same transaction and is therefore invisible to the SELECTs above (see the table comment) — never
+  -- let a missing/blank name turn into a NOT NULL violation that would abort the caller's DELETE.
+  v_broker_name := coalesce(nullif(trim(v_broker_name), ''), 'Deleted broker ' || v_broker_id::text);
+  v_institution_name := coalesce(v_institution_name, 'Deleted institution ' || v_institution_id::text);
 
   if tg_op = 'INSERT' then
     insert into broker_block_audit (broker_id, institution_id, broker_name, brokerage_name, institution_name, action)
@@ -204,8 +222,9 @@ grant execute on function block_lender_institution(uuid) to authenticated;
 --    rows across all brokers, newest first, read directly off broker_block_audit's own snapshot
 --    columns (broker_name/brokerage_name/institution_name) rather than joining — the whole point of
 --    those columns is that an event stays fully readable after the referenced profile/institution is
---    deleted (ON DELETE SET NULL leaves broker_id/institution_id null, but the snapshot text
---    survives). "A table/list is enough" per the reviewed spec, deliberately no scoring/graphs.
+--    deleted (broker_id/institution_id are plain uuids with no FK, so they keep their original value
+--    forever; the id may no longer resolve to a live row, but the snapshot text always does). "A
+--    table/list is enough" per the reviewed spec, deliberately no scoring/graphs.
 --    Written as plpgsql with an explicit auth.uid()/is_admin() raise (rather than admin_analytics()'s
 --    `case when not is_admin() then '{}'` fallback style) plus an explicit revoke from public/anon,
 --    per the same hardening asked for every new security definer function in this batch —

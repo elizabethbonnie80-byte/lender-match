@@ -3,7 +3,10 @@
  *   - block_lender_institution() lets a broker reach exactly 5, and refuses a 6th (BLOCK_LIMIT_REACHED)
  *   - unblocking frees a slot immediately
  *   - a race-safety check: two simultaneous block attempts at 4/5 must yield exactly one success
+ *   - re-blocking an already-blocked institution at 5/5 is a harmless no-op, not a rejection
  *   - broker_block_audit records every block/unblock, admin can read it, broker/lender cannot
+ *   - deleting the referenced lender institution does not fail (audit trigger fallback) and does not
+ *     erase the historical event — it keeps its snapshot name and original id
  * Creates one temporary lender institution (there are only 5 seeded — Merix/RMG/RFA/TD/Radius — so a
  * 6th is needed to exercise the over-the-cap path) and self-cleans everything it touches.
  *   node scripts/seed-users.mjs && node scripts/smoke-block-limit.mjs
@@ -138,11 +141,24 @@ async function main() {
   const { data: lenderAuditRead, error: lenderAuditErr } = await lender.from("broker_block_audit").select("id")
   check("a lender cannot read the audit table directly (RLS denies)", !lenderAuditErr && (lenderAuditRead ?? []).length === 0)
 
-  // ── Audit durability: deleting the referenced institution must not erase its history ──
-  // The temp institution was blocked and unblocked earlier in this run ("6th can now be added" /
-  // the pre-race cleanup), so at least one audit event referencing it already exists. Deleting it now
-  // (ON DELETE SET NULL) must null out institution_id on those events WITHOUT losing the row or its
-  // snapshotted institution_name — that snapshot is the whole point of the durability fix.
+  // ── Audit durability: deleting a CURRENTLY BLOCKED institution must not fail, and must not erase
+  // its history. This has to actually go through the CASCADE path (deleting lender_institutions ->
+  // ON DELETE CASCADE removes the broker_blocked_institutions row -> fires the same audit trigger)
+  // to exercise the bug that was found: a live name lookup inside the trigger finds nothing at that
+  // exact moment (the parent row is already gone from this transaction's perspective), which is what
+  // migration 78's fallback exists to survive. Manually deleting the block row first would skip the
+  // cascade entirely and prove nothing, so this section first FORCES the temp institution into a
+  // known "currently blocked" state (the race above left it non-deterministic) before deleting it.
+  const { data: blockedNow } = await s.from("broker_blocked_institutions").select("institution_id").eq("broker_id", brokerId)
+  if (!(blockedNow ?? []).some((r) => r.institution_id === tempInst.id)) {
+    // Free a slot (harmless no-op if ids[0] isn't currently the one blocked) and take it.
+    await s.from("broker_blocked_institutions").delete().eq("broker_id", brokerId).eq("institution_id", ids[0])
+    const { error: forceBlockErr } = await broker.rpc("block_lender_institution", { p_institution_id: tempInst.id })
+    check("test setup: the temp institution can be (re-)blocked before the durability check", !forceBlockErr, forceBlockErr?.message)
+  }
+  const { data: nowBlocked } = await s.from("broker_blocked_institutions").select("institution_id").eq("broker_id", brokerId).eq("institution_id", tempInst.id)
+  check("test setup: the temp institution is confirmed currently blocked", (nowBlocked ?? []).length === 1)
+
   const { data: beforeDelete } = await s
     .from("broker_block_audit")
     .select("id")
@@ -150,8 +166,9 @@ async function main() {
     .eq("institution_name", TEMP_INSTITUTION)
   check("audit history for the temp institution exists before it's deleted", (beforeDelete ?? []).length > 0, `found ${beforeDelete?.length}`)
 
-  await s.from("broker_blocked_institutions").delete().eq("institution_id", tempInst.id)
-  await s.from("lender_institutions").delete().eq("id", tempInst.id)
+  // No manual pre-delete of the block row here — deleting the institution must cascade into it.
+  const { error: deleteInstErr } = await s.from("lender_institutions").delete().eq("id", tempInst.id)
+  check("deleting a currently-blocked institution succeeds (the audit trigger does not block it)", !deleteInstErr, deleteInstErr?.message)
 
   const { data: adminActivityAfterDelete, error: afterDeleteErr } = await admin.rpc("admin_block_activity")
   check("admin_block_activity still succeeds after the institution is deleted", !afterDeleteErr, afterDeleteErr?.message)
@@ -159,7 +176,7 @@ async function main() {
     (e) => e.broker_id === brokerId && e.institution_name === TEMP_INSTITUTION,
   )
   check("the historical event for the deleted institution still appears, by name", !!survivingEvent)
-  check("its institution_id is now null (ON DELETE SET NULL, not cascaded away)", survivingEvent?.institution_id === null)
+  check("its institution_id still holds the original id (no FK, never nulled/cascaded away)", survivingEvent?.institution_id === tempInst.id)
 
   // ── Cleanup ──
   await s.from("broker_blocked_institutions").delete().eq("broker_id", brokerId)

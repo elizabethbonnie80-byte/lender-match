@@ -646,12 +646,12 @@ export type BlockActivitySummaryRow = {
 
 export type BlockActivityEvent = {
   id: string
-  /** Null once the broker's profile has since been deleted — broker_name is the reliable field. */
-  brokerId: string | null
+  /** Plain snapshot uuid, no FK — keeps its original value forever even once the broker/institution
+   *  it once pointed to is deleted. brokerName/institutionName are the reliable display fields. */
+  brokerId: string
   brokerName: string
   brokerageName: string | null
-  /** Null once the institution has since been deleted — institution_name is the reliable field. */
-  institutionId: string | null
+  institutionId: string
   institutionName: string
   action: "blocked" | "unblocked"
   createdAt: string
@@ -667,7 +667,7 @@ export async function getBlockActivity(supabase: DB): Promise<BlockActivity> {
   if (error) throw new Error(error.message)
   const raw = (data as unknown as {
     summary: { broker_id: string; broker_name: string; brokerage_name: string | null; blocked_count: number; blocked_institutions: string[] }[]
-    events: { id: string; broker_id: string | null; broker_name: string; brokerage_name: string | null; institution_id: string | null; institution_name: string; action: "blocked" | "unblocked"; created_at: string }[]
+    events: { id: string; broker_id: string; broker_name: string; brokerage_name: string | null; institution_id: string; institution_name: string; action: "blocked" | "unblocked"; created_at: string }[]
   }) ?? { summary: [], events: [] }
   return {
     summary: raw.summary.map((s) => ({

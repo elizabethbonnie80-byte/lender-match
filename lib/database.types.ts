@@ -221,50 +221,35 @@ export type Database = {
       broker_block_audit: {
         Row: {
           action: string
-          broker_id: string | null
+          broker_id: string
           broker_name: string
           brokerage_name: string | null
           created_at: string
           id: string
-          institution_id: string | null
+          institution_id: string
           institution_name: string
         }
         Insert: {
           action: string
-          broker_id?: string | null
+          broker_id: string
           broker_name: string
           brokerage_name?: string | null
           created_at?: string
           id?: string
-          institution_id?: string | null
+          institution_id: string
           institution_name: string
         }
         Update: {
           action?: string
-          broker_id?: string | null
+          broker_id?: string
           broker_name?: string
           brokerage_name?: string | null
           created_at?: string
           id?: string
-          institution_id?: string | null
+          institution_id?: string
           institution_name?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "broker_block_audit_broker_id_fkey"
-            columns: ["broker_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "broker_block_audit_institution_id_fkey"
-            columns: ["institution_id"]
-            isOneToOne: false
-            referencedRelation: "lender_institutions"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       broker_blocked_institutions: {
         Row: {
