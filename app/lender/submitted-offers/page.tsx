@@ -15,7 +15,6 @@ import { FieldError } from '@/components/field-error'
 import { RowActions } from '@/components/row-actions'
 import { offerStatusStyle } from '@/lib/status-styles'
 import { sendMessage as sendDealMessage } from '@/lib/queries/messages'
-import { scanContact } from '@/lib/queries/anti-contact'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Dialog,
@@ -391,7 +390,18 @@ export default function SubmittedOffersPage() {
 
   // Client 2026-07-23 (A-16): this used to only `flash` a fake confirmation — the message was never
   // persisted, which is why nothing appeared in the messages record. It now goes through the same path
-  // as the deal feeds: anti-contact pre-scan, then send_deal_message (which creates the thread).
+  // as the deal feeds: send_deal_message (which creates the thread).
+  //
+  // Round 4 (Option 2, corrected 2026-09-04): this call site was missed when the other message-send
+  // paths (messages-inbox.tsx, use-lender-deal-feed.ts) were migrated off the old client-side
+  // scanContact() pre-check. send_deal_message() is now itself authoritative for both blocking and
+  // recording — the anti-contact trigger FLAGS offending content (is_invalid = true) instead of
+  // rejecting the write, so the RPC call always "succeeds"; its returned `blocked`/`reason` is the sole
+  // source of truth for whether the message actually reached the broker. The old pre-check here was
+  // doubly wrong: redundant when it agreed with the trigger, and silently unsafe when it didn't — if the
+  // pre-check missed something the trigger caught, this code used to fall straight through to
+  // `flash(t('messageSent'))` without ever looking at the RPC's result, telling the lender a message was
+  // delivered when it had actually been flagged and hidden from the broker.
   const sendMessage = async (e: React.MouseEvent) => {
     e.preventDefault() // never let the AlertDialog close before the send resolves
     if (!messageTarget || messageSending) return
@@ -405,13 +415,12 @@ export default function SubmittedOffersPage() {
     setMessageSending(true)
     setMessageBlockReason(null)
     try {
-      const reason = await scanContact(supabase, text, 'chat_message', dealId)
-      if (reason) {
+      const { blocked, reason } = await sendDealMessage(supabase, { dealId, content: text })
+      if (blocked) {
         // in-dialog, not `flash`: the dialog stays open, so a page banner would sit behind the overlay
-        setMessageBlockReason(t('contactBlocked', { reason }))
+        setMessageBlockReason(reason ? t('contactBlocked', { reason }) : t('contactBlockedGeneric'))
         return
       }
-      await sendDealMessage(supabase, { dealId, content: text })
       flash(t('messageSent'))
       setMessageTarget(null)
       setMessageText('')

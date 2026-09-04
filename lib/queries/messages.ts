@@ -49,7 +49,12 @@ export async function listThreads(supabase: DB): Promise<ChatThread[]> {
   }))
 }
 
-/** Messages in a thread (RLS messages_participants), oldest → newest for the conversation view. */
+/**
+ * Messages in a thread (RLS messages_participants), oldest → newest for the conversation view.
+ * `.eq("is_invalid", false)` on top of RLS: RLS already keeps the counterparty from ever selecting a
+ * blocked message, but it still lets the SENDER read their own — this filter hides it from their own
+ * conversation view too, matching "must not appear as a successfully sent message" for both sides.
+ */
 export async function listMessages(supabase: DB, chatId: string): Promise<ChatMessage[]> {
   const {
     data: { user },
@@ -58,6 +63,7 @@ export async function listMessages(supabase: DB, chatId: string): Promise<ChatMe
     .from("messages")
     .select("id, content, sender_role, sender_id, created_at")
     .eq("chat_id", chatId)
+    .eq("is_invalid", false)
     .order("created_at", { ascending: true })
   if (error) throw new Error(error.message)
   return (data ?? []).map((m) => ({
@@ -70,7 +76,13 @@ export async function listMessages(supabase: DB, chatId: string): Promise<ChatMe
 }
 
 /**
- * Send a message on a deal (RPC send_deal_message; anti-contact trigger validates before persist).
+ * Send a message on a deal (RPC send_deal_message). Round 4 (Option 2): the INSERT always succeeds —
+ * the anti-contact trigger flags offending content (is_invalid = true) instead of rejecting the
+ * write, so blocking and recording the violation happen atomically server-side regardless of what the
+ * client does. The RPC's return value is the sole source of truth for whether it was blocked; there is
+ * deliberately no separate client-side pre-check call any more (it would be redundant now that this
+ * one call is authoritative, and calling both would double-count violations).
+ *
  * Lender initiating from a deal feed: pass just dealId. Lender replying: dealId (+ their own thread is
  * found by the RPC). Broker replying: pass chatId + iAmBroker so we resolve the thread's lender_id
  * (readable from deal_chats via RLS — an opaque id, never a name).
@@ -78,7 +90,7 @@ export async function listMessages(supabase: DB, chatId: string): Promise<ChatMe
 export async function sendMessage(
   supabase: DB,
   opts: { dealId: string; content: string; chatId?: string | null; iAmBroker?: boolean },
-) {
+): Promise<{ blocked: boolean; reason: string | null }> {
   let lenderId: string | undefined
   if (opts.iAmBroker && opts.chatId) {
     const { data, error } = await supabase
@@ -89,12 +101,14 @@ export async function sendMessage(
     if (error) throw new Error(error.message)
     lenderId = data.lender_id
   }
-  const { error } = await supabase.rpc("send_deal_message", {
+  const { data, error } = await supabase.rpc("send_deal_message", {
     p_deal_id: opts.dealId,
     p_content: opts.content,
     p_lender_id: lenderId,
   })
   if (error) throw new Error(error.message)
+  const row = data?.[0]
+  return { blocked: !!row?.is_invalid, reason: row?.block_reason ?? null }
 }
 
 /** Mark all messages in a thread that I did not send as read. */

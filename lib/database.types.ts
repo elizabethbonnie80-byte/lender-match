@@ -284,6 +284,123 @@ export type Database = {
           },
         ]
       }
+      broker_contact_violations: {
+        Row: {
+          alert_id: string | null
+          broker_id: string
+          created_at: string
+          deal_id: string | null
+          id: string
+          message_id: string | null
+        }
+        Insert: {
+          alert_id?: string | null
+          broker_id: string
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          message_id?: string | null
+        }
+        Update: {
+          alert_id?: string | null
+          broker_id?: string
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_contact_violations_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_contact_violations_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_contact_violations_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_contact_violations_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "admin_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_suspensions: {
+        Row: {
+          broker_id: string
+          created_at: string
+          created_by: string | null
+          ended_at: string | null
+          ended_by: string | null
+          expires_at: string
+          id: string
+          is_automatic: boolean
+          reason: string
+          starts_at: string
+        }
+        Insert: {
+          broker_id: string
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at: string
+          id?: string
+          is_automatic?: boolean
+          reason: string
+          starts_at?: string
+        }
+        Update: {
+          broker_id?: string
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at?: string
+          id?: string
+          is_automatic?: boolean
+          reason?: string
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_suspensions_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_suspensions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_suspensions_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brokerages: {
         Row: {
           created_at: string
@@ -1425,10 +1542,14 @@ export type Database = {
           brokerage_id: string | null
           confirm_delete_until: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
           first_name: string
           id: string
           is_approved: boolean
           is_broker_admin: boolean
+          is_deleted: boolean
           last_name: string
           lender_institution_id: string | null
           notify_deal_expiring: boolean
@@ -1457,10 +1578,14 @@ export type Database = {
           brokerage_id?: string | null
           confirm_delete_until?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           first_name: string
           id: string
           is_approved?: boolean
           is_broker_admin?: boolean
+          is_deleted?: boolean
           last_name: string
           lender_institution_id?: string | null
           notify_deal_expiring?: boolean
@@ -1489,10 +1614,14 @@ export type Database = {
           brokerage_id?: string | null
           confirm_delete_until?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           first_name?: string
           id?: string
           is_approved?: boolean
           is_broker_admin?: boolean
+          is_deleted?: boolean
           last_name?: string
           lender_institution_id?: string | null
           notify_deal_expiring?: boolean
@@ -1529,6 +1658,13 @@ export type Database = {
             columns: ["lender_institution_id"]
             isOneToOne: false
             referencedRelation: "lender_institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1951,6 +2087,26 @@ export type Database = {
           institution_name: string
         }[]
       }
+      admin_broker_directory: {
+        Args: never
+        Returns: {
+          id: string
+          first_name: string
+          last_name: string
+          email: string
+          phone: string | null
+          brokerage_name: string | null
+          is_broker_admin: boolean
+          is_deleted: boolean
+          is_auth_banned: boolean
+          is_suspended: boolean
+          suspension_expires_at: string | null
+          violations_30d: number
+          created_at: string
+        }[]
+      }
+      admin_broker_enforcement_detail: { Args: { p_broker_id: string }; Returns: Json }
+      admin_end_suspension: { Args: { p_suspension_id: string }; Returns: undefined }
       admin_lender_ratings: {
         Args: never
         Returns: {
@@ -1962,6 +2118,11 @@ export type Database = {
           penalty_active: boolean
           survey_count: number
         }[]
+      }
+      admin_soft_delete_broker: { Args: { p_broker_id: string; p_reason: string }; Returns: undefined }
+      admin_suspend_broker: {
+        Args: { p_broker_id: string; p_days: number; p_reason: string }
+        Returns: undefined
       }
       approve_lender: { Args: { p_lender_id: string }; Returns: undefined }
       best_match_for: {
@@ -2216,6 +2377,8 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_currently_deleted: { Args: never; Returns: boolean }
+      is_currently_suspended: { Args: never; Returns: boolean }
       job_apply_rating_penalties: { Args: never; Returns: number }
       job_archive_expired_deals: { Args: never; Returns: number }
       job_archive_paid_invoices: { Args: never; Returns: number }
@@ -2793,21 +2956,16 @@ export type Database = {
       send_deal_message: {
         Args: { p_content: string; p_deal_id: string; p_lender_id?: string }
         Returns: {
-          chat_id: string
-          content: string
-          created_at: string
           id: string
-          is_invalid: boolean
-          is_read: boolean
+          chat_id: string
           sender_id: string
           sender_role: Database["public"]["Enums"]["user_role"]
-        }
-        SetofOptions: {
-          from: "*"
-          to: "messages"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+          content: string
+          is_invalid: boolean
+          is_read: boolean
+          created_at: string
+          block_reason: string | null
+        }[]
       }
       set_penalty_thresholds: {
         Args: { p_near_closing_days: number; p_near_cof_days: number }

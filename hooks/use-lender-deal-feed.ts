@@ -16,7 +16,6 @@ import {
 } from '@/lib/queries/saved-filters'
 import { declineDeal } from '@/lib/queries/offers'
 import { sendMessage as sendDealMessage, listThreads } from '@/lib/queries/messages'
-import { scanContact } from '@/lib/queries/anti-contact'
 import { useEnums } from '@/lib/use-enums'
 
 type DB = SupabaseClient<Database>
@@ -278,19 +277,25 @@ export function useLenderDealFeed<T extends FeedDeal>(config: {
     setMessageSending(true)
     setMessageBlockReason(null)
     try {
-      const reason = await scanContact(supabase, text, 'chat_message', messageTarget[0])
-      if (reason) {
-        // Must surface INSIDE the dialog: the dialog stays open on a block, so `flash` would paint the
-        // reason on the page behind the overlay — invisible — and in the green success style at that.
-        // Reported 2026-07-27: "no me deja enviar el mensaje pero no me indica que es debido a que no
-        // puedo agregar info de contacto". The draft is kept so the lender can edit it.
-        setMessageBlockReason(t('contactBlocked', { reason }))
-        return
-      }
+      // Round 4 (Option 2): send_deal_message() is now authoritative for both blocking and recording
+      // the violation — no separate pre-check any more. The text is identical across every target deal
+      // and the classifier is a pure function of the text alone, so if it's going to be blocked it's
+      // blocked on the FIRST send; stopping there preserves the original all-or-nothing behavior
+      // without needing a pre-check round trip.
+      let sentCount = 0
       for (const dealId of messageTarget) {
-        await sendDealMessage(supabase, { dealId, content: text })
+        const { blocked, reason } = await sendDealMessage(supabase, { dealId, content: text })
+        if (blocked) {
+          // Must surface INSIDE the dialog: the dialog stays open on a block, so `flash` would paint the
+          // reason on the page behind the overlay — invisible — and in the green success style at that.
+          // Reported 2026-07-27: "no me deja enviar el mensaje pero no me indica que es debido a que no
+          // puedo agregar info de contacto". The draft is kept so the lender can edit it.
+          setMessageBlockReason(reason ? t('contactBlocked', { reason }) : t('contactBlockedGeneric'))
+          return
+        }
+        sentCount++
       }
-      flash(t('messageSent', { count: messageTarget.length }))
+      flash(t('messageSent', { count: sentCount }))
       setMessageTarget(null)
       setMessageText('')
       void refreshThreadMap() // now these deals route to their conversation

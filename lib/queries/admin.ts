@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
+import { FunctionsHttpError, type SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
 import { productTermLabel } from "./deals"
 
@@ -135,44 +135,9 @@ export async function setPenaltyThresholds(
 }
 
 // ── Broker admins (client feedback 2026-07-20 #8) ──────────────────────────────
-
-export type BrokerRow = {
-  id: string
-  firstName: string
-  lastName: string
-  phone: string | null
-  brokerage: string | null
-  isBrokerAdmin: boolean
-  createdAt: string
-}
-
-/**
- * Every broker with their brokerage + broker-admin flag. Admin-only: the profiles RLS read policy is
- * `id = auth.uid() or is_admin()`. The brokerage embed needs the FK hint (profiles has more than one
- * FK into the org tables → PGRST201 otherwise).
- */
-export async function listBrokers(supabase: DB): Promise<BrokerRow[]> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(
-      "id, first_name, last_name, phone, is_broker_admin, created_at, brokerages!profiles_brokerage_id_fkey(name)",
-    )
-    .eq("role", "broker")
-    .order("created_at", { ascending: false })
-  if (error) throw new Error(error.message)
-  return (data ?? []).map((p) => {
-    const b = Array.isArray(p.brokerages) ? p.brokerages[0] : p.brokerages
-    return {
-      id: p.id,
-      firstName: p.first_name,
-      lastName: p.last_name,
-      phone: p.phone,
-      brokerage: b?.name ?? null,
-      isBrokerAdmin: p.is_broker_admin,
-      createdAt: p.created_at,
-    }
-  })
-}
+// listBrokers()/BrokerRow (a plain profiles+brokerages read) were superseded by
+// listBrokerDirectory()/BrokerDirectoryRow below (Round 4, 2026-09-04), which adds email/suspension/
+// violation state via admin_broker_directory(). setBrokerAdmin() is unchanged — same direct UPDATE.
 
 /**
  * Mark / unmark a broker as an admin for their brokerage. A direct admin UPDATE on
@@ -706,4 +671,164 @@ export async function getBrokerBlockHistory(supabase: DB, brokerId: string): Pro
     institutionName: e.institution_name,
     createdAt: e.created_at,
   }))
+}
+
+// ── Admin user management & broker enforcement (Round 4, 2026-09-04) ────────────
+// Manage → Brokers: suspension (manual + automatic 3-strikes contact-info), soft-delete/Auth-ban.
+// admin_broker_directory() is the only place in the app that ever reads auth.users columns (email,
+// and — added on review — banned_until) — see migration 20260904000080.
+
+export type BrokerDirectoryRow = {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string | null
+  brokerageName: string | null
+  isBrokerAdmin: boolean
+  isDeleted: boolean
+  /**
+   * Supabase Auth's OWN ban state (auth.users.banned_until, set/read for real — never a duplicate DB
+   * flag), so the UI can tell "fully deleted" apart from "marked deleted but the Auth ban didn't take"
+   * without guessing. Meaningless while isDeleted is false.
+   */
+  isAuthBanned: boolean
+  isSuspended: boolean
+  suspensionExpiresAt: string | null
+  violations30d: number
+  createdAt: string
+}
+
+export async function listBrokerDirectory(supabase: DB): Promise<BrokerDirectoryRow[]> {
+  const { data, error } = await supabase.rpc("admin_broker_directory")
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((b) => ({
+    id: b.id,
+    firstName: b.first_name,
+    lastName: b.last_name,
+    email: b.email,
+    phone: b.phone,
+    brokerageName: b.brokerage_name,
+    isBrokerAdmin: b.is_broker_admin,
+    isDeleted: b.is_deleted,
+    isAuthBanned: b.is_auth_banned,
+    isSuspended: b.is_suspended,
+    suspensionExpiresAt: b.suspension_expires_at,
+    violations30d: b.violations_30d,
+    createdAt: b.created_at,
+  }))
+}
+
+export type BrokerSuspensionRecord = {
+  id: string
+  reason: string
+  isAutomatic: boolean
+  createdByName: string | null
+  startsAt: string
+  expiresAt: string
+  endedAt: string | null
+  endedByName: string | null
+  isActive: boolean
+}
+
+export type BrokerViolationRecord = {
+  id: string
+  flaggedContent: string | null
+  dealNumber: string | null
+  createdAt: string
+}
+
+export type BrokerEnforcementDetail = {
+  isDeleted: boolean
+  isSuspended: boolean
+  violations30d: number
+  suspensions: BrokerSuspensionRecord[]
+  violations: BrokerViolationRecord[]
+}
+
+/** Full suspension + violation history for one broker — the Manage → Brokers detail dialog. */
+export async function getBrokerEnforcementDetail(supabase: DB, brokerId: string): Promise<BrokerEnforcementDetail> {
+  const { data, error } = await supabase.rpc("admin_broker_enforcement_detail", { p_broker_id: brokerId })
+  if (error) throw new Error(error.message)
+  const raw = data as unknown as {
+    is_deleted: boolean
+    is_suspended: boolean
+    violations_30d: number
+    suspensions: {
+      id: string; reason: string; is_automatic: boolean; created_by_name: string | null
+      starts_at: string; expires_at: string; ended_at: string | null; ended_by_name: string | null
+      is_active: boolean
+    }[]
+    violations: { id: string; flagged_content: string | null; deal_number: string | null; created_at: string }[]
+  }
+  return {
+    isDeleted: raw.is_deleted,
+    isSuspended: raw.is_suspended,
+    violations30d: raw.violations_30d,
+    suspensions: raw.suspensions.map((s) => ({
+      id: s.id,
+      reason: s.reason,
+      isAutomatic: s.is_automatic,
+      createdByName: s.created_by_name,
+      startsAt: s.starts_at,
+      expiresAt: s.expires_at,
+      endedAt: s.ended_at,
+      endedByName: s.ended_by_name,
+      isActive: s.is_active,
+    })),
+    violations: raw.violations.map((v) => ({
+      id: v.id,
+      flaggedContent: v.flagged_content,
+      dealNumber: v.deal_number,
+      createdAt: v.created_at,
+    })),
+  }
+}
+
+/** Manual suspension — preset or custom day count + a required internal reason. */
+export async function suspendBroker(supabase: DB, brokerId: string, days: number, reason: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_suspend_broker", {
+    p_broker_id: brokerId,
+    p_days: days,
+    p_reason: reason,
+  })
+  if (error) throw new Error(error.message)
+}
+
+/** Ends one specific suspension early (manual or automatic) — does not touch any other active row. */
+export async function endBrokerSuspension(supabase: DB, suspensionId: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_end_suspension", { p_suspension_id: suspensionId })
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Delete Account = soft-delete + Auth ban, never physical deletion (Round 4 approved design). Routes
+ * through the delete-broker edge function since Postgres itself cannot call the Supabase Auth Admin
+ * API — see supabase/functions/delete-broker. Idempotent: calling this again for an already-deleted
+ * broker safely re-runs admin_soft_delete_broker (a no-op update) and re-issues the Auth ban (GoTrue's
+ * updateUserById is safe to call repeatedly with the same ban_duration) — this is the built-in retry
+ * path for a broker whose first attempt banned nothing (see the review, 2026-09-04).
+ *
+ * On a non-2xx response, supabase-js's default error.message is the unhelpful, generic
+ * "Edge Function returned a non-2xx status code" — the function's own specific message (validation
+ * errors, and critically "Account flagged as deleted, but the Auth ban failed…") lives in the actual
+ * response BODY, which FunctionsHttpError exposes via `.context` (the raw, unconsumed Response). Read
+ * it here so the admin sees the real reason instead of a useless generic toast.
+ */
+export async function deleteBrokerAccount(supabase: DB, brokerId: string, reason: string): Promise<void> {
+  const { error } = await supabase.functions.invoke("delete-broker", {
+    body: { broker_id: brokerId, reason },
+  })
+  if (!error) return
+  let message = error.message
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = (await error.context.json()) as { error?: string } | null
+      if (body?.error) message = body.error
+    } catch {
+      // Response body wasn't JSON (an infra-level failure, not the function's own error path) —
+      // fall back to the generic supabase-js message rather than throwing a parse error instead.
+    }
+  }
+  throw new Error(message)
 }

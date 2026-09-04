@@ -39,6 +39,7 @@ const SMOKES = [
   "smoke-blocking.mjs",
   "smoke-block-limit.mjs",
   "smoke-messages.mjs",
+  "smoke-broker-enforcement.mjs",
   "smoke-signup.mjs",
   "smoke-admin.mjs",
   "smoke-faqs.mjs",

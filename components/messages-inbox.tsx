@@ -28,7 +28,6 @@ import {
 } from "@/lib/queries/messages"
 import { declineDeal, hasLenderOfferedOnDeal } from "@/lib/queries/offers"
 import { notifyUnreadChanged } from "@/hooks/use-unread"
-import { scanContact } from "@/lib/queries/anti-contact"
 import { DEAL_STATUS_LABEL } from "@/lib/enums"
 import { useT } from "@/components/i18n-provider"
 
@@ -171,14 +170,18 @@ export function MessagesInbox() {
     setSending(true)
     setError(null)
     try {
-      const reason = await scanContact(supabase, content, "chat_message", dealId)
-      if (reason) {
+      // Round 4 (Option 2): send_deal_message() itself is now authoritative for both blocking and
+      // recording the violation — there is no separate client-side pre-check any more (it would be
+      // redundant and would double-count). A blocked attempt comes back as a normal, successful RPC
+      // call with `blocked: true`, not a thrown error, since the row is written (flagged) rather than
+      // rejected.
+      const { blocked, reason } = await sendMessage(supabase, { dealId, content, chatId, iAmBroker })
+      if (blocked) {
         setMessages((prev) => prev.filter((m) => m.id !== tempId))
         setDraft(content)
-        setError(t("contactBlocked", { reason }))
+        setError(reason ? t("contactBlocked", { reason }) : t("contactBlockedGeneric"))
         return
       }
-      await sendMessage(supabase, { dealId, content, chatId, iAmBroker })
       await loadMessages(chatId) // replaces the temp bubble with the server row
       void refreshThreads()
     } catch (err) {

@@ -89,12 +89,16 @@ async function main() {
   check("broker now has two threads on the deal", bThreads.length === 2)
   check("the two lender threads have distinct ordinals 1 and 2", ordinals[0] === 1 && ordinals[1] === 2, ordinals.join(","))
 
-  // 6. Anti-contact blocks a message with a phone number (nothing persists).
-  const before = (await broker.from("messages").select("id").eq("chat_id", chatId)).data?.length ?? 0
-  const { error: badErr } = await lender.rpc("send_deal_message", { p_deal_id: deal.id, p_content: "Call me at 416-555-0199" })
-  check("message with a phone number is BLOCKED", !!badErr, badErr?.message)
-  const after = (await broker.from("messages").select("id").eq("chat_id", chatId)).data?.length ?? 0
-  check("blocked message did not persist", after === before)
+  // 6. Round 4 (Option 2): anti-contact FLAGS a message with a phone number rather than rejecting the
+  // write — the RPC call succeeds, but the row is marked is_invalid and must never reach the recipient.
+  const { data: badResult, error: badErr } = await lender.rpc("send_deal_message", {
+    p_deal_id: deal.id, p_content: "Call me at 416-555-0199",
+  })
+  check("a message with a phone number is accepted but flagged invalid", !badErr && badResult?.[0]?.is_invalid === true, badErr?.message)
+  check("the RPC returns a block_reason describing what was flagged", !!badResult?.[0]?.block_reason)
+  const { data: recipientPeek } = await broker
+    .from("messages").select("id").eq("chat_id", chatId).eq("content", "Call me at 416-555-0199")
+  check("the flagged message cannot be read by the recipient (broker)", (recipientPeek?.length ?? 0) === 0)
 
   // 7. mark_chat_read clears the broker's unread for that thread.
   await broker.rpc("mark_chat_read", { p_chat_id: chatId })

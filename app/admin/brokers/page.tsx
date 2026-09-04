@@ -4,33 +4,73 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AdminHeader } from '@/components/admin-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { RowActions } from '@/components/row-actions'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Toaster, toast } from 'sonner'
-import { Search, Building2, ShieldCheck, UserCog, User } from 'lucide-react'
+import { Search, Building2, ShieldCheck, UserCog, User, Ban, ShieldOff, Trash2, Eye, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useT } from '@/components/i18n-provider'
-import { listBrokers, setBrokerAdmin, type BrokerRow } from '@/lib/queries/admin'
+import {
+  listBrokerDirectory,
+  setBrokerAdmin,
+  suspendBroker,
+  endBrokerSuspension,
+  deleteBrokerAccount,
+  getBrokerEnforcementDetail,
+  type BrokerDirectoryRow,
+  type BrokerEnforcementDetail,
+} from '@/lib/queries/admin'
+
+const DURATION_PRESETS = ['1', '3', '7', '30', 'custom'] as const
 
 /**
- * Admin: mark brokers as an admin for their brokerage (client feedback 2026-07-20 #8).
+ * Admin Manage → Brokers (Round 4, 2026-09-04): the existing "Make Admin" toggle (profiles.is_broker_admin,
+ * unchanged — see the original note below) plus manual suspension, viewing the automatic 3-strikes
+ * contact-info suspension history, and Delete Account (soft-delete + Auth ban, never erasure).
  *
- * Bubble auto-granted this to the first broker of a brokerage (OQ#23); that is deliberately NOT
- * restored — the client asked to assign it explicitly from here. The toggle is a direct admin UPDATE
- * on profiles.is_broker_admin (profiles_admin_update + the privilege guard's is_admin() exemption),
- * so there is no RPC behind it.
+ * "Make Admin" here is unchanged from client feedback 2026-07-20 #8: it grants brokerage-level admin
+ * (sees every deal their brokerage submitted), NOT the platform `admin` role — there is deliberately no
+ * UI here for granting that (approved scope for this round).
  */
 export default function BrokersPage() {
   const t = useT('admin')
   const supabase = useMemo(() => createClient(), [])
-  const [brokers, setBrokers] = useState<BrokerRow[]>([])
+  const [brokers, setBrokers] = useState<BrokerDirectoryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [brokerageFilter, setBrokerageFilter] = useState('all')
 
+  const [suspendTarget, setSuspendTarget] = useState<BrokerDirectoryRow | null>(null)
+  const [suspendPreset, setSuspendPreset] = useState<(typeof DURATION_PRESETS)[number]>('7')
+  const [customDays, setCustomDays] = useState('')
+  const [suspendReason, setSuspendReason] = useState('')
+  const [suspendBusy, setSuspendBusy] = useState(false)
+
+  const [deleteTarget, setDeleteTarget] = useState<BrokerDirectoryRow | null>(null)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
+
+  const [detailTarget, setDetailTarget] = useState<BrokerDirectoryRow | null>(null)
+  const [detail, setDetail] = useState<BrokerEnforcementDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+
   const load = useCallback(async () => {
-    setBrokers(await listBrokers(supabase))
+    setBrokers(await listBrokerDirectory(supabase))
   }, [supabase])
 
   useEffect(() => {
@@ -42,22 +82,22 @@ export default function BrokersPage() {
   }, [load, t])
 
   const brokerages = useMemo(
-    () => Array.from(new Set(brokers.map((b) => b.brokerage).filter((n): n is string => !!n))).sort(),
+    () => Array.from(new Set(brokers.map((b) => b.brokerageName).filter((n): n is string => !!n))).sort(),
     [brokers],
   )
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
     return brokers.filter((b) => {
-      if (brokerageFilter !== 'all' && b.brokerage !== brokerageFilter) return false
+      if (brokerageFilter !== 'all' && b.brokerageName !== brokerageFilter) return false
       if (!q) return true
-      return `${b.firstName} ${b.lastName} ${b.brokerage ?? ''}`.toLowerCase().includes(q)
+      return `${b.firstName} ${b.lastName} ${b.email} ${b.brokerageName ?? ''}`.toLowerCase().includes(q)
     })
   }, [brokers, search, brokerageFilter])
 
   const adminCount = brokers.filter((b) => b.isBrokerAdmin).length
 
-  const toggle = async (b: BrokerRow) => {
+  const toggleAdmin = async (b: BrokerDirectoryRow) => {
     setBusyId(b.id)
     try {
       await setBrokerAdmin(supabase, b.id, !b.isBrokerAdmin)
@@ -68,6 +108,89 @@ export default function BrokersPage() {
       toast.error(err instanceof Error ? err.message : t('brokerAdminUpdateErr'))
     } finally {
       setBusyId(null)
+    }
+  }
+
+  const openSuspend = (b: BrokerDirectoryRow) => {
+    setSuspendTarget(b)
+    setSuspendPreset('7')
+    setCustomDays('')
+    setSuspendReason('')
+  }
+
+  const confirmSuspend = async () => {
+    if (!suspendTarget) return
+    const days = suspendPreset === 'custom' ? Number.parseInt(customDays, 10) : Number.parseInt(suspendPreset, 10)
+    if (!Number.isFinite(days) || days <= 0) {
+      toast.error(t('suspendDaysInvalid'))
+      return
+    }
+    if (!suspendReason.trim()) {
+      toast.error(t('suspendReasonRequired'))
+      return
+    }
+    setSuspendBusy(true)
+    try {
+      await suspendBroker(supabase, suspendTarget.id, days, suspendReason.trim())
+      await load()
+      toast.success(t('suspendedToast', { name: `${suspendTarget.firstName} ${suspendTarget.lastName}` }))
+      setSuspendTarget(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('suspendErr'))
+    } finally {
+      setSuspendBusy(false)
+    }
+  }
+
+  const openDetail = useCallback(async (b: BrokerDirectoryRow) => {
+    setDetailTarget(b)
+    setDetail(null)
+    setDetailLoading(true)
+    try {
+      setDetail(await getBrokerEnforcementDetail(supabase, b.id))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('detailLoadErr'))
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [supabase, t])
+
+  const endSuspension = async (suspensionId: string) => {
+    if (!detailTarget) return
+    try {
+      await endBrokerSuspension(supabase, suspensionId)
+      await load()
+      await openDetail(detailTarget)
+      toast.success(t('suspensionEndedToast'))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('suspensionEndErr'))
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    if (!deleteReason.trim()) {
+      toast.error(t('deleteReasonRequired'))
+      return
+    }
+    const wasRetry = deleteTarget.isDeleted
+    setDeleteBusy(true)
+    try {
+      await deleteBrokerAccount(supabase, deleteTarget.id, deleteReason.trim())
+      toast.success(
+        wasRetry
+          ? t('retriedToast', { name: `${deleteTarget.firstName} ${deleteTarget.lastName}` })
+          : t('deletedToast', { name: `${deleteTarget.firstName} ${deleteTarget.lastName}` }),
+      )
+      setDeleteTarget(null)
+    } catch (err) {
+      // The RPC half may have already succeeded (is_deleted=true) even though the Auth ban failed —
+      // refresh regardless so the row's status reflects the real DB state, and the "Delete Account"
+      // action turns into "Retry Auth Ban" so the admin has a way forward instead of a dead end.
+      toast.error(err instanceof Error ? err.message : t('deleteErr'))
+    } finally {
+      await load().catch(() => {})
+      setDeleteBusy(false)
     }
   }
 
@@ -136,6 +259,7 @@ export default function BrokersPage() {
                 <thead className="bg-muted border-b border-border">
                   <tr>
                     <th className="px-6 py-3 text-left font-semibold text-foreground">{t('colBroker')}</th>
+                    <th className="px-6 py-3 text-left font-semibold text-foreground">{t('colEmail')}</th>
                     <th className="px-6 py-3 text-left font-semibold text-foreground">{t('colBrokerage')}</th>
                     <th className="px-6 py-3 text-left font-semibold text-foreground">{t('colStatus')}</th>
                     <th className="px-6 py-3 text-center font-semibold text-foreground">{t('colAction')}</th>
@@ -147,33 +271,84 @@ export default function BrokersPage() {
                       <td className="px-6 py-4">
                         <p className="font-medium text-foreground">{b.firstName} {b.lastName}</p>
                         {b.phone && <p className="text-xs text-muted-foreground">{b.phone}</p>}
-                      </td>
-                      <td className="px-6 py-4 text-foreground">{b.brokerage ?? '—'}</td>
-                      <td className="px-6 py-4">
-                        {b.isBrokerAdmin ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            <ShieldCheck className="h-3.5 w-3.5" /> {t('statusBrokerAdmin')}
+                        {b.isBrokerAdmin && (
+                          <span className="inline-flex items-center gap-1 mt-1 text-xs font-medium text-blue-700">
+                            <ShieldCheck className="h-3 w-3" /> {t('statusBrokerAdmin')}
                           </span>
-                        ) : (
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-foreground">{b.email}</td>
+                      <td className="px-6 py-4 text-foreground">{b.brokerageName ?? '—'}</td>
+                      <td className="px-6 py-4">
+                        {b.isDeleted && b.isAuthBanned ? (
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                            <User className="h-3.5 w-3.5" /> {t('statusBrokerPlain')}
+                            <Trash2 className="h-3.5 w-3.5" /> {t('statusDeleted')}
+                          </span>
+                        ) : b.isDeleted ? (
+                          // Deleted in the DB, but Supabase Auth's OWN ban state (auth.users.banned_until)
+                          // says the login-lock didn't take — a real partial-failure state, not guessed.
+                          <div>
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                              <AlertTriangle className="h-3.5 w-3.5" /> {t('statusDeletedBanPending')}
+                            </span>
+                            <p className="text-xs text-muted-foreground mt-1">{t('banPendingHint')}</p>
+                          </div>
+                        ) : b.isSuspended ? (
+                          <div>
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              <Ban className="h-3.5 w-3.5" /> {t('statusSuspended')}
+                            </span>
+                            {b.suspensionExpiresAt && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {t('suspendedUntil', { date: new Date(b.suspensionExpiresAt).toLocaleString() })}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <User className="h-3.5 w-3.5" /> {t('statusActive')}
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center">
-                          {b.isBrokerAdmin ? (
-                            <Button
-                              size="sm" variant="outline" disabled={busyId === b.id}
-                              onClick={() => toggle(b)} className="gap-1.5"
-                            >
-                              <User className="h-3.5 w-3.5" /> {t('removeBrokerAdmin')}
-                            </Button>
-                          ) : (
-                            <Button size="sm" disabled={busyId === b.id} onClick={() => toggle(b)} className="gap-1.5">
-                              <UserCog className="h-3.5 w-3.5" /> {t('makeBrokerAdmin')}
-                            </Button>
-                          )}
+                          <RowActions
+                            label={t('colAction')}
+                            disabled={busyId === b.id}
+                            actions={[
+                              !b.isDeleted && {
+                                label: b.isBrokerAdmin ? t('removeBrokerAdmin') : t('makeBrokerAdmin'),
+                                icon: b.isBrokerAdmin ? <User className="h-3.5 w-3.5" /> : <UserCog className="h-3.5 w-3.5" />,
+                                onSelect: () => void toggleAdmin(b),
+                              },
+                              !b.isDeleted && {
+                                label: t('actionSuspend'),
+                                icon: <Ban className="h-3.5 w-3.5" />,
+                                onSelect: () => openSuspend(b),
+                              },
+                              !b.isDeleted && b.isSuspended && {
+                                label: t('actionEndSuspension'),
+                                icon: <ShieldOff className="h-3.5 w-3.5" />,
+                                onSelect: () => void openDetail(b),
+                              },
+                              {
+                                label: t('actionViewDetails'),
+                                icon: <Eye className="h-3.5 w-3.5" />,
+                                onSelect: () => void openDetail(b),
+                              },
+                              // Hidden only once BOTH halves are confirmed done (deleted in the DB AND
+                              // Auth-banned per auth.users.banned_until) — nothing left to retry. Offered
+                              // as "Retry Auth Ban" when deleted but the ban didn't take (a real,
+                              // Auth-sourced partial-failure state, not a guess) — retrying is safe since
+                              // both admin_soft_delete_broker and the Auth ban are idempotent.
+                              (!b.isDeleted || !b.isAuthBanned) && {
+                                label: b.isDeleted ? t('actionRetryDelete') : t('actionDeleteAccount'),
+                                icon: <Trash2 className="h-3.5 w-3.5" />,
+                                destructive: true,
+                                onSelect: () => { setDeleteTarget(b); setDeleteReason('') },
+                              },
+                            ]}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -184,6 +359,161 @@ export default function BrokersPage() {
           )}
         </div>
       </main>
+
+      {/* Suspend */}
+      <Dialog open={!!suspendTarget} onOpenChange={(o) => { if (!o) setSuspendTarget(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('suspendTitle', { name: suspendTarget ? `${suspendTarget.firstName} ${suspendTarget.lastName}` : '' })}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">{t('suspendDescription')}</p>
+            <div className="space-y-2">
+              <Label htmlFor="suspend-duration">{t('suspendDurationLabel')}</Label>
+              <Select value={suspendPreset} onValueChange={(v) => setSuspendPreset(v as typeof suspendPreset)}>
+                <SelectTrigger id="suspend-duration"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">{t('suspendPreset1')}</SelectItem>
+                  <SelectItem value="3">{t('suspendPreset3')}</SelectItem>
+                  <SelectItem value="7">{t('suspendPreset7')}</SelectItem>
+                  <SelectItem value="30">{t('suspendPreset30')}</SelectItem>
+                  <SelectItem value="custom">{t('suspendPresetCustom')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {suspendPreset === 'custom' && (
+              <div className="space-y-2">
+                <Label htmlFor="suspend-custom-days">{t('suspendCustomDaysLabel')}</Label>
+                <Input
+                  id="suspend-custom-days" type="number" min={1}
+                  value={customDays} onChange={(e) => setCustomDays(e.target.value)}
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="suspend-reason">{t('suspendReasonLabel')}</Label>
+              <Textarea
+                id="suspend-reason" rows={3}
+                value={suspendReason} onChange={(e) => setSuspendReason(e.target.value)}
+                placeholder={t('suspendReasonPlaceholder')}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" disabled={suspendBusy} onClick={() => setSuspendTarget(null)}>{t('cancel')}</Button>
+            <Button disabled={suspendBusy} onClick={() => void confirmSuspend()}>{t('confirmSuspend')}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account / Retry Auth Ban — confirmation required either way */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o && !deleteBusy) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(deleteTarget?.isDeleted ? 'retryDeleteTitle' : 'deleteTitle', {
+                name: deleteTarget ? `${deleteTarget.firstName} ${deleteTarget.lastName}` : '',
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.isDeleted ? t('retryDeleteDescription') : t('deleteDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="delete-reason">{t('deleteReasonLabel')}</Label>
+            <Textarea
+              id="delete-reason" rows={3}
+              value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder={t('deleteReasonPlaceholder')}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteBusy} onClick={() => setDeleteTarget(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteBusy}
+              onClick={(e) => { e.preventDefault(); void confirmDelete() }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t(deleteTarget?.isDeleted ? 'confirmRetryDelete' : 'confirmDelete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* View Details — full suspension + violation history */}
+      <Dialog open={!!detailTarget} onOpenChange={(o) => { if (!o) setDetailTarget(null) }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{detailTarget ? `${detailTarget.firstName} ${detailTarget.lastName}` : ''}</DialogTitle>
+          </DialogHeader>
+          {detailLoading ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">{t('detailLoading')}</p>
+          ) : detail && detailTarget ? (
+            <div className="space-y-5 max-h-[70vh] overflow-y-auto">
+              <div className="text-sm text-muted-foreground">
+                <p>{detailTarget.email}</p>
+                <p>{detailTarget.brokerageName ?? '—'}</p>
+                <p className="mt-1 text-foreground font-medium">{t('violations30dLabel', { count: detail.violations30d })}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-2">{t('suspensionHistoryHeading')}</p>
+                {detail.suspensions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-3 text-center">{t('noSuspensions')}</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {detail.suspensions.map((s) => (
+                      <div key={s.id} className="px-3 py-2 bg-muted/50 border border-border rounded-md">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm text-foreground">{s.reason}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {s.isAutomatic ? t('suspensionAutomatic') : t('suspensionManualBy', { name: s.createdByName ?? '—' })}
+                              {' · '}
+                              {new Date(s.startsAt).toLocaleDateString()} – {new Date(s.expiresAt).toLocaleString()}
+                              {s.endedAt && ` · ${t('suspensionEndedBy', { name: s.endedByName ?? '—', date: new Date(s.endedAt).toLocaleString() })}`}
+                            </p>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-2">
+                            {s.isActive && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                {t('statusSuspended')}
+                              </span>
+                            )}
+                            {s.isActive && (
+                              <Button size="sm" variant="outline" onClick={() => void endSuspension(s.id)}>
+                                {t('actionEndSuspension')}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-2">{t('violationHistoryHeading')}</p>
+                {detail.violations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-3 text-center">{t('noViolations')}</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {detail.violations.map((v) => (
+                      <div key={v.id} className="px-3 py-2 bg-muted/50 border border-border rounded-md text-sm">
+                        <p className="text-foreground truncate">{v.flaggedContent ?? '—'}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {v.dealNumber ? `${v.dealNumber} · ` : ''}{new Date(v.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
