@@ -631,44 +631,47 @@ export async function listAllDealDocuments(supabase: DB): Promise<AdminDealDocum
   })
 }
 
-// ── Broker block/unblock monitoring (Round 4, 2026-09-03) ───────────────────────
-// Admin-only view of the 5-per-broker lender-institution block cap: who's currently blocking whom,
-// and the recent block/unblock history (broker_block_audit, written only by a database trigger — see
-// migration 20260903000078). One aggregate RPC call, same shape as getAnalytics() above.
+// ── Broker block/unblock monitoring (Round 4, 2026-09-03; grouped view 2026-09-03 follow-up) ────
+// Admin-only view of the 5-per-broker lender-institution block cap. One row per broker with any
+// block/unblock history (migration 20260903000079's admin_block_activity() — grouped from the full
+// broker_block_audit table, not just currently-active blocks, and not a platform-wide capped list);
+// per-broker drill-down via admin_broker_block_history(), which reads that one broker's own audit
+// rows directly so it is never subject to another broker's activity crowding it out.
 
 export type BlockActivitySummaryRow = {
   brokerId: string
   brokerName: string
   brokerageName: string | null
+  /** Current active blocks only — 0 for a broker whose history is entirely past unblocks. */
   blockedCount: number
   blockedInstitutions: string[]
-}
-
-export type BlockActivityEvent = {
-  id: string
-  /** Plain snapshot uuid, no FK — keeps its original value forever even once the broker/institution
-   *  it once pointed to is deleted. brokerName/institutionName are the reliable display fields. */
-  brokerId: string
-  brokerName: string
-  brokerageName: string | null
-  institutionId: string
-  institutionName: string
-  action: "blocked" | "unblocked"
-  createdAt: string
+  /** All block + unblock events for this broker in the last 7 days (server-computed, migration 79). */
+  changes7d: number
+  latestAction: "blocked" | "unblocked"
+  latestInstitutionName: string
+  latestCreatedAt: string
 }
 
 export type BlockActivity = {
   summary: BlockActivitySummaryRow[]
-  events: BlockActivityEvent[]
 }
 
 export async function getBlockActivity(supabase: DB): Promise<BlockActivity> {
   const { data, error } = await supabase.rpc("admin_block_activity")
   if (error) throw new Error(error.message)
   const raw = (data as unknown as {
-    summary: { broker_id: string; broker_name: string; brokerage_name: string | null; blocked_count: number; blocked_institutions: string[] }[]
-    events: { id: string; broker_id: string; broker_name: string; brokerage_name: string | null; institution_id: string; institution_name: string; action: "blocked" | "unblocked"; created_at: string }[]
-  }) ?? { summary: [], events: [] }
+    summary: {
+      broker_id: string
+      broker_name: string
+      brokerage_name: string | null
+      blocked_count: number
+      blocked_institutions: string[]
+      changes_7d: number
+      latest_action: "blocked" | "unblocked"
+      latest_institution_name: string
+      latest_created_at: string
+    }[]
+  }) ?? { summary: [] }
   return {
     summary: raw.summary.map((s) => ({
       brokerId: s.broker_id,
@@ -676,16 +679,31 @@ export async function getBlockActivity(supabase: DB): Promise<BlockActivity> {
       brokerageName: s.brokerage_name,
       blockedCount: s.blocked_count,
       blockedInstitutions: s.blocked_institutions,
-    })),
-    events: raw.events.map((e) => ({
-      id: e.id,
-      brokerId: e.broker_id,
-      brokerName: e.broker_name,
-      brokerageName: e.brokerage_name,
-      institutionId: e.institution_id,
-      institutionName: e.institution_name,
-      action: e.action,
-      createdAt: e.created_at,
+      changes7d: s.changes_7d,
+      latestAction: s.latest_action,
+      latestInstitutionName: s.latest_institution_name,
+      latestCreatedAt: s.latest_created_at,
     })),
   }
+}
+
+export type BlockHistoryEvent = {
+  id: string
+  action: "blocked" | "unblocked"
+  institutionId: string
+  institutionName: string
+  createdAt: string
+}
+
+/** One broker's full block/unblock history, newest first — the "View Activity" detail drill-down. */
+export async function getBrokerBlockHistory(supabase: DB, brokerId: string): Promise<BlockHistoryEvent[]> {
+  const { data, error } = await supabase.rpc("admin_broker_block_history", { p_broker_id: brokerId })
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((e) => ({
+    id: e.id,
+    action: e.action as "blocked" | "unblocked",
+    institutionId: e.institution_id,
+    institutionName: e.institution_name,
+    createdAt: e.created_at,
+  }))
 }

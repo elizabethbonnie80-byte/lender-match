@@ -1941,6 +1941,16 @@ export type Database = {
       }
       admin_analytics: { Args: never; Returns: Json }
       admin_block_activity: { Args: never; Returns: Json }
+      admin_broker_block_history: {
+        Args: { p_broker_id: string }
+        Returns: {
+          action: string
+          created_at: string
+          id: string
+          institution_id: string
+          institution_name: string
+        }[]
+      }
       admin_lender_ratings: {
         Args: never
         Returns: {
