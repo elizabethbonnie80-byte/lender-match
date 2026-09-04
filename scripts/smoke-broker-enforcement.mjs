@@ -41,6 +41,26 @@
  *     (not a guessed/duplicated DB flag) — correctly false for a broker soft-deleted at the DB layer but
  *     never actually Auth-banned, which is the exact partial-failure state Delete Account's retry UI
  *     exists to surface.
+ *
+ *   Migration 83 (2026-09-04, same day — fixes a bug found on staging by manual browser testing):
+ *   tg_scan_message() was a BEFORE INSERT trigger that tried to durably record admin_alerts /
+ *   broker_contact_violations rows referencing NEW.id before the messages row it points at actually
+ *   existed — every flagged message raised a raw FK violation instead of returning {blocked, reason},
+ *   surfacing a database error straight to the broker. Fixed by splitting into a BEFORE trigger (scan +
+ *   flag only) and a new AFTER INSERT trigger (durable recording, now referencing a real row). Every
+ *   RPC call in this file above this point already implicitly re-proves the fix (none of them would
+ *   return successfully otherwise), and the sections below add explicit coverage that was missing
+ *   entirely before:
+ *   - explicit `!error` assertions on the early sends, so a regression shows the exact Postgres error
+ *     immediately instead of a bare FAIL several lines later.
+ *   - a LENDER's contact-info attempt is blocked and logged to admin_alerts exactly like a broker's, but
+ *     never creates a broker_contact_violations row or counts toward the suspension system.
+ *   - an invalid message never bumps deal_chats.updated_at (in addition to the existing preview/unread
+ *     assertions).
+ *   - the post-acceptance exemption (migration 83's second fix, confirmed completely absent before it):
+ *     once a lender's offer is accepted, identifying/contact info is permitted in THAT specific
+ *     broker/lender conversation, while a different lender's thread on the SAME deal — whose offer was
+ *     NOT accepted — stays fully restricted.
  *   node scripts/seed-users.mjs && node scripts/smoke-broker-enforcement.mjs
  */
 import { createClient } from "@supabase/supabase-js"
@@ -100,16 +120,23 @@ async function main() {
     province: "ontario", loan_amount: 350000, submitted_at: new Date().toISOString(),
   }).select("id").single()
 
-  // Lender opens the thread so the broker has somewhere to reply.
-  await lender.rpc("send_deal_message", { p_deal_id: submittedDeal.id, p_content: "Hello, interested in this one." })
+  // Lender opens the thread so the broker has somewhere to reply. Explicit error diagnostic (2026-09-04
+  // migration 83 review): if send_deal_message ever regresses to a raw DB/FK error again, this must show
+  // the actual Postgres message immediately rather than a silent null result a few lines later.
+  const { data: openThread, error: openThreadErr } = await lender.rpc("send_deal_message", {
+    p_deal_id: submittedDeal.id, p_content: "Hello, interested in this one.",
+  })
+  check("(0) a normal pre-acceptance message from the lender sends without error", !openThreadErr, openThreadErr?.message)
+  check("(0) a normal message is NOT flagged", openThread?.[0]?.is_invalid === false)
   const { data: chatRow } = await svc
-    .from("deal_chats").select("id").eq("deal_id", submittedDeal.id).eq("lender_id", lenderUser.id).single()
+    .from("deal_chats").select("id, updated_at").eq("deal_id", submittedDeal.id).eq("lender_id", lenderUser.id).single()
   const chatId = chatRow.id
 
   // ── (1) & (2): recipient can never read / preview / count an invalid message ──
-  const { data: r1 } = await broker.rpc("send_deal_message", {
+  const { data: r1, error: r1Err } = await broker.rpc("send_deal_message", {
     p_deal_id: submittedDeal.id, p_content: "email me at broker@example.com", p_lender_id: lenderUser.id,
   })
+  check("(1) send_deal_message does not return a raw RPC/DB error for a flagged message", !r1Err, r1Err?.message)
   check("broker's 1st contact-info message is flagged, not rejected", r1?.[0]?.is_invalid === true)
 
   const { data: lenderPeek } = await lender
@@ -121,6 +148,11 @@ async function main() {
     lenderThread?.last_content !== "email me at broker@example.com")
   check("(2) invalid message does not bump the recipient's unread count", lenderThread?.unread === 0, String(lenderThread?.unread))
 
+  // (2b) invalid messages must not bump deal_chats.updated_at (requirement 6, migration 83 review).
+  const { data: chatAfterInvalid } = await svc.from("deal_chats").select("updated_at").eq("id", chatId).single()
+  check("(2b) an invalid message does not update deal_chats.updated_at",
+    chatAfterInvalid?.updated_at === chatRow.updated_at, `${chatRow.updated_at} -> ${chatAfterInvalid?.updated_at}`)
+
   // ── (3) recording is server-authoritative: this whole smoke never calls a "pre-check" of any kind —
   //     the violation exists purely because the RPC itself recorded it. ──
   const v1 = await svc.from("broker_contact_violations").select("id").eq("broker_id", brokerUser.id)
@@ -128,20 +160,22 @@ async function main() {
     (v1.data ?? []).length === 1, String(v1.data?.length))
 
   // ── (4) one message, several contact patterns, still exactly one violation ──
-  const { data: r2 } = await broker.rpc("send_deal_message", {
+  const { data: r2, error: r2Err } = await broker.rpc("send_deal_message", {
     p_deal_id: submittedDeal.id,
     p_content: "call 416-555-0199 or email broker@example.com or visit https://example.com",
     p_lender_id: lenderUser.id,
   })
+  check("(4) send_deal_message does not return a raw RPC/DB error", !r2Err, r2Err?.message)
   check("multi-pattern message is flagged", r2?.[0]?.is_invalid === true)
   const v2 = await svc.from("broker_contact_violations").select("id").eq("broker_id", brokerUser.id)
   check("(4) one message with multiple contact patterns is exactly ONE violation",
     (v2.data ?? []).length === 2, String(v2.data?.length))
 
   // ── (5) the 3rd violation within 30 days creates exactly one automatic 7-day suspension ──
-  const { data: r3 } = await broker.rpc("send_deal_message", {
+  const { data: r3, error: r3Err } = await broker.rpc("send_deal_message", {
     p_deal_id: submittedDeal.id, p_content: "text me at 6135550123", p_lender_id: lenderUser.id,
   })
+  check("(5) send_deal_message does not return a raw RPC/DB error", !r3Err, r3Err?.message)
   check("3rd violation is flagged", r3?.[0]?.is_invalid === true)
   let suspensions = (await svc.from("broker_suspensions").select("*").eq("broker_id", brokerUser.id)).data
   check("(5) exactly one suspension exists after the 3rd violation", (suspensions ?? []).length === 1, String(suspensions?.length))
@@ -432,6 +466,113 @@ async function main() {
     stillPrequal?.prequal === true && stillPrequal?.closing_date === null, JSON.stringify(stillPrequal))
   const { data: noIdentity } = await svc.from("deal_identities").select("property_address").eq("deal_id", prequalDeal.id).maybeSingle()
   check("(17) no property address was written for this deal", !noIdentity?.property_address, JSON.stringify(noIdentity))
+
+  // ── (18) A LENDER's contact-info attempt is blocked too (pre-acceptance) and logged for audit, but
+  // never counts toward the broker automatic-suspension system — only broker-sent violations do
+  // (migration 83 review: both parties are restricted before acceptance; strikes are broker-only). ──
+  await svc.from("broker_contact_violations").delete().eq("broker_id", brokerUser.id)
+  await svc.from("broker_suspensions").delete().eq("broker_id", brokerUser.id)
+  const alertsBefore18 = await svc.from("admin_alerts").select("id").eq("source", "chat_message")
+
+  const { data: r18, error: r18Err } = await lender.rpc("send_deal_message", {
+    p_deal_id: submittedDeal.id, p_content: "call me at 6135557890",
+  })
+  check("(18) send_deal_message does not return a raw RPC/DB error for a lender's flagged message", !r18Err, r18Err?.message)
+  check("(18) a lender's contact-info attempt is flagged too", r18?.[0]?.is_invalid === true)
+
+  const { data: brokerPeek18 } = await broker
+    .from("messages").select("id").eq("chat_id", chatId).eq("content", "call me at 6135557890")
+  check("(18) the recipient (broker) cannot SELECT the lender's flagged message", (brokerPeek18 ?? []).length === 0)
+
+  const brokerThread18 = ((await broker.rpc("my_chat_threads")).data ?? []).find((t) => t.chat_id === chatId)
+  check("(18) the lender's flagged message is neither the broker's preview nor an unread bump",
+    brokerThread18?.last_content !== "call me at 6135557890" && brokerThread18?.unread === 0,
+    JSON.stringify(brokerThread18))
+
+  const alertsAfter18 = await svc.from("admin_alerts").select("id").eq("source", "chat_message")
+  check("(18) the lender's attempt IS still recorded in admin_alerts for audit",
+    (alertsAfter18.data?.length ?? 0) > (alertsBefore18.data?.length ?? 0))
+
+  const violAfter18 = await svc.from("broker_contact_violations").select("id").eq("broker_id", brokerUser.id)
+  check("(18) a LENDER's attempt never creates a broker_contact_violations row",
+    (violAfter18.data ?? []).length === 0, String(violAfter18.data?.length))
+  const susAfter18 = await svc.from("broker_suspensions").select("id").eq("broker_id", brokerUser.id)
+  check("(18) a LENDER's attempt never creates or triggers a broker suspension",
+    (susAfter18.data ?? []).length === 0, String(susAfter18.data?.length))
+
+  // ── (19) Post-acceptance exemption (migration 83 — confirmed entirely missing before this fix, no
+  // prior coverage anywhere in this suite). Once a lender's offer is ACCEPTED, identifying/contact
+  // info becomes permitted in THAT specific broker/lender conversation — but a DIFFERENT lender's
+  // thread on the SAME deal, whose offer was NOT accepted, must remain fully restricted. ──
+  await svc.from("deals").delete().eq("deal_number", "TEST-ENF-ACCEPT")
+  const { data: acceptDeal } = await svc.from("deals").insert({
+    // accept_offer() refuses any deal with a null closing_date (the "move prequal to live" gate) — this
+    // must be a fully live-shaped deal, not a bare draft/prequal, or acceptance itself would fail here.
+    broker_id: brokerUser.id, brokerage_id: bp.brokerage_id, deal_number: "TEST-ENF-ACCEPT", status: "submitted",
+    province: "ontario", loan_amount: 300000, submitted_at: new Date().toISOString(),
+    closing_date: new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10),
+  }).select("id").single()
+
+  // A second, independent lender (different institution, so the one-offer-per-institution rule never
+  // interferes) proves the exemption is scoped to ONE conversation, not the whole deal.
+  const { data: instRow } = await svc.from("lender_institutions").select("id").eq("name", "RFA").single()
+  const { data: existingUsers19 } = await svc.auth.admin.listUsers()
+  const stale19 = existingUsers19?.users.find((u) => u.email === "enf.lender2@loanlink.test")
+  if (stale19) await svc.auth.admin.deleteUser(stale19.id)
+  const { data: newLender2, error: lender2Err } = await svc.auth.admin.createUser({
+    email: "enf.lender2@loanlink.test", password: PASSWORD, email_confirm: true,
+    user_metadata: {
+      role: "lender", first_name: "Enf", last_name: "LenderTwo",
+      lender_institution_id: instRow?.id, tos_accepted: true, tos_version: "v1",
+    },
+  })
+  if (lender2Err) throw new Error(`create enf.lender2: ${lender2Err.message}`)
+  await svc.from("profiles").update({ is_approved: true, pending_approval: false }).eq("id", newLender2.user.id)
+  const lender2 = await clientFor("enf.lender2@loanlink.test")
+
+  // Both lenders open threads with the broker on this new deal, then each makes an offer.
+  await lender.rpc("send_deal_message", { p_deal_id: acceptDeal.id, p_content: "Interested — will be the accepted lender." })
+  await lender2.rpc("send_deal_message", { p_deal_id: acceptDeal.id, p_content: "Interested — will NOT be accepted." })
+
+  const { data: offerA, error: offerAErr } = await lender.rpc("make_offer", {
+    p_deal_id: acceptDeal.id, p_mortgage_product: "3_year_fixed", p_rate: 4.29,
+    p_rate_lock_days: 120, p_commission_bps: 85,
+  })
+  check("(19) lender A can make an offer", !offerAErr && !!offerA?.id, offerAErr?.message)
+  const { data: offerB, error: offerBErr } = await lender2.rpc("make_offer", {
+    p_deal_id: acceptDeal.id, p_mortgage_product: "3_year_fixed", p_rate: 4.5,
+    p_rate_lock_days: 120, p_commission_bps: 90,
+  })
+  check("(19) lender B can make an offer", !offerBErr && !!offerB?.id, offerBErr?.message)
+
+  const { data: accepted19, error: accept19Err } = await broker.rpc("accept_offer", { p_offer_id: offerA.id })
+  check("(19) broker can accept lender A's offer", !accept19Err && accepted19?.status === "accepted", accept19Err?.message)
+
+  // Accepted lender's conversation: identifying info is now PERMITTED.
+  const { data: rAccepted, error: rAcceptedErr } = await lender.rpc("send_deal_message", {
+    p_deal_id: acceptDeal.id, p_content: "Great — call me at 6135551212 to finalize.",
+  })
+  check("(19) send_deal_message does not error post-acceptance", !rAcceptedErr, rAcceptedErr?.message)
+  check("(19) identifying info IS permitted on the ACCEPTED lender's conversation", rAccepted?.[0]?.is_invalid === false)
+
+  // The OTHER (not-accepted) lender's conversation on the SAME deal: still fully restricted.
+  const { data: rOther, error: rOtherErr } = await lender2.rpc("send_deal_message", {
+    p_deal_id: acceptDeal.id, p_content: "Call me at 6135553434 anyway.",
+  })
+  check("(19) send_deal_message does not error for the non-accepted lender", !rOtherErr, rOtherErr?.message)
+  check("(19) identifying info is STILL blocked on the NON-accepted lender's conversation on the same deal",
+    rOther?.[0]?.is_invalid === true)
+
+  // The broker replying on the accepted thread can also share identifying info now.
+  const { data: rBrokerAccepted, error: rBrokerAcceptedErr } = await broker.rpc("send_deal_message", {
+    p_deal_id: acceptDeal.id, p_content: "Sounds good, my direct line is 6135559999.", p_lender_id: lenderUser.id,
+  })
+  check("(19) send_deal_message does not error for the broker on the accepted thread", !rBrokerAcceptedErr, rBrokerAcceptedErr?.message)
+  check("(19) the broker can also share identifying info on the accepted conversation",
+    rBrokerAccepted?.[0]?.is_invalid === false)
+
+  await svc.from("deals").delete().eq("id", acceptDeal.id)
+  await svc.auth.admin.deleteUser(newLender2.user.id)
 
   // ── Cleanup ──
   await svc.from("broker_contact_violations").delete().eq("broker_id", brokerUser.id)
