@@ -68,6 +68,7 @@ type Invoice = LenderInvoiceItem
 type PendingInvoice = LenderInvoiceItem
 type PaidInvoice = LenderInvoiceItem
 type CancelledInvoice = LenderInvoiceItem
+type VoidedInvoice = LenderInvoiceItem
 
 // Client 2026-07-25 (B-27): "add 2 decimal points so it doesn't round up. This should say $187.50".
 // The DB already stores the cents (accept_offer does round(..., 2)) — only the display was truncating.
@@ -284,6 +285,7 @@ export default function InvoicesPage() {
   const pending = useMemo(() => invoices.filter((i) => i.status === 'Pending') as PendingInvoice[], [invoices])
   const paid = useMemo(() => invoices.filter((i) => i.status === 'Paid') as PaidInvoice[], [invoices])
   const cancelled = useMemo(() => invoices.filter((i) => i.status === 'Cancelled') as CancelledInvoice[], [invoices])
+  const voided = useMemo(() => invoices.filter((i) => i.status === 'Voided') as VoidedInvoice[], [invoices])
 
   const pendingTotal = pending.reduce((s, i) => s + i.amount, 0)
   const overdueCount = pending.filter((i) => daysOverdue(i.dueDate) > 0).length
@@ -393,6 +395,13 @@ export default function InvoicesPage() {
               {t('tabCancelled')}
               {cancelled.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">{cancelled.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="voided" className="flex items-center gap-2">
+              <RefreshCw className="h-3.5 w-3.5" />
+              {t('tabVoided')}
+              {voided.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">{voided.length}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -633,6 +642,72 @@ export default function InvoicesPage() {
                               <XCircle className="h-3.5 w-3.5 shrink-0" />
                               {inv.cancelledDate ? fmtDate(inv.cancelledDate) : '—'}
                             </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ── VOIDED ──────────────────────────────────────────────────────── */}
+          <TabsContent value="voided" className="mt-4">
+            {voided.length === 0 ? (
+              <div className="bg-card border border-border rounded-lg py-16 text-center">
+                <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="font-semibold text-foreground">{t('voidedEmpty')}</p>
+              </div>
+            ) : (
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/40">
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">{t('colInvoice')}</th>
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">{t('colDeal')}</th>
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">{t('colLocation')}</th>
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">{t('colTypeTerm')}</th>
+                        <th className="text-right px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">{t('colLoanAmount')}</th>
+                        <th className="text-right px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">{t('colBps')}</th>
+                        <th className="text-right px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">{t('colFeeVoid')}</th>
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">{t('colVoided')}</th>
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">{t('colVoidedReason')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {voided.map((inv) => (
+                        <tr
+                          key={inv.id}
+                          className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors opacity-70"
+                        >
+                          <td className="px-4 py-3 font-mono text-xs font-medium whitespace-nowrap">{inv.invoiceNumber}</td>
+                          <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{inv.dealRef}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">{inv.propertyCity}, {inv.propertyProvince}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="text-foreground">{tf(inv.dealType)}</span>
+                            <span className="text-muted-foreground text-xs ml-1">· {inv.term}</span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium whitespace-nowrap line-through text-muted-foreground">
+                            {fmt(inv.loanAmount)}
+                          </td>
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                              {t('bps', { n: inv.bps })}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-muted-foreground line-through whitespace-nowrap">
+                            {fmt(inv.amount)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="flex items-center gap-1.5 text-muted-foreground">
+                              <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+                              {inv.voidedDate ? fmtDate(inv.voidedDate) : '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {inv.voidedReason ?? '—'}
                           </td>
                         </tr>
                       ))}

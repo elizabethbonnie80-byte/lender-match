@@ -528,9 +528,12 @@ export type LenderInvoiceItem = {
   amount: number
   issueDate: string
   dueDate: string
-  status: "Pending" | "Paid" | "Cancelled"
+  status: "Pending" | "Paid" | "Cancelled" | "Voided"
   paidDate?: string
   cancelledDate?: string
+  /** Set when status is Voided (migration 86 — e.g. superseded by a lender switch). */
+  voidedDate?: string
+  voidedReason?: string | null
   /** Round 3 Phase 3: name as printed on the ID when it is a preferred-name variance (else null). */
   documentName?: string | null
 }
@@ -539,6 +542,7 @@ const INVOICE_STATUS_LABEL: Record<Enums["invoice_status"], LenderInvoiceItem["s
   pending: "Pending",
   paid: "Paid",
   cancelled: "Cancelled",
+  voided: "Voided",
 }
 
 /** Invoices visible to the current lender (RLS: invoices_lender), with the deal's city/province/purpose. */
@@ -546,7 +550,7 @@ export async function listLenderInvoices(supabase: DB): Promise<LenderInvoiceIte
   const { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, invoice_number, loan_amount, term_years, mortgage_product, platform_bps, amount, closing_date, due_date, status, paid_at, cancelled_at, created_at, document_name, deals(deal_number, city, province, purpose)",
+      "id, invoice_number, loan_amount, term_years, mortgage_product, platform_bps, amount, closing_date, due_date, status, paid_at, cancelled_at, voided_at, voided_reason, created_at, document_name, deals(deal_number, city, province, purpose)",
     )
     .order("created_at", { ascending: false })
   if (error) throw new Error(error.message)
@@ -569,6 +573,8 @@ export async function listLenderInvoices(supabase: DB): Promise<LenderInvoiceIte
       status: INVOICE_STATUS_LABEL[i.status],
       paidDate: i.paid_at ? i.paid_at.slice(0, 10) : undefined,
       cancelledDate: i.cancelled_at ? i.cancelled_at.slice(0, 10) : undefined,
+      voidedDate: i.voided_at ? i.voided_at.slice(0, 10) : undefined,
+      voidedReason: i.voided_reason ?? null,
       documentName: i.document_name ?? null,
     }
   })

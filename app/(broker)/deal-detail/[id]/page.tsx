@@ -403,13 +403,22 @@ export default function DealDetailPage() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {offers.map((offer) => (
+                        {offers.map((offer) => {
+                          // Switch Lender in progress (migration 86): the deal reverted to
+                          // 'offer_received' so this list renders, but Lender A's own offer is
+                          // deliberately left 'accepted' and accepted_offer_id still points at it —
+                          // nothing about them changes unless/until a replacement is accepted. Show
+                          // that distinctly instead of a bare "Accepted" badge + a broken Accept button.
+                          const isCurrentlyAccepted = offer.id === deal.acceptedOfferId && offer.status === 'accepted'
+                          return (
                           <div
                             key={offer.id}
                             className={`bg-card border rounded-lg p-6 transition-all ${
                               offer.status === 'declined' || offer.status === 'withdrawn'
                                 ? 'opacity-60 border-red-200'
-                                : 'border-border hover:border-primary/50'
+                                : isCurrentlyAccepted
+                                  ? 'border-green-300'
+                                  : 'border-border hover:border-primary/50'
                             }`}
                           >
                             <div className="flex items-start justify-between mb-4">
@@ -426,9 +435,15 @@ export default function DealDetailPage() {
                                   </p>
                                 </div>
                               </div>
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${offerStatusStyle(offer.status)}`}>
-                                {tf(OFFER_STATUS_KEY[offer.status])}
-                              </span>
+                              {isCurrentlyAccepted ? (
+                                <span className="px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-green-100 text-green-800">
+                                  {t('currentlyAccepted')}
+                                </span>
+                              ) : (
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${offerStatusStyle(offer.status)}`}>
+                                  {tf(OFFER_STATUS_KEY[offer.status])}
+                                </span>
+                              )}
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -473,7 +488,11 @@ export default function DealDetailPage() {
                               <p className="text-sm text-muted-foreground mb-4 italic">{offer.comments}</p>
                             )}
 
-                            {offer.status === 'declined' ? (
+                            {isCurrentlyAccepted ? (
+                              <div className="rounded-md border border-green-200 bg-green-50 p-3 text-center">
+                                <p className="text-sm text-green-800">{t('currentlyAcceptedNotice')}</p>
+                              </div>
+                            ) : offer.status === 'declined' ? (
                               <div className="flex items-center gap-2 text-red-600 text-sm">
                                 <X className="h-4 w-4" />
                                 {t('offerDeclined')}
@@ -496,7 +515,8 @@ export default function DealDetailPage() {
                               </Button>
                             )}
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>
