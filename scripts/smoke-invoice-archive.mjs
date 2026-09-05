@@ -1,7 +1,14 @@
 /**
- * Smoke for the paid-invoice retention rules (client 2026-07-28, A-25; migration 60).
+ * Smoke for the paid-invoice retention rules (client 2026-07-28, A-25; migration 60), extended
+ * 2026-09-04 (migration 86) to cover the mirrored VOIDED-invoice retention rule:
  *
- *   archive at 1 year after payment  →  delete at 7 years after payment
+ *   archive at 1 year after payment/voiding  →  delete at 7 years after payment/voiding
+ *
+ * Migration 86 generalized job_archive_paid_invoices()/invoices_to_purge() to also archive/purge voided
+ * invoices, anchored on voided_at instead of paid_at, WITHOUT changing a single line of the paid-invoice
+ * condition (verified at the time by a byte-for-byte diff against the migration-60 originals). The
+ * existing paid-invoice assertions below are left completely untouched, so a regression in the shared
+ * "paid OR voided" condition would show up as a failure on THOSE lines, not just the new voided ones.
  *
  * Exercises the archive job and the purge SELECTOR against invoices back-dated across every boundary,
  * and asserts invoices_to_purge() is not callable with a user token (Security invariant #6). The actual
@@ -72,12 +79,35 @@ async function main() {
     return data
   }
 
+  /** Same idea, for the voided branch migration 86 added — anchored on voided_at, not paid_at. */
+  const mkVoidedInvoice = async (suffix, voidedAt) => {
+    const row = { ...base }
+    delete row.id
+    row.invoice_number = `${base.invoice_number}-${suffix}`
+    row.status = "voided"
+    row.paid_at = null
+    row.voided_at = voidedAt
+    row.voided_reason = "Superseded by lender switch"
+    row.voided_by = brokerId
+    row.archived_at = null
+    row.pdf_path = null
+    const { data, error } = await svc.from("invoices").insert(row).select("id, invoice_number").single()
+    if (error) throw new Error(`clone ${suffix}: ${error.message}`)
+    return data
+  }
+
   const recent   = await mkInvoice("RECENT", "paid", daysAgo(30))       // paid last month
   const old11m   = await mkInvoice("11M",    "paid", daysAgo(330))      // just under a year
   const old13m   = await mkInvoice("13M",    "paid", daysAgo(400))      // just over a year
   const old8y    = await mkInvoice("8Y",     "paid", daysAgo(365 * 8))  // past the 7-year retention
   const pending  = await mkInvoice("PEND",   "pending", null)           // never paid
   const cancelled = await mkInvoice("CANC",  "cancelled", null)
+
+  // Voided-invoice equivalents (migration 86) — same boundaries, anchored on voided_at.
+  const recentVoid = await mkVoidedInvoice("V-RECENT", daysAgo(30))       // voided last month
+  const old11mVoid = await mkVoidedInvoice("V-11M",    daysAgo(330))      // just under a year
+  const old13mVoid = await mkVoidedInvoice("V-13M",    daysAgo(400))      // just over a year
+  const old8yVoid  = await mkVoidedInvoice("V-8Y",     daysAgo(365 * 8))  // past the 7-year retention
 
   const archivedOf = async (id) =>
     (await svc.from("invoices").select("archived_at").eq("id", id).single()).data?.archived_at
@@ -93,11 +123,22 @@ async function main() {
   check("a PENDING invoice is never archived", !(await archivedOf(pending.id)))
   check("a CANCELLED invoice is never archived", !(await archivedOf(cancelled.id)))
 
+  // Same boundaries for voided invoices (migration 86) — proves the job archives a voided invoice on
+  // the SAME 1-year schedule as a paid one, just anchored on voided_at instead of paid_at, and does NOT
+  // archive one immediately at void time (the client explicitly rejected immediate archiving — voided
+  // and archived are separate concepts).
+  check("voided 13 months ago → archived", !!(await archivedOf(old13mVoid.id)))
+  check("voided 8 years ago → archived", !!(await archivedOf(old8yVoid.id)))
+  check("voided 11 months ago → NOT archived (inside the 1-year window)", !(await archivedOf(old11mVoid.id)))
+  check("voided 30 days ago → NOT archived (not archived immediately at void time)", !(await archivedOf(recentVoid.id)))
+
   // Idempotent: a second run must not re-stamp what it already archived.
   const stampBefore = await archivedOf(old13m.id)
+  const stampBeforeVoid = await archivedOf(old13mVoid.id)
   const { data: n2 } = await svc.rpc("job_archive_paid_invoices")
   check("re-running archives nothing new", n2 === 0, `${n2} archived on the second pass`)
   check("an already-archived invoice keeps its original timestamp", (await archivedOf(old13m.id)) === stampBefore)
+  check("an already-archived VOIDED invoice keeps its original timestamp", (await archivedOf(old13mVoid.id)) === stampBeforeVoid)
 
   // ── The purge selector ──────────────────────────────────────────────────────
   const { data: toPurge, error: pe } = await svc.rpc("invoices_to_purge")
@@ -106,6 +147,12 @@ async function main() {
   check("the 8-year-old invoice is up for deletion", purgeIds.includes(old8y.id))
   check("the 13-month-old invoice is NOT up for deletion (archived, not expired)", !purgeIds.includes(old13m.id))
   check("a never-archived invoice is NOT up for deletion", !purgeIds.includes(recent.id))
+
+  // Same for voided (migration 86): 7 years from voided_at, not paid_at (paid_at is null on these rows,
+  // so this also proves the coalesce(paid_at, voided_at, updated_at) ordering picks the right column).
+  check("the 8-year-old VOIDED invoice is up for deletion", purgeIds.includes(old8yVoid.id))
+  check("the 13-month-old VOIDED invoice is NOT up for deletion (archived, not expired)", !purgeIds.includes(old13mVoid.id))
+  check("a never-archived VOIDED invoice is NOT up for deletion", !purgeIds.includes(recentVoid.id))
 
   // Security invariant #6: Postgres grants EXECUTE to PUBLIC by default, so the revoke has to name
   // `public` — otherwise any signed-in user could enumerate the platform's whole billing history.

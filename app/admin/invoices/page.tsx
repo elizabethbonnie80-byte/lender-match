@@ -21,6 +21,7 @@ const STATUS_BADGE: Record<InvoiceStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   paid: 'bg-green-100 text-green-800',
   cancelled: 'bg-muted text-muted-foreground',
+  voided: 'bg-muted text-muted-foreground',
 }
 
 const money = (n: number, locale: string) =>
@@ -50,6 +51,7 @@ export default function AdminInvoicesPage() {
     pending: t('invPending'),
     paid: t('invPaid'),
     cancelled: t('invCancelled'),
+    voided: t('invVoided'),
   }
 
   const reload = useCallback(
@@ -136,6 +138,8 @@ export default function AdminInvoicesPage() {
       { header: 'Issue Date', value: (i) => i.issueDate },
       { header: 'Due Date', value: (i) => i.dueDate },
       { header: 'Paid Date', value: (i) => i.paidDate ?? '' },
+      { header: 'Cancelled Reason', value: (i) => i.cancelledReason ?? '' },
+      { header: 'Voided Reason', value: (i) => i.voidedReason ?? '' },
       { header: 'Archived', value: (i) => (i.archivedAt ? i.archivedAt.slice(0, 10) : '') },
     ])
 
@@ -206,6 +210,7 @@ export default function AdminInvoicesPage() {
               <SelectItem value="pending">{STATUS_LABEL.pending}</SelectItem>
               <SelectItem value="paid">{STATUS_LABEL.paid}</SelectItem>
               <SelectItem value="cancelled">{STATUS_LABEL.cancelled}</SelectItem>
+              <SelectItem value="voided">{STATUS_LABEL.voided}</SelectItem>
             </SelectContent>
           </Select>
           {/* Client 2026-07-28 (A-25): archived invoices are out of the default list but never gone —
@@ -252,6 +257,7 @@ export default function AdminInvoicesPage() {
                     <th className="px-4 py-3 font-medium text-right">{t('colFee')}</th>
                     <th className="px-4 py-3 font-medium">{t('colTerm')}</th>
                     <th className="px-4 py-3 font-medium">{t('colStatus')}</th>
+                    <th className="px-4 py-3 font-medium">{t('colReason')}</th>
                     <th className="px-4 py-3 font-medium">{t('colIssue')}</th>
                     <th className="px-4 py-3 font-medium">{t('colDue')}</th>
                     <th className="px-4 py-3 font-medium text-right">{t('colActions')}</th>
@@ -276,6 +282,9 @@ export default function AdminInvoicesPage() {
                           <span className={`text-xs font-medium px-2 py-0.5 rounded ${STATUS_BADGE[i.status]}`}>
                             {STATUS_LABEL[i.status]}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate" title={i.cancelledReason ?? i.voidedReason ?? ''}>
+                          {i.cancelledReason ?? i.voidedReason ?? '—'}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{i.issueDate}</td>
                         <td className="px-4 py-3 whitespace-nowrap">

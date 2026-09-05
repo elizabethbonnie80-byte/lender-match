@@ -366,6 +366,10 @@ export type AdminInvoiceRow = {
   dueDate: string
   paidDate: string | null
   cancelledDate: string | null
+  cancelledReason: string | null
+  /** Set when status is 'voided' — e.g. superseded by a broker Switch Lender (migration 86). */
+  voidedDate: string | null
+  voidedReason: string | null
   /**
    * Client 2026-07-28 (A-25): set 1 year after payment. Archived invoices are hidden from the default
    * admin list but stay fully readable under the Archived filter, and are deleted at 7 years.
@@ -382,7 +386,7 @@ export async function listAllInvoices(supabase: DB): Promise<AdminInvoiceRow[]> 
   const { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, invoice_number, loan_amount, amount, mortgage_product, platform_bps, client_name, due_date, status, paid_at, cancelled_at, archived_at, created_at, deals(deal_number), profiles(first_name, last_name, lender_institutions!profiles_lender_institution_id_fkey(name))",
+      "id, invoice_number, loan_amount, amount, mortgage_product, platform_bps, client_name, due_date, status, paid_at, cancelled_at, cancelled_reason, voided_at, voided_reason, archived_at, created_at, deals(deal_number), profiles(first_name, last_name, lender_institutions!profiles_lender_institution_id_fkey(name))",
     )
     .order("created_at", { ascending: false })
   if (error) throw new Error(error.message)
@@ -410,6 +414,9 @@ export async function listAllInvoices(supabase: DB): Promise<AdminInvoiceRow[]> 
       dueDate: i.due_date,
       paidDate: i.paid_at ? i.paid_at.slice(0, 10) : null,
       cancelledDate: i.cancelled_at ? i.cancelled_at.slice(0, 10) : null,
+      cancelledReason: i.cancelled_reason ?? null,
+      voidedDate: i.voided_at ? i.voided_at.slice(0, 10) : null,
+      voidedReason: i.voided_reason ?? null,
       archivedAt: i.archived_at,
     }
   })

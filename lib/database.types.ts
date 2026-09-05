@@ -1077,6 +1077,9 @@ export type Database = {
           status: Database["public"]["Enums"]["invoice_status"]
           term_years: number | null
           updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+          voided_reason: string | null
         }
         Insert: {
           amount: number
@@ -1102,6 +1105,9 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
           term_years?: number | null
           updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_reason?: string | null
         }
         Update: {
           amount?: number
@@ -1127,6 +1133,9 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
           term_years?: number | null
           updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_reason?: string | null
         }
         Relationships: [
           {
@@ -1148,6 +1157,13 @@ export type Database = {
             columns: ["offer_id"]
             isOneToOne: false
             referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2163,6 +2179,9 @@ export type Database = {
           status: Database["public"]["Enums"]["invoice_status"]
           term_years: number | null
           updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+          voided_reason: string | null
         }
         SetofOptions: {
           from: "*"
@@ -2460,6 +2479,9 @@ export type Database = {
           status: Database["public"]["Enums"]["invoice_status"]
           term_years: number | null
           updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+          voided_reason: string | null
         }
         SetofOptions: {
           from: "*"
@@ -3128,6 +3150,9 @@ export type Database = {
           status: Database["public"]["Enums"]["invoice_status"]
           term_years: number | null
           updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+          voided_reason: string | null
         }
         SetofOptions: {
           from: "*"
@@ -3225,7 +3250,7 @@ export type Database = {
         | "workers_comp"
         | "foreign_income"
         | "foster_care_income"
-      invoice_status: "pending" | "paid" | "cancelled"
+      invoice_status: "pending" | "paid" | "cancelled" | "voided"
       legal_doc_type: "privacy_policy" | "terms_and_conditions"
       location_type: "urban" | "rural"
       mortgage_position: "first" | "second" | "third"
@@ -3506,7 +3531,7 @@ export const Constants = {
         "foreign_income",
         "foster_care_income",
       ],
-      invoice_status: ["pending", "paid", "cancelled"],
+      invoice_status: ["pending", "paid", "cancelled", "voided"],
       legal_doc_type: ["privacy_policy", "terms_and_conditions"],
       location_type: ["urban", "rural"],
       mortgage_position: ["first", "second", "third"],
