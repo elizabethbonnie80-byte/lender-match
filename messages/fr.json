@@ -1861,6 +1861,8 @@
     "invNoDefaultTaxLines": "Aucune ligne de taxe par défaut configurée.",
     "invTaxLabelPlaceholder": "p. ex. TPS, TVH, TVQ",
     "invSettingsLastUpdated": "Dernière mise à jour {date}",
+    "invSettingsReset": "Rétablir la valeur par défaut LenderMatch",
+    "invSettingsResetToast": "Formulaire rétabli à la facture par défaut de LenderMatch. Cliquez sur Enregistrer les paramètres pour rendre ce changement permanent.",
     "invSettingsSave": "Enregistrer les paramètres",
     "invSettingsSaved": "Paramètres de facturation enregistrés.",
     "invSettingsErr": "Impossible d'enregistrer les paramètres de facturation."

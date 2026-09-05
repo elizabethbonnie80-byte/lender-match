@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Toaster, toast } from 'sonner'
-import { Settings, Plus, Trash2 } from 'lucide-react'
+import { Settings, Plus, Trash2, RotateCcw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useT } from '@/components/i18n-provider'
 import { getInvoiceSettings, setInvoiceSettings, type InvoiceSettings } from '@/lib/queries/admin'
+import { LENDERMATCH_DEFAULT_INVOICE_SETTINGS } from '@/lib/invoice-settings-defaults'
 
 type TaxLineDraft = { key: string; label: string; rate: string }
 let keySeq = 0
@@ -62,6 +63,19 @@ export default function InvoiceSettingsPage() {
   }
   function updateTaxLine(key: string, field: 'label' | 'rate', value: string) {
     setTaxLines((prev) => prev.map((l) => (l.key === key ? { ...l, [field]: value } : l)))
+  }
+
+  // Populates the FORM ONLY — no write happens here. The admin still has to click Save Settings to
+  // persist this; navigating away first leaves whatever was last saved untouched, same as discarding
+  // any other unsaved edit on this page.
+  function handleReset() {
+    const d = LENDERMATCH_DEFAULT_INVOICE_SETTINGS
+    setHeaderText(d.headerText ?? '')
+    setDefaultDescription(d.defaultDescription ?? '')
+    setFooterText(d.footerText ?? '')
+    setDefaultPaymentInstructions(d.defaultPaymentInstructions ?? '')
+    setTaxLines(d.defaultTaxLines.map((l) => ({ key: nextKey(), label: l.label, rate: String(l.rate) })))
+    toast.success(t('invSettingsResetToast'))
   }
 
   const save = async () => {
@@ -162,9 +176,16 @@ export default function InvoiceSettingsPage() {
                   {t('invSettingsLastUpdated', { date: new Date(updatedAt).toLocaleString() })}
                 </p>
               )}
-              <Button onClick={save} disabled={saving} className="gap-1.5 ml-auto">
-                {t('invSettingsSave')}
-              </Button>
+              <div className="flex items-center gap-2 ml-auto">
+                {/* Fills the form only — Save Settings below is still required to persist it. */}
+                <Button type="button" variant="outline" onClick={handleReset} disabled={saving} className="gap-1.5">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  {t('invSettingsReset')}
+                </Button>
+                <Button onClick={save} disabled={saving} className="gap-1.5">
+                  {t('invSettingsSave')}
+                </Button>
+              </div>
             </div>
           </div>
         )}
