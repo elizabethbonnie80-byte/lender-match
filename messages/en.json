@@ -1861,6 +1861,8 @@
     "invNoDefaultTaxLines": "No default tax lines configured.",
     "invTaxLabelPlaceholder": "e.g. GST, HST, PST",
     "invSettingsLastUpdated": "Last updated {date}",
+    "invSettingsReset": "Reset to LenderMatch Default",
+    "invSettingsResetToast": "Form reset to the LenderMatch default invoice. Click Save settings to make this permanent.",
     "invSettingsSave": "Save settings",
     "invSettingsSaved": "Invoice settings saved.",
     "invSettingsErr": "Could not save invoice settings."
