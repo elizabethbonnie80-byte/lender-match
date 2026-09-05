@@ -439,7 +439,17 @@ export default function InvoicesPage() {
                             key={inv.id}
                             className={`border-b border-border last:border-0 transition-colors hover:bg-muted/30 ${overdue ? 'bg-red-50/50' : ''}`}
                           >
-                            <td className="px-4 py-3 font-mono text-xs font-medium whitespace-nowrap">{inv.invoiceNumber}</td>
+                            <td className="px-4 py-3 font-mono text-xs font-medium whitespace-nowrap">
+                              {inv.invoiceNumber}
+                              {inv.revisionNumber > 1 && (
+                                <span
+                                  className="ml-1.5 inline-block rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                  title={t('revisedTip', { n: inv.revisionNumber })}
+                                >
+                                  {t('revisedBadge')}
+                                </span>
+                              )}
+                            </td>
                             <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                               {inv.dealRef}
                               {inv.documentName && (

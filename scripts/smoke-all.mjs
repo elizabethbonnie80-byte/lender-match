@@ -29,6 +29,7 @@ const SMOKES = [
   "smoke-doc-name-gate.mjs",
   "smoke-switch.mjs",
   "smoke-invoice-security.mjs",
+  "smoke-admin-invoice-management.mjs",
   "smoke-anti-contact.mjs",
   "smoke-notifications.mjs",
   "smoke-expired.mjs",
