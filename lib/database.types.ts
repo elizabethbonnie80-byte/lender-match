@@ -1052,10 +1052,97 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_revisions: {
+        Row: {
+          change_reason: string | null
+          changed_by: string
+          created_at: string
+          id: string
+          invoice_id: string
+          revision_number: number
+          snapshot: Json
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_by: string
+          created_at?: string
+          id?: string
+          invoice_id: string
+          revision_number: number
+          snapshot: Json
+        }
+        Update: {
+          change_reason?: string | null
+          changed_by?: string
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          revision_number?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_revisions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_revisions_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_settings: {
+        Row: {
+          default_description: string | null
+          default_payment_instructions: string | null
+          default_tax_lines: Json
+          footer_text: string | null
+          header_text: string | null
+          id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          default_description?: string | null
+          default_payment_instructions?: string | null
+          default_tax_lines?: Json
+          footer_text?: string | null
+          header_text?: string | null
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          default_description?: string | null
+          default_payment_instructions?: string | null
+          default_tax_lines?: Json
+          footer_text?: string | null
+          header_text?: string | null
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount: number
           archived_at: string | null
+          billing_reference: string | null
           broker_name: string
           cancelled_at: string | null
           cancelled_reason: string | null
@@ -1063,6 +1150,9 @@ export type Database = {
           closing_date: string
           created_at: string
           deal_id: string
+          description: string | null
+          discount_amount: number
+          discount_reason: string | null
           document_name: string | null
           due_date: string
           id: string
@@ -1070,11 +1160,17 @@ export type Database = {
           lender_id: string
           loan_amount: number
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          notes: string | null
           offer_id: string
           paid_at: string | null
+          payment_instructions: string | null
           pdf_path: string | null
           platform_bps: number
+          revision_number: number
           status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_lines: Json
+          tax_total: number
           term_years: number | null
           updated_at: string
           voided_at: string | null
@@ -1084,6 +1180,7 @@ export type Database = {
         Insert: {
           amount: number
           archived_at?: string | null
+          billing_reference?: string | null
           broker_name: string
           cancelled_at?: string | null
           cancelled_reason?: string | null
@@ -1091,6 +1188,9 @@ export type Database = {
           closing_date: string
           created_at?: string
           deal_id: string
+          description?: string | null
+          discount_amount?: number
+          discount_reason?: string | null
           document_name?: string | null
           due_date: string
           id?: string
@@ -1098,11 +1198,17 @@ export type Database = {
           lender_id: string
           loan_amount: number
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          notes?: string | null
           offer_id: string
           paid_at?: string | null
+          payment_instructions?: string | null
           pdf_path?: string | null
           platform_bps: number
+          revision_number?: number
           status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_lines?: Json
+          tax_total?: number
           term_years?: number | null
           updated_at?: string
           voided_at?: string | null
@@ -1112,6 +1218,7 @@ export type Database = {
         Update: {
           amount?: number
           archived_at?: string | null
+          billing_reference?: string | null
           broker_name?: string
           cancelled_at?: string | null
           cancelled_reason?: string | null
@@ -1119,6 +1226,9 @@ export type Database = {
           closing_date?: string
           created_at?: string
           deal_id?: string
+          description?: string | null
+          discount_amount?: number
+          discount_reason?: string | null
           document_name?: string | null
           due_date?: string
           id?: string
@@ -1126,11 +1236,17 @@ export type Database = {
           lender_id?: string
           loan_amount?: number
           mortgage_product?: Database["public"]["Enums"]["mortgage_product"]
+          notes?: string | null
           offer_id?: string
           paid_at?: string | null
+          payment_instructions?: string | null
           pdf_path?: string | null
           platform_bps?: number
+          revision_number?: number
           status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_lines?: Json
+          tax_total?: number
           term_years?: number | null
           updated_at?: string
           voided_at?: string | null
@@ -2140,6 +2256,112 @@ export type Database = {
         Args: { p_broker_id: string; p_days: number; p_reason: string }
         Returns: undefined
       }
+      admin_update_invoice: {
+        Args: {
+          p_billing_reference?: string
+          p_change_reason?: string
+          p_description?: string
+          p_discount_amount?: number
+          p_discount_reason?: string
+          p_due_date?: string
+          p_invoice_id: string
+          p_notes?: string
+          p_payment_instructions?: string
+          p_subtotal: number
+          p_tax_lines?: Json
+        }
+        Returns: {
+          amount: number
+          archived_at: string | null
+          billing_reference: string | null
+          broker_name: string
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          client_name: string
+          closing_date: string
+          created_at: string
+          deal_id: string
+          description: string | null
+          discount_amount: number
+          discount_reason: string | null
+          document_name: string | null
+          due_date: string
+          id: string
+          invoice_number: string
+          lender_id: string
+          loan_amount: number
+          mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          notes: string | null
+          offer_id: string
+          paid_at: string | null
+          payment_instructions: string | null
+          pdf_path: string | null
+          platform_bps: number
+          revision_number: number
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_lines: Json
+          tax_total: number
+          term_years: number | null
+          updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+          voided_reason: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_void_invoice: {
+        Args: { p_invoice_id: string; p_reason: string }
+        Returns: {
+          amount: number
+          archived_at: string | null
+          billing_reference: string | null
+          broker_name: string
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          client_name: string
+          closing_date: string
+          created_at: string
+          deal_id: string
+          description: string | null
+          discount_amount: number
+          discount_reason: string | null
+          document_name: string | null
+          due_date: string
+          id: string
+          invoice_number: string
+          lender_id: string
+          loan_amount: number
+          mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          notes: string | null
+          offer_id: string
+          paid_at: string | null
+          payment_instructions: string | null
+          pdf_path: string | null
+          platform_bps: number
+          revision_number: number
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_lines: Json
+          tax_total: number
+          term_years: number | null
+          updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+          voided_reason: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       approve_lender: { Args: { p_lender_id: string }; Returns: undefined }
       best_match_for: {
         Args: { p_deal_id: string; p_lender: string }
@@ -2158,6 +2380,7 @@ export type Database = {
         Returns: {
           amount: number
           archived_at: string | null
+          billing_reference: string | null
           broker_name: string
           cancelled_at: string | null
           cancelled_reason: string | null
@@ -2165,6 +2388,9 @@ export type Database = {
           closing_date: string
           created_at: string
           deal_id: string
+          description: string | null
+          discount_amount: number
+          discount_reason: string | null
           document_name: string | null
           due_date: string
           id: string
@@ -2172,11 +2398,17 @@ export type Database = {
           lender_id: string
           loan_amount: number
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          notes: string | null
           offer_id: string
           paid_at: string | null
+          payment_instructions: string | null
           pdf_path: string | null
           platform_bps: number
+          revision_number: number
           status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_lines: Json
+          tax_total: number
           term_years: number | null
           updated_at: string
           voided_at: string | null
@@ -2189,6 +2421,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      compute_tax_lines: {
+        Args: { p_rate_lines: Json; p_taxable: number }
+        Returns: { tax_lines: Json; tax_total: number }[]
       }
       convert_prequal_to_live: {
         Args: {
@@ -2411,6 +2647,14 @@ export type Database = {
         Args: { d: Database["public"]["Tables"]["deals"]["Row"] }
         Returns: boolean
       }
+      log_invoice_revision: {
+        Args: {
+          inv: Database["public"]["Tables"]["invoices"]["Row"]
+          p_changed_by: string
+          p_reason?: string
+        }
+        Returns: number
+      }
       make_offer: {
         Args: {
           p_comments?: string
@@ -2458,6 +2702,7 @@ export type Database = {
         Returns: {
           amount: number
           archived_at: string | null
+          billing_reference: string | null
           broker_name: string
           cancelled_at: string | null
           cancelled_reason: string | null
@@ -2465,6 +2710,9 @@ export type Database = {
           closing_date: string
           created_at: string
           deal_id: string
+          description: string | null
+          discount_amount: number
+          discount_reason: string | null
           document_name: string | null
           due_date: string
           id: string
@@ -2472,11 +2720,17 @@ export type Database = {
           lender_id: string
           loan_amount: number
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          notes: string | null
           offer_id: string
           paid_at: string | null
+          payment_instructions: string | null
           pdf_path: string | null
           platform_bps: number
+          revision_number: number
           status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_lines: Json
+          tax_total: number
           term_years: number | null
           updated_at: string
           voided_at: string | null
@@ -2989,6 +3243,25 @@ export type Database = {
           block_reason: string | null
         }[]
       }
+      set_invoice_settings: {
+        Args: {
+          p_default_description?: string
+          p_default_payment_instructions?: string
+          p_default_tax_lines?: Json
+          p_footer_text?: string
+          p_header_text?: string
+        }
+        Returns: {
+          default_description: string | null
+          default_payment_instructions: string | null
+          default_tax_lines: Json
+          footer_text: string | null
+          header_text: string | null
+          id: number
+          updated_at: string
+          updated_by: string | null
+        }
+      }
       set_penalty_thresholds: {
         Args: { p_near_closing_days: number; p_near_cof_days: number }
         Returns: {
@@ -3129,6 +3402,7 @@ export type Database = {
         Returns: {
           amount: number
           archived_at: string | null
+          billing_reference: string | null
           broker_name: string
           cancelled_at: string | null
           cancelled_reason: string | null
@@ -3136,6 +3410,9 @@ export type Database = {
           closing_date: string
           created_at: string
           deal_id: string
+          description: string | null
+          discount_amount: number
+          discount_reason: string | null
           document_name: string | null
           due_date: string
           id: string
@@ -3143,11 +3420,17 @@ export type Database = {
           lender_id: string
           loan_amount: number
           mortgage_product: Database["public"]["Enums"]["mortgage_product"]
+          notes: string | null
           offer_id: string
           paid_at: string | null
+          payment_instructions: string | null
           pdf_path: string | null
           platform_bps: number
+          revision_number: number
           status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_lines: Json
+          tax_total: number
           term_years: number | null
           updated_at: string
           voided_at: string | null

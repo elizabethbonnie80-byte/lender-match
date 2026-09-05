@@ -36,7 +36,7 @@ async function main() {
   // Find an invoice + its owning lender's email.
   const { data: inv } = await svc
     .from("invoices")
-    .select("id, invoice_number, lender_id, deal_id")
+    .select("id, invoice_number, lender_id, deal_id, subtotal")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -83,6 +83,52 @@ async function main() {
   // 5. Missing invoiceId → 400.
   const { data: noId, error: noIdErr } = await owner.functions.invoke("invoice-pdf", { body: {} })
   check("missing invoiceId is rejected", !!noIdErr || !noId?.signedPath)
+
+  // 6. PDF text-wrapping safety (2026-09-04): stamp every admin/lender-configurable free-text field
+  // with deliberately long content — long enough that the description/notes/payment-instructions
+  // sections and the header/footer text all need to wrap, and the payment instructions alone are long
+  // enough to force the invoice onto a second page — then confirm the function still succeeds and
+  // returns a larger, still-valid PDF rather than erroring, hanging, or clipping. This is the only
+  // realistic way to catch a bug in the wrap/truncate/page-break logic without a PDF-parsing library.
+  const longWord = "supercalifragilisticexpialidocious-and-then-some-more-unbroken-characters-to-really-stress-it"
+  const longParagraph = Array(40).fill("Lorem ipsum dolor sit amet consectetur adipiscing elit.").join(" ")
+  const veryLongParagraph = Array(6).fill(longParagraph).join(" ") // long enough to force a 2nd page
+  // Keep the invoices_amount_matches_calc CHECK satisfied: amount = subtotal - discount + tax, using
+  // the invoice's REAL subtotal rather than a guessed number.
+  const stressDiscount = 10
+  const stressTax = 5
+  const stressAmount = Math.round((Number(inv.subtotal) - stressDiscount + stressTax) * 100) / 100
+  const { error: stressUpdateErr } = await svc.from("invoices").update({
+    description: `${longParagraph} ${longWord}`,
+    billing_reference: longWord,
+    notes: longParagraph,
+    payment_instructions: veryLongParagraph,
+    discount_amount: stressDiscount,
+    discount_reason: longParagraph,
+    tax_lines: [{ label: `A very long tax line label ${longWord}`, rate: 5, amount: stressTax }],
+    tax_total: stressTax,
+    amount: stressAmount,
+  }).eq("id", inv.id)
+  check("fixture: stress-test invoice fields update succeeds (satisfies the CHECK constraint)", !stressUpdateErr, stressUpdateErr?.message)
+  const { error: stressSettingsErr } = await svc.from("invoice_settings").update({
+    header_text: `A deliberately long custom invoice title ${longWord}`,
+    footer_text: longParagraph,
+  }).eq("id", 1)
+  check("fixture: stress-test Invoice Settings update succeeds", !stressSettingsErr, stressSettingsErr?.message)
+
+  const { data: wrapGen, error: wrapErr } = await owner.functions.invoke("invoice-pdf", { body: { invoiceId: inv.id } })
+  check("PDF generation still succeeds with long/overflowing text in every configurable field",
+    !wrapErr && !!wrapGen?.signedPath, wrapErr?.message ?? JSON.stringify(wrapGen))
+  if (wrapGen?.signedPath) {
+    const res = await fetch(`${URL}${wrapGen.signedPath}`)
+    const buf = new Uint8Array(await res.arrayBuffer())
+    const head = new TextDecoder().decode(buf.slice(0, 5))
+    check("still a valid, non-trivial PDF with all that text", head === "%PDF-" && buf.length > 800,
+      `head="${head}", ${buf.length} bytes`)
+  }
+
+  // Reset Invoice Settings — it's a global singleton shared by every other smoke that accepts an offer.
+  await svc.from("invoice_settings").update({ header_text: null, footer_text: null }).eq("id", 1)
 
   // Terminal cleanup of the offers→surveys→invoice-pdf chain so a full suite run leaves no residue.
   // invoices.deal_id and surveys.deal_id are ON DELETE RESTRICT (not cascade), so delete those child

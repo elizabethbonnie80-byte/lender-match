@@ -41,6 +41,7 @@ function json(status: number, payload: unknown) {
 }
 
 type Deal = { deal_number: string | null; city: string | null; province: string | null }
+type TaxLine = { label: string; rate: number; amount: number }
 type Invoice = {
   id: string
   invoice_number: string
@@ -56,15 +57,26 @@ type Invoice = {
   due_date: string
   status: string
   deals: Deal | Deal[] | null
+  // Admin Invoice Management (2026-09-04)
+  subtotal: number
+  discount_amount: number
+  discount_reason: string | null
+  tax_lines: TaxLine[] | null
+  tax_total: number
+  description: string | null
+  billing_reference: string | null
+  notes: string | null
+  payment_instructions: string | null
+  revision_number: number
 }
 
 const money = (n: number) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD", minimumFractionDigits: 2 })
 
-async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
+async function renderInvoicePdf(inv: Invoice, settings: { header_text: string | null; footer_text: string | null }): Promise<Uint8Array> {
   const deal = Array.isArray(inv.deals) ? inv.deals[0] : inv.deals
   const doc = await PDFDocument.create()
-  const page = doc.addPage([612, 792]) // US Letter
+  let page = doc.addPage([612, 792]) // US Letter
   const font = await doc.embedFont(StandardFonts.Helvetica)
   const bold = await doc.embedFont(StandardFonts.HelveticaBold)
   const logoPng = await doc.embedPng(LOGO_BYTES)
@@ -73,31 +85,103 @@ async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   const brand = rgb(0.145, 0.388, 0.922) // #2563eb
   let y = 740
   const L = 56
+  const TOP = 740
+  const BOTTOM_MARGIN = 60 // keeps the footer clear even if a page break lands right above it
 
   const text = (s: string, x: number, yy: number, size = 11, f = font, color = ink) =>
     page.drawText(s, { x, y: yy, size, font: f, color })
+
+  // Basic text wrapping for admin/lender-configurable free text (description, notes, payment
+  // instructions, header/footer text) — greedy word-wrap, not a typesetting engine. A single word
+  // wider than maxWidth (e.g. an unbroken URL) is left as its own line rather than broken mid-word;
+  // proportional to what a fee invoice needs, not a general-purpose text layout system.
+  function wrapText(s: string, maxWidth: number, size: number, f = font): string[] {
+    const words = s.split(/\s+/).filter(Boolean)
+    const lines: string[] = []
+    let current = ""
+    for (const w of words) {
+      const candidate = current ? `${current} ${w}` : w
+      if (current && f.widthOfTextAtSize(candidate, size) > maxWidth) {
+        lines.push(current)
+        current = w
+      } else {
+        current = candidate
+      }
+    }
+    if (current) lines.push(current)
+    return lines.length ? lines : [""]
+  }
+
+  // For single-line fields living inside a fixed-width column (a meta row's value, a breakdown-box
+  // label) where wrapping would require re-flowing the whole row/box layout — truncates with an
+  // ellipsis instead. Still guarantees the content never overflows the printable width.
+  function truncateToWidth(s: string, maxWidth: number, size: number, f = font): string {
+    if (f.widthOfTextAtSize(s, size) <= maxWidth) return s
+    let out = s
+    while (out.length > 1 && f.widthOfTextAtSize(`${out}…`, size) > maxWidth) out = out.slice(0, -1)
+    return `${out}…`
+  }
+
+  // Starts a fresh page when the next `needed` points of content wouldn't clear the bottom margin —
+  // "handle that safely rather than clipping", not silently running text off the printable page.
+  function ensureSpace(needed: number) {
+    if (y - needed < BOTTOM_MARGIN) {
+      page = doc.addPage([612, 792])
+      y = TOP
+    }
+  }
+
+  // Wraps `s` to `maxWidth` and draws it as however many lines it takes, page-breaking mid-paragraph
+  // if needed. Advances `y` by the full block height.
+  function drawWrapped(s: string, x: number, maxWidth: number, size: number, f = font, color = ink, lineHeight = size + 4) {
+    for (const line of wrapText(s, maxWidth, size, f)) {
+      ensureSpace(lineHeight)
+      text(line, x, y, size, f, color)
+      y -= lineHeight
+    }
+  }
 
   // Header — logo icon + brand wordmark (Round 3)
   const logoSize = 30
   const textX = L + logoSize + 10
   page.drawImage(logoPng, { x: L, y: y - 7, width: logoSize, height: logoSize })
   text(BRAND, textX, y, 22, bold, brand)
-  text("Platform Fee Invoice", 612 - L - font.widthOfTextAtSize("Platform Fee Invoice", 12), y + 4, 12, bold, muted)
+  // Admin Invoice Management (2026-09-04): the title wording is configurable via Invoice Settings
+  // (header_text); falls back to the pre-existing hardcoded title when nothing is configured. Wrapped
+  // (capped at 2 lines — this sits beside the wordmark, not a full paragraph) so a long custom title
+  // can't run leftward into the brand text.
+  const title = settings.header_text || "Platform Fee Invoice"
+  const brandWidth = bold.widthOfTextAtSize(BRAND, 22)
+  const titleMaxWidth = Math.max(612 - L - (textX + brandWidth + 20), 120)
+  const titleLines = wrapText(title, titleMaxWidth, 12, bold).slice(0, 2)
+  titleLines.forEach((line, i) => {
+    text(line, 612 - L - bold.widthOfTextAtSize(line, 12), y + 4 - i * 13, 12, bold, muted)
+  })
   // E-9 (client 2026-07-30): "Please remove 'Anonymous mortgage marketplace' from Invoices." The 9pt
   // tagline used to sit here, on its own line under the wordmark. Dropping it also drops that line's
   // 16pt, so the rule below moves up to keep the header from ending in a band of empty space — it still
-  // clears the 30pt logo (drawn from y-7) by a comfortable margin.
-  y -= 34
+  // clears the 30pt logo (drawn from y-7) by a comfortable margin. Extra 13pt only when the title
+  // actually wrapped to a second line.
+  y -= 34 + (titleLines.length > 1 ? 13 : 0)
   page.drawLine({ start: { x: L, y }, end: { x: 612 - L, y }, thickness: 1, color: rgb(0.9, 0.91, 0.93) })
   y -= 28
 
-  // Meta (two columns)
+  // Meta (two columns). Truncates the value rather than wrapping — this is a fixed two-column layout,
+  // and a genuinely long value (a borrower name, a billing reference) is rare enough that truncation is
+  // the proportional fix; the full text is never lost, since the PDF isn't the record of truth.
+  const ROW_VALUE_MAX_WIDTH = 612 - L - 16 - (L + 130)
   const row = (label: string, value: string) => {
+    ensureSpace(22)
     text(label, L, y, 9, font, muted)
-    text(value, L + 130, y, 11, bold)
+    text(truncateToWidth(value, ROW_VALUE_MAX_WIDTH, 11, bold), L + 130, y, 11, bold)
     y -= 22
   }
-  row("Invoice #", inv.invoice_number)
+  // Admin Invoice Management (2026-09-04): a small "Revised" marker next to the invoice number rather
+  // than a separate row — this is a fee invoice, not a legal amendment notice, so it stays understated.
+  row(
+    "Invoice #",
+    inv.revision_number > 1 ? `${inv.invoice_number}   (Revised — rev. ${inv.revision_number})` : inv.invoice_number,
+  )
   row("Deal", deal?.deal_number ?? "—")
   // ⚠️ The issue date is the invoice's `created_at`, NOT the render date. This function re-renders and
   // upserts the stored PDF on EVERY view, so `new Date()` here meant the same invoice showed a different
@@ -107,6 +191,7 @@ async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   row("Closing date", inv.closing_date)
   row("Due date", inv.due_date)
   row("Status", inv.status.toUpperCase())
+  if (inv.billing_reference) row("Billing ref.", inv.billing_reference)
   y -= 6
   page.drawLine({ start: { x: L, y }, end: { x: 612 - L, y }, thickness: 1, color: rgb(0.9, 0.91, 0.93) })
   y -= 28
@@ -125,25 +210,86 @@ async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   row("Term (years)", inv.term_years != null ? String(inv.term_years) : "—")
   row("Loan amount", money(inv.loan_amount))
   row("Platform rate", `${inv.platform_bps} bps`)
-  y -= 10
+  y -= 6
 
-  // Amount due box
-  const boxY = y - 54
-  page.drawRectangle({ x: L, y: boxY, width: 612 - 2 * L, height: 54, color: rgb(0.95, 0.97, 1) })
-  text("Amount due", L + 16, boxY + 32, 11, font, muted)
-  text(money(inv.amount), L + 16, boxY + 12, 18, bold, brand)
-  const calc = `${inv.platform_bps} bps × ${money(inv.loan_amount)}`
-  text(calc, 612 - L - 16 - font.widthOfTextAtSize(calc, 10), boxY + 20, 10, font, muted)
+  // Admin Invoice Management (2026-09-04): the editable line-item description, right above the fee
+  // breakdown it describes. Falls back to the same implicit description every pre-migration invoice
+  // had, so an old/never-edited invoice reads exactly as it always did.
+  const description = inv.description || `Platform fee — Deal ${deal?.deal_number ?? inv.invoice_number}`
+  drawWrapped(description, L, 612 - 2 * L, 10, font, ink, 14)
+  y -= 6
 
-  // Footer
-  text(
-    `${BRAND} • Commission and platform fees are quoted in basis points (bps).`,
-    L,
-    48,
-    8,
-    font,
-    muted,
-  )
+  // Fee breakdown — subtotal, discount, each tax line, then the grand total. Amounts are read straight
+  // off the row (already server-computed and CHECK-constrained; this function never recomputes them).
+  const taxLines = Array.isArray(inv.tax_lines) ? inv.tax_lines : []
+  const hasDiscount = inv.discount_amount > 0
+  const breakdownRows = 1 + (hasDiscount ? 1 : 0) + taxLines.length // subtotal + discount? + tax lines
+  const boxPad = 14
+  const boxHeight = boxPad * 2 + breakdownRows * 18 + 30 // +30 for the total line + divider
+  // The box is drawn as one unit — if it doesn't fit, the WHOLE box (not a jagged split mid-row) moves
+  // to a fresh page. A handful of tax lines is the realistic case; this keeps the layout simple and
+  // never clips a row.
+  ensureSpace(boxHeight + 20)
+  const boxY = y - boxHeight
+  page.drawRectangle({ x: L, y: boxY, width: 612 - 2 * L, height: boxHeight, color: rgb(0.97, 0.98, 1) })
+
+  // Labels here are truncated, not wrapped — a breakdown row is a fixed-height line in a box whose
+  // height was already computed from a known row count; wrapping a label would invalidate that count.
+  const LINE_LABEL_MAX_WIDTH = 300
+  let by = boxY + boxHeight - boxPad - 2
+  const lineRow = (label: string, value: string, opts?: { muted?: boolean }) => {
+    text(truncateToWidth(label, LINE_LABEL_MAX_WIDTH, 10, font), L + 16, by, 10, font, opts?.muted ? muted : ink)
+    const w = font.widthOfTextAtSize(value, 10)
+    text(value, 612 - L - 16 - w, by, 10, font, opts?.muted ? muted : ink)
+    by -= 18
+  }
+  lineRow("Subtotal", money(inv.subtotal))
+  if (hasDiscount) {
+    lineRow(
+      inv.discount_reason ? `Discount (${inv.discount_reason})` : "Discount",
+      `-${money(inv.discount_amount)}`,
+    )
+  }
+  for (const t of taxLines) {
+    lineRow(`${t.label} (${t.rate}%)`, money(t.amount), { muted: true })
+  }
+  by -= 6
+  page.drawLine({ start: { x: L + 16, y: by + 12 }, end: { x: 612 - L - 16, y: by + 12 }, thickness: 1, color: rgb(0.85, 0.87, 0.92) })
+  text("Total due", L + 16, by, 12, bold, brand)
+  const totalStr = money(inv.amount)
+  text(totalStr, 612 - L - 16 - bold.widthOfTextAtSize(totalStr, 14), by - 2, 14, bold, brand)
+
+  y = boxY - 20
+
+  // Notes / payment instructions — admin-editable free text, shown only when set. Each is a heading
+  // line plus a wrapped body, so a long instruction wraps within the page instead of running off it.
+  const contentWidth = 612 - 2 * L
+  if (inv.payment_instructions) {
+    ensureSpace(14)
+    text("Payment instructions", L, y, 9, font, muted)
+    y -= 14
+    drawWrapped(inv.payment_instructions, L, contentWidth, 10, font, ink, 14)
+    y -= 6
+  }
+  if (inv.notes) {
+    ensureSpace(14)
+    text("Notes", L, y, 9, font, muted)
+    y -= 14
+    drawWrapped(inv.notes, L, contentWidth, 10, font, ink, 14)
+    y -= 6
+  }
+
+  // Footer — configurable via Invoice Settings (footer_text); falls back to the original fixed line.
+  // Wrapped and capped at 3 lines (proportional — this is a footer, not a legal appendix), anchored so
+  // the LAST line sits where the original single-line footer always did.
+  const footerText = settings.footer_text || `${BRAND} • Commission and platform fees are quoted in basis points (bps).`
+  const footerLines = wrapText(footerText, contentWidth, 8, font).slice(0, 3)
+  ensureSpace(footerLines.length * 10 + 20)
+  let fy = 48 + (footerLines.length - 1) * 10
+  for (const line of footerLines) {
+    text(line, L, fy, 8, font, muted)
+    fy -= 10
+  }
 
   return await doc.save()
 }
@@ -164,16 +310,25 @@ Deno.serve(async (req) => {
     const { data: inv, error } = await asUser
       .from("invoices")
       .select(
-        "id, invoice_number, loan_amount, term_years, mortgage_product, platform_bps, amount, broker_name, client_name, document_name, closing_date, due_date, status, created_at, deals(deal_number, city, province)",
+        "id, invoice_number, loan_amount, term_years, mortgage_product, platform_bps, amount, broker_name, client_name, document_name, closing_date, due_date, status, created_at, subtotal, discount_amount, discount_reason, tax_lines, tax_total, description, billing_reference, notes, payment_instructions, revision_number, deals(deal_number, city, province)",
       )
       .eq("id", invoiceId)
       .single()
     if (error || !inv) return json(404, { error: "invoice not found or not permitted" })
 
-    const pdfBytes = await renderInvoicePdf(inv as unknown as Invoice)
+    // Service role from here on: Storage writes need it, and invoice_settings is admin-only RLS (the
+    // caller here is often just the invoice's own lender, not an admin) — reading it server-side to
+    // apply header_text/footer_text to the PDF doesn't expose the settings table to the client.
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+    const { data: settings } = await admin
+      .from("invoice_settings")
+      .select("header_text, footer_text")
+      .eq("id", 1)
+      .maybeSingle()
+
+    const pdfBytes = await renderInvoicePdf(inv as unknown as Invoice, settings ?? { header_text: null, footer_text: null })
 
     // Upload + stamp pdf_path with the service role (bypasses Storage RLS; private bucket).
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } })
     const path = `${inv.id}.pdf`
     const up = await admin.storage.from(BUCKET).upload(path, pdfBytes, {
       contentType: "application/pdf",

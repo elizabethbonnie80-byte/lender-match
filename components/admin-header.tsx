@@ -34,6 +34,7 @@ const NAV: NavEntry[] = [
       { key: 'dealOverview', href: '/admin/deal-overview' },
       { key: 'analytics', href: '/admin/analytics' },
       { key: 'invoices', href: '/admin/invoices' },
+      { key: 'invoiceSettings', href: '/admin/invoice-settings' },
       { key: 'surveys', href: '/admin/survey-report' },
       { key: 'penalties', href: '/admin/penalties' },
       // Client 2026-07-28 (B-17): admin-only viewer for the consent PDF + photo ID.

@@ -350,6 +350,9 @@ export async function getAnalytics(supabase: DB): Promise<Analytics> {
 
 // ── Platform invoices (admin sees every invoice via invoices_admin) ─────────────
 
+/** One configured tax line — label/rate are admin-set, amount is ALWAYS server-computed. */
+export type InvoiceTaxLine = { label: string; rate: number; amount: number }
+
 export type AdminInvoiceRow = {
   id: string
   invoiceNumber: string
@@ -358,7 +361,7 @@ export type AdminInvoiceRow = {
   lenderInstitution: string | null
   clientName: string
   loanAmount: number
-  amount: number // platform fee = loan_amount × bps/10000
+  amount: number // grand total = subtotal - discount + tax total (server-calculated, never client-trusted)
   bps: number
   term: string
   status: Enums["invoice_status"]
@@ -375,51 +378,240 @@ export type AdminInvoiceRow = {
    * admin list but stay fully readable under the Archived filter, and are deleted at 7 years.
    */
   archivedAt: string | null
+  // Admin Invoice Management (2026-09-04)
+  subtotal: number
+  discountAmount: number
+  discountReason: string | null
+  taxLines: InvoiceTaxLine[]
+  taxTotal: number
+  description: string | null
+  billingReference: string | null
+  notes: string | null
+  paymentInstructions: string | null
+  revisionNumber: number
+}
+
+const INVOICE_ADMIN_SELECT =
+  "id, invoice_number, loan_amount, amount, mortgage_product, platform_bps, client_name, due_date, status, paid_at, cancelled_at, cancelled_reason, voided_at, voided_reason, archived_at, created_at, subtotal, discount_amount, discount_reason, tax_lines, tax_total, description, billing_reference, notes, payment_instructions, revision_number, deals(deal_number), profiles(first_name, last_name, lender_institutions!profiles_lender_institution_id_fkey(name))"
+
+type InvoiceAdminRawRow = {
+  id: string
+  invoice_number: string
+  loan_amount: number | string
+  amount: number | string
+  mortgage_product: Enums["mortgage_product"]
+  platform_bps: number
+  client_name: string
+  due_date: string
+  status: Enums["invoice_status"]
+  paid_at: string | null
+  cancelled_at: string | null
+  cancelled_reason: string | null
+  voided_at: string | null
+  voided_reason: string | null
+  archived_at: string | null
+  created_at: string
+  subtotal: number | string
+  discount_amount: number | string
+  discount_reason: string | null
+  tax_lines: unknown
+  tax_total: number | string
+  description: string | null
+  billing_reference: string | null
+  notes: string | null
+  payment_instructions: string | null
+  revision_number: number
+  deals: { deal_number: string | null } | { deal_number: string | null }[] | null
+  profiles:
+    | { first_name: string; last_name: string; lender_institutions: { name: string } | { name: string }[] | null }
+    | { first_name: string; last_name: string; lender_institutions: { name: string } | { name: string }[] | null }[]
+    | null
+}
+
+function mapAdminInvoiceRow(i: InvoiceAdminRawRow): AdminInvoiceRow {
+  const deal = Array.isArray(i.deals) ? i.deals[0] : i.deals
+  const lender = Array.isArray(i.profiles) ? i.profiles[0] : i.profiles
+  const inst = lender
+    ? Array.isArray(lender.lender_institutions)
+      ? lender.lender_institutions[0]
+      : lender.lender_institutions
+    : null
+  return {
+    id: i.id,
+    invoiceNumber: i.invoice_number,
+    dealNumber: deal?.deal_number ?? "—",
+    lenderName: lender ? `${lender.first_name} ${lender.last_name}`.trim() : "—",
+    lenderInstitution: inst?.name ?? null,
+    clientName: i.client_name,
+    loanAmount: Number(i.loan_amount),
+    amount: Number(i.amount),
+    bps: i.platform_bps,
+    term: productTermLabel(i.mortgage_product),
+    status: i.status,
+    issueDate: i.created_at.slice(0, 10),
+    dueDate: i.due_date,
+    paidDate: i.paid_at ? i.paid_at.slice(0, 10) : null,
+    cancelledDate: i.cancelled_at ? i.cancelled_at.slice(0, 10) : null,
+    cancelledReason: i.cancelled_reason ?? null,
+    voidedDate: i.voided_at ? i.voided_at.slice(0, 10) : null,
+    voidedReason: i.voided_reason ?? null,
+    archivedAt: i.archived_at,
+    subtotal: Number(i.subtotal),
+    discountAmount: Number(i.discount_amount),
+    discountReason: i.discount_reason ?? null,
+    taxLines: (Array.isArray(i.tax_lines) ? i.tax_lines : []) as InvoiceTaxLine[],
+    taxTotal: Number(i.tax_total),
+    description: i.description ?? null,
+    billingReference: i.billing_reference ?? null,
+    notes: i.notes ?? null,
+    paymentInstructions: i.payment_instructions ?? null,
+    revisionNumber: i.revision_number,
+  }
 }
 
 /**
  * Every platform invoice, newest first (admin only via the invoices_admin for-all policy). Lender
  * and borrower identity are fine here — admin isn't bound by the anonymity rule. `amount` is the
- * platform fee already stored on the invoice (loan_amount × platform_bps / 10000).
+ * server-calculated grand total already stored on the invoice.
  */
 export async function listAllInvoices(supabase: DB): Promise<AdminInvoiceRow[]> {
-  const { data, error } = await supabase
-    .from("invoices")
-    .select(
-      "id, invoice_number, loan_amount, amount, mortgage_product, platform_bps, client_name, due_date, status, paid_at, cancelled_at, cancelled_reason, voided_at, voided_reason, archived_at, created_at, deals(deal_number), profiles(first_name, last_name, lender_institutions!profiles_lender_institution_id_fkey(name))",
-    )
-    .order("created_at", { ascending: false })
+  const { data, error } = await supabase.from("invoices").select(INVOICE_ADMIN_SELECT).order("created_at", { ascending: false })
   if (error) throw new Error(error.message)
-  return (data ?? []).map((i) => {
-    const deal = Array.isArray(i.deals) ? i.deals[0] : i.deals
-    const lender = Array.isArray(i.profiles) ? i.profiles[0] : i.profiles
-    const inst = lender
-      ? Array.isArray(lender.lender_institutions)
-        ? lender.lender_institutions[0]
-        : lender.lender_institutions
-      : null
+  return (data ?? []).map((i) => mapAdminInvoiceRow(i as unknown as InvoiceAdminRawRow))
+}
+
+export type AdminUpdateInvoiceInput = {
+  subtotal: number
+  discountAmount: number
+  discountReason: string | null
+  taxLines: { label: string; rate: number }[]
+  description: string | null
+  billingReference: string | null
+  notes: string | null
+  paymentInstructions: string | null
+  dueDate: string | null
+  changeReason: string | null
+}
+
+/**
+ * Admin edits a PENDING invoice's financial/content fields (admin_update_invoice RPC). The grand total
+ * is always recalculated server-side from these inputs — this function never sends a total.
+ */
+export async function adminUpdateInvoice(
+  supabase: DB,
+  invoiceId: string,
+  input: AdminUpdateInvoiceInput,
+): Promise<AdminInvoiceRow> {
+  const { data, error } = await supabase.rpc("admin_update_invoice", {
+    p_invoice_id: invoiceId,
+    p_subtotal: input.subtotal,
+    p_discount_amount: input.discountAmount,
+    p_discount_reason: input.discountReason ?? undefined,
+    p_tax_lines: input.taxLines as unknown as Database["public"]["Tables"]["invoices"]["Row"]["tax_lines"],
+    p_description: input.description ?? undefined,
+    p_billing_reference: input.billingReference ?? undefined,
+    p_notes: input.notes ?? undefined,
+    p_payment_instructions: input.paymentInstructions ?? undefined,
+    p_due_date: input.dueDate ?? undefined,
+    p_change_reason: input.changeReason ?? undefined,
+  })
+  if (error) throw new Error(error.message)
+  return mapAdminInvoiceRow(data as unknown as InvoiceAdminRawRow)
+}
+
+/** Admin voids a PENDING invoice (admin_void_invoice RPC) — reuses the existing 'voided' status. */
+export async function adminVoidInvoice(supabase: DB, invoiceId: string, reason: string): Promise<AdminInvoiceRow> {
+  const { data, error } = await supabase.rpc("admin_void_invoice", { p_invoice_id: invoiceId, p_reason: reason })
+  if (error) throw new Error(error.message)
+  return mapAdminInvoiceRow(data as unknown as InvoiceAdminRawRow)
+}
+
+// ── Invoice revision history (append-only audit trail) ──────────────────────────
+
+export type InvoiceRevision = {
+  id: string
+  revisionNumber: number
+  changedByName: string
+  changeReason: string | null
+  snapshot: Record<string, unknown>
+  createdAt: string
+}
+
+/** Every past revision of one invoice, newest first (admin-only via invoice_revisions_admin_read). */
+export async function listInvoiceRevisions(supabase: DB, invoiceId: string): Promise<InvoiceRevision[]> {
+  const { data, error } = await supabase
+    .from("invoice_revisions")
+    .select("id, revision_number, change_reason, snapshot, created_at, profiles!invoice_revisions_changed_by_fkey(first_name, last_name)")
+    .eq("invoice_id", invoiceId)
+    .order("revision_number", { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((r) => {
+    const changer = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
     return {
-      id: i.id,
-      invoiceNumber: i.invoice_number,
-      dealNumber: deal?.deal_number ?? "—",
-      lenderName: lender ? `${lender.first_name} ${lender.last_name}`.trim() : "—",
-      lenderInstitution: inst?.name ?? null,
-      clientName: i.client_name,
-      loanAmount: Number(i.loan_amount),
-      amount: Number(i.amount),
-      bps: i.platform_bps,
-      term: productTermLabel(i.mortgage_product),
-      status: i.status,
-      issueDate: i.created_at.slice(0, 10),
-      dueDate: i.due_date,
-      paidDate: i.paid_at ? i.paid_at.slice(0, 10) : null,
-      cancelledDate: i.cancelled_at ? i.cancelled_at.slice(0, 10) : null,
-      cancelledReason: i.cancelled_reason ?? null,
-      voidedDate: i.voided_at ? i.voided_at.slice(0, 10) : null,
-      voidedReason: i.voided_reason ?? null,
-      archivedAt: i.archived_at,
+      id: r.id,
+      revisionNumber: r.revision_number,
+      changedByName: changer ? `${changer.first_name} ${changer.last_name}`.trim() : "—",
+      changeReason: r.change_reason,
+      snapshot: (r.snapshot ?? {}) as Record<string, unknown>,
+      createdAt: r.created_at,
     }
   })
+}
+
+// ── Global Invoice Settings (defaults for NEW invoices only) ────────────────────
+
+export type InvoiceSettings = {
+  headerText: string | null
+  defaultDescription: string | null
+  footerText: string | null
+  defaultPaymentInstructions: string | null
+  defaultTaxLines: { label: string; rate: number }[]
+  updatedAt: string
+}
+
+/** Reads the single global Invoice Settings row (admin-only via invoice_settings_admin_read). */
+export async function getInvoiceSettings(supabase: DB): Promise<InvoiceSettings> {
+  const { data, error } = await supabase
+    .from("invoice_settings")
+    .select("header_text, default_description, footer_text, default_payment_instructions, default_tax_lines, updated_at")
+    .eq("id", 1)
+    .single()
+  if (error) throw new Error(error.message)
+  return {
+    headerText: data.header_text,
+    defaultDescription: data.default_description,
+    footerText: data.footer_text,
+    defaultPaymentInstructions: data.default_payment_instructions,
+    defaultTaxLines: (Array.isArray(data.default_tax_lines) ? data.default_tax_lines : []) as { label: string; rate: number }[],
+    updatedAt: data.updated_at,
+  }
+}
+
+/** Updates the global Invoice Settings row (set_invoice_settings RPC, admin-gated + validated). */
+export async function setInvoiceSettings(
+  supabase: DB,
+  input: Omit<InvoiceSettings, "updatedAt">,
+): Promise<InvoiceSettings> {
+  // NOTE: these 4 params have no SQL-level default (unlike admin_update_invoice's optional fields), so
+  // they must be sent as explicit `null` — turning null into `undefined` here would make supabase-js's
+  // JSON body omit the key entirely, and PostgREST would then reject the call as missing a required
+  // parameter instead of clearing the setting.
+  const { data, error } = await supabase.rpc("set_invoice_settings", {
+    p_header_text: input.headerText,
+    p_default_description: input.defaultDescription,
+    p_footer_text: input.footerText,
+    p_default_payment_instructions: input.defaultPaymentInstructions,
+    p_default_tax_lines: input.defaultTaxLines as unknown as Database["public"]["Tables"]["invoice_settings"]["Row"]["default_tax_lines"],
+  })
+  if (error) throw new Error(error.message)
+  return {
+    headerText: data.header_text,
+    defaultDescription: data.default_description,
+    footerText: data.footer_text,
+    defaultPaymentInstructions: data.default_payment_instructions,
+    defaultTaxLines: (Array.isArray(data.default_tax_lines) ? data.default_tax_lines : []) as { label: string; rate: number }[],
+    updatedAt: data.updated_at,
+  }
 }
 
 // ── Legal documents (Privacy Policy / Terms) editor ─────────────────────────────

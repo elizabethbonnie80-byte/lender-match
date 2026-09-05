@@ -6,11 +6,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Toaster, toast } from 'sonner'
-import { Receipt, Search, AlertCircle, Download, DollarSign, CheckCircle, Clock, Eye } from 'lucide-react'
+import { Receipt, Search, AlertCircle, Download, DollarSign, CheckCircle, Clock, Eye, Pencil, XCircle, History } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { listAllInvoices, type AdminInvoiceRow } from '@/lib/queries/admin'
+import {
+  listAllInvoices,
+  adminUpdateInvoice,
+  adminVoidInvoice,
+  type AdminInvoiceRow,
+  type AdminUpdateInvoiceInput,
+} from '@/lib/queries/admin'
 import { markInvoicePaid, downloadInvoicePdf } from '@/lib/queries/offers'
 import { RowActions } from '@/components/row-actions'
+import { AdminInvoiceEditDialog } from '@/components/admin-invoice-edit-dialog'
+import { AdminInvoiceVoidDialog } from '@/components/admin-invoice-void-dialog'
+import { AdminInvoiceRevisionsDialog } from '@/components/admin-invoice-revisions-dialog'
 import { downloadCsv, todayStamp } from '@/lib/csv'
 import { useT, useLocale } from '@/components/i18n-provider'
 import type { Database } from '@/lib/database.types'
@@ -106,6 +115,50 @@ export default function AdminInvoicesPage() {
     }
   }
 
+  // Admin Invoice Management (2026-09-04): edit / void / revision-history, pending invoices only for
+  // the first two (admin_update_invoice/admin_void_invoice both refuse a non-pending invoice server-side
+  // too — this is a UI convenience, not the actual guard).
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const editingInvoice = invoices.find((i) => i.id === editingId) ?? null
+
+  const handleSaveEdit = async (input: AdminUpdateInvoiceInput) => {
+    if (!editingId) return
+    setSavingEdit(true)
+    try {
+      await adminUpdateInvoice(supabase, editingId, input)
+      await reload()
+      toast.success(t('editSuccess'))
+      setEditingId(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('editError'))
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const [voidingId, setVoidingId] = useState<string | null>(null)
+  const [voidBusy, setVoidBusy] = useState(false)
+  const voidingInvoice = invoices.find((i) => i.id === voidingId) ?? null
+
+  const handleVoid = async (reason: string) => {
+    if (!voidingId) return
+    setVoidBusy(true)
+    try {
+      await adminVoidInvoice(supabase, voidingId, reason)
+      await reload()
+      toast.success(t('voidSuccess'))
+      setVoidingId(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('voidError'))
+    } finally {
+      setVoidBusy(false)
+    }
+  }
+
+  const [historyId, setHistoryId] = useState<string | null>(null)
+  const historyInvoice = invoices.find((i) => i.id === historyId) ?? null
+
   const visible = invoices.filter((i) => {
     if (archiveFilter === 'current' && i.archivedAt) return false
     if (archiveFilter === 'archived' && !i.archivedAt) return false
@@ -131,10 +184,14 @@ export default function AdminInvoicesPage() {
       { header: 'Institution', value: (i) => i.lenderInstitution ?? '' },
       { header: 'Client', value: (i) => i.clientName },
       { header: 'Loan Amount', value: (i) => i.loanAmount },
-      { header: 'Fee', value: (i) => i.amount },
+      { header: 'Subtotal', value: (i) => i.subtotal },
+      { header: 'Discount', value: (i) => i.discountAmount },
+      { header: 'Tax Total', value: (i) => i.taxTotal },
+      { header: 'Total Due', value: (i) => i.amount },
       { header: 'bps', value: (i) => i.bps },
       { header: 'Term', value: (i) => i.term },
       { header: 'Status', value: (i) => i.status },
+      { header: 'Revision', value: (i) => i.revisionNumber },
       { header: 'Issue Date', value: (i) => i.issueDate },
       { header: 'Due Date', value: (i) => i.dueDate },
       { header: 'Paid Date', value: (i) => i.paidDate ?? '' },
@@ -268,7 +325,25 @@ export default function AdminInvoicesPage() {
                     const overdue = i.status === 'pending' && daysOverdue(i.dueDate) > 0
                     return (
                       <tr key={i.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-3 font-mono text-xs font-medium text-foreground whitespace-nowrap">{i.invoiceNumber}</td>
+                        <td className="px-4 py-3 font-mono text-xs font-medium text-foreground whitespace-nowrap">
+                          {i.invoiceNumber}
+                          {i.revisionNumber > 1 && (
+                            <span
+                              className="ml-1.5 inline-block rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                              title={t('revisionTip', { n: i.revisionNumber })}
+                            >
+                              {t('revisionBadge', { n: i.revisionNumber })}
+                            </span>
+                          )}
+                          {(i.discountAmount > 0 || i.taxTotal > 0) && (
+                            <span
+                              className="ml-1.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400"
+                              title={t('hasDiscountOrTaxTip', { discount: fmt(i.discountAmount), tax: fmt(i.taxTotal) })}
+                            >
+                              {t('hasDiscountOrTaxBadge')}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{i.dealNumber}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-foreground">{i.lenderName}</span>
@@ -311,6 +386,22 @@ export default function AdminInvoicesPage() {
                                 onSelect: () => handleMarkPaid(i.id),
                                 disabled: busyId === i.id,
                               },
+                              i.status === 'pending' && {
+                                label: t('actionEdit'),
+                                icon: <Pencil className="h-4 w-4" />,
+                                onSelect: () => setEditingId(i.id),
+                              },
+                              i.status === 'pending' && {
+                                label: t('actionVoid'),
+                                icon: <XCircle className="h-4 w-4" />,
+                                onSelect: () => setVoidingId(i.id),
+                                destructive: true,
+                              },
+                              {
+                                label: t('actionHistory'),
+                                icon: <History className="h-4 w-4" />,
+                                onSelect: () => setHistoryId(i.id),
+                              },
                             ]}
                           />
                         </td>
@@ -323,6 +414,27 @@ export default function AdminInvoicesPage() {
           )}
         </div>
       </main>
+
+      <AdminInvoiceEditDialog
+        invoice={editingInvoice}
+        open={!!editingId}
+        onClose={() => setEditingId(null)}
+        onSave={handleSaveEdit}
+        saving={savingEdit}
+      />
+      <AdminInvoiceVoidDialog
+        invoice={voidingInvoice}
+        open={!!voidingId}
+        onClose={() => setVoidingId(null)}
+        onConfirm={handleVoid}
+        busy={voidBusy}
+      />
+      <AdminInvoiceRevisionsDialog
+        invoiceId={historyId}
+        invoiceNumber={historyInvoice?.invoiceNumber ?? ''}
+        open={!!historyId}
+        onClose={() => setHistoryId(null)}
+      />
     </div>
   )
 }
