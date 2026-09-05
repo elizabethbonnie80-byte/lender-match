@@ -3245,11 +3245,11 @@ export type Database = {
       }
       set_invoice_settings: {
         Args: {
-          p_default_description?: string
-          p_default_payment_instructions?: string
+          p_default_description: string | null
+          p_default_payment_instructions: string | null
           p_default_tax_lines?: Json
-          p_footer_text?: string
-          p_header_text?: string
+          p_footer_text: string | null
+          p_header_text: string | null
         }
         Returns: {
           default_description: string | null
