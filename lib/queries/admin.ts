@@ -537,6 +537,15 @@ export type InvoiceRevision = {
   createdAt: string
 }
 
+type InvoiceRevisionRawRow = {
+  id: string
+  revision_number: number
+  change_reason: string | null
+  snapshot: unknown
+  created_at: string
+  profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null
+}
+
 /** Every past revision of one invoice, newest first (admin-only via invoice_revisions_admin_read). */
 export async function listInvoiceRevisions(supabase: DB, invoiceId: string): Promise<InvoiceRevision[]> {
   const { data, error } = await supabase
@@ -545,7 +554,7 @@ export async function listInvoiceRevisions(supabase: DB, invoiceId: string): Pro
     .eq("invoice_id", invoiceId)
     .order("revision_number", { ascending: false })
   if (error) throw new Error(error.message)
-  return (data ?? []).map((r) => {
+  return ((data ?? []) as unknown as InvoiceRevisionRawRow[]).map((r) => {
     const changer = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
     return {
       id: r.id,
